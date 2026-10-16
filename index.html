@@ -1881,7 +1881,7 @@ var CUSTOM_TYPES={ocean:'Okyanus dünyası',rocky:'Kayalık dünya',gas:'Gaz dev
 var customs=[],cid=0;
 function fmtYear(a){var y=Math.pow(a,1.5);return y<1?Math.round(y*365.25)+' gün':fmt.format(y)+' Dünya yılı';}
 function addCustom(o,silent){
-  var id=o.id||('c'+(++cid));if(/^c\d+$/.test(id))cid=Math.max(cid,+id.slice(1));
+  var id=o.id||('c'+(++cid));if(/^c\d+$/.test(id))cid=Math.max(cid,+id.slice(1));if(!silent)act('born',{id:id});
   var rgb=hexStr(o.color),seed=o.seed!=null?o.seed:Math.floor(Math.random()*90),fns=customFns(o.type,rgb,seed);
   var v=1.6*Math.sqrt(o.size),a=o.a,light=mix(rgb,[255,255,255],.5),dark=mix(rgb,[0,0,0],.5);
   var def={id:id,custom:true,habType:o.type,hsize:o.size,name:o.name,kind:CUSTOM_TYPES[o.type]+' · yarattığın',a:a,P:365.25*Math.pow(a,1.5),L0:o.L0!=null?o.L0:rnd(0,360),r:orbitR(a),vr:v,
@@ -1926,7 +1926,9 @@ $('nSize').addEventListener('input',fillOuts);$('nDist').addEventListener('input
 $('nType').addEventListener('change',function(){$('nColor').value=TYPE_COLORS[this.value][0];});
 
 /* yıldız */
+var SUN_PEND=null;
 function setStar(i,keepAge){
+  SUN_PEND=null;
   sunType=i;var t=SUN_TYPES[i];
   sunBody.starType=i;sunBody.sunU.lo.value.setHex(t.lo);sunBody.sunU.hi.value.setHex(t.hi);sunBody.sunU.spots.value=i>=4?0:1;
   sunLight.color.setHex(t.light);sunLight.intensity=t.I;
@@ -1939,7 +1941,7 @@ function setStar(i,keepAge){
   if(focus===sunBody&&typeof updateInfo==='function')updateInfo();
 }
 function buildStarBtns(){
-  SUN_TYPES.forEach(function(t,i){if(i>=5)return;var b=document.createElement('button');b.className='btn';b.textContent=t.name;b.addEventListener('click',function(){var tg=labStar();setStarOn(tg,i);toast((tg===sunBody?'Yıldız: ':tg.def.name+': ')+t.name);});$('starBtns').appendChild(b);});
+  SUN_TYPES.forEach(function(t,i){if(i>=5)return;var b=document.createElement('button');b.className='btn';b.textContent=t.name;b.addEventListener('click',function(){var tg=labStar();act('type',{tg:tg.id,i:i});setStarOn(tg,i);toast((tg===sunBody?'Yıldız: ':tg.def.name+': ')+t.name);});$('starBtns').appendChild(b);});
 }
 /* genel */
 $('gSpin').addEventListener('input',function(){gSpin=+this.value;$('oGSpin').textContent=fmtX(gSpin);});
@@ -2049,13 +2051,14 @@ function setGravity(on){
   });
   syncLab();
 }
-$('gravBtn').addEventListener('click',function(){setGravity(!gravityOn);toast(gravityOn?'Yerçekimi simülasyonu açıldı':'Sabit yörüngelere dönüldü');});
-$('sMass').addEventListener('input',function(){sunMass=massFromSlider(+this.value)+EATEN/333000;$('oMass').textContent=massTxt();if(focus===sunBody&&sunType>=4)updateInfo();});
+$('gravBtn').addEventListener('click',function(){act('grav',{on:!gravityOn});setGravity(!gravityOn);toast(gravityOn?'Yerçekimi simülasyonu açıldı':'Sabit yörüngelere dönüldü');});
+var massEv=null;$('sMass').addEventListener('change',function(){massEv=null;});
+$('sMass').addEventListener('input',function(){if(!massEv)massEv=act('mass',{v:sunMass});sunMass=massFromSlider(+this.value)+EATEN/333000;if(massEv)massEv.v=sunMass;$('oMass').textContent=massTxt();if(focus===sunBody&&sunType>=4)updateInfo();});
 
 /* ---------- ikinci yıldız ---------- */
 var sid=0;
 function addStar(o,silent){
-  var id=o.id||('s'+(++sid));if(/^s\d+$/.test(id))sid=Math.max(sid,+id.slice(1));
+  var id=o.id||('s'+(++sid));if(/^s\d+$/.test(id))sid=Math.max(sid,+id.slice(1));if(!silent)act('born',{id:id});
   var T=SUN_TYPES[o.type],L0=o.L0!=null?o.L0:rnd(0,360);
   var h1='#'+('000000'+T.hi.toString(16)).slice(-6),h2='#'+('000000'+T.lo.toString(16)).slice(-6);
   var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:9*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
@@ -3260,8 +3263,8 @@ function takeSnap(){
     S.b[b.id]={g:[b.gx,b.gy,b.gz,b.gvx,b.gvy,b.gvz],sz:b.mod.size,m:b.mass,d:!!b.destroyed,i0:b.impT0,ik:b.impK,rr:b.mod.rr,rg:!!b.rogue,sc:b.scars?b.scars.length:0,
       h:h?{melt:h.melt||0,water:h.water,st:h.st}:null,dn:b.debris?b.debris.length:0,
       ho:b.homing?{t:b.homing.t.id,r:b.homing.rel.toArray(),v:b.homing.v.toArray()}:null};});
-  S.sun={ty:sunType,m:sunMass,e:EATEN};S.st={};
-  BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;S.st[b.id]={d:!!b.destroyed,ty:b.starType,sz:b.mod.size,r:b.def.r,ang:b.ang};});
+  S.sun={ty:EXO.col?6:(SUN_PEND!=null?SUN_PEND:sunType),m:sunMass,e:EATEN};S.st={};
+  BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;S.st[b.id]={d:!!b.destroyed,ty:b.exoCol?6:(b.pend!=null?b.pend:b.starType),sz:b.mod.size,r:b.def.r,ang:b.ang};});
   SNAPS.push(S);if(SNAPS.length>3000)SNAPS.shift();lastSnapT=simDays;
 }
 function undestroy(b){
@@ -3269,8 +3272,9 @@ function undestroy(b){
   BODIES.forEach(function(x){if(x.parent===b&&x.destroyed&&!x.ownDestroy){x.destroyed=false;if(x.treeBtn)x.treeBtn.hidden=false;}});
 }
 function restoreSnap(S){
-  var changed=false;if(S.em!=null&&S.em!==EATEN){sunMass+=(S.em-EATEN)/333000;EATEN=S.em;$('oMass').textContent=massTxt();}
-  tlBodies().forEach(function(b){var o=S.b[b.id];if(!o)return;
+  var changed=false;if(S.sun&&(sunMass!==S.sun.m||EATEN!==S.sun.e)){sunMass=S.sun.m;EATEN=S.sun.e;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();}
+  if(S.grav!==gravityOn){setGravity(!!S.grav);changed=true;}if(S.em!=null&&S.em!==EATEN){sunMass+=(S.em-EATEN)/333000;EATEN=S.em;$('oMass').textContent=massTxt();}
+  tlBodies().forEach(function(b){var o=S.b[b.id];if(!o){if(b.def.custom&&!b.destroyed&&!b.parent){destroyBody(b);b.unborn=true;changed=true;}return;}if(b.unborn&&!o.d)b.unborn=false;
     if(o.d!==!!b.destroyed){changed=true;if(o.d){destroyBody(b);b.ownDestroy=true;}else{undestroy(b);b.ownDestroy=false;}}
     if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);changed=true;}
     b.mass=o.m;b.impT0=o.i0;b.impK=o.ik;b.rogue=o.rg;
@@ -3281,21 +3285,28 @@ function restoreSnap(S){
     if(S.grav&&gravityOn&&b.grav){b.gx=o.g[0];b.gy=o.g[1];b.gz=o.g[2];b.gvx=o.g[3];b.gvy=o.g[4];b.gvz=o.g[5];b.pivot.position.set(b.gx,b.gy,b.gz);}
     b.homing=o.ho&&byId[o.ho.t]?{t:byId[o.ho.t],rel:new THREE.Vector3().fromArray(o.ho.r),v:new THREE.Vector3().fromArray(o.ho.v)}:null;
   });
-  if(S.st)BODIES.forEach(function(b){var o=S.st[b.id];if(!o||!b.def.star||b===sunBody)return;
+  if(S.st)BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;var o=S.st[b.id];if(!o){if(!b.destroyed){b.dart=null;destroyBody(b);b.unborn=true;changed=true;}return;}if(b.unborn&&!o.d)b.unborn=false;
     b.dart=null;b.exoCol=null;
     if(o.d!==!!b.destroyed){changed=true;if(o.d){destroyBody(b);}else{undestroy(b);if(b.cust&&!customs.some(function(c){return c.id===b.id;})){customs.push(b.cust);saveCustom();}}}
-    if(o.ty!==b.starType){setStarOn(b,o.ty);changed=true;}
+    if(o.ty!==b.starType||b.pend!=null){setStarOn(b,o.ty);changed=true;}
     if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);}if(o.r!=null)b.def.r=o.r;if(o.ang!=null){b.ang=o.ang;var rr=b.def.r||0;b.pivot.position.set(Math.cos(b.ang)*rr,0,-Math.sin(b.ang)*rr);}
   });
-  if(S.sun){if(S.sun.ty!==sunType){EXO.col=null;setStar(S.sun.ty);changed=true;}if(sunMass!==S.sun.m||EATEN!==S.sun.e){sunMass=S.sun.m;EATEN=S.sun.e;$('oMass').textContent=massTxt();}}
+  if(S.sun){if(S.sun.ty!==sunType||EXO.col||SUN_PEND!=null){EXO.col=null;setStar(S.sun.ty);changed=true;}if(sunMass!==S.sun.m||EATEN!==S.sun.e){sunMass=S.sun.m;EATEN=S.sun.e;$('oMass').textContent=massTxt();}}
   if(changed){FXL.forEach(function(f){f.o.parent&&f.o.parent.remove(f.o);});FXL=[];clearTDES();rebuildLists();}
   return changed;
 }
 function addEvent(e){EVENTS=EVENTS.filter(function(x){return x.t<=simDays;});takeSnap();e.t=simDays;e.done=true;EVENTS.push(e);}
+function act(k,o){if(tlBusy)return null;var e={type:'act',k:k};for(var q in (o||{}))e[q]=o[q];addEvent(e);return e;}
+var FORCE_STAR=null;
 function runEvent(e){
   tlBusy=true;
   if(e.type==='launch'){var a=byId[e.a],t=byId[e.tg];if(a&&t&&!isGone(a)&&!isGone(t))doLaunch(a,t,true);}
   else if(e.type==='dart'){var a2=byId[e.a],t2=byId[e.tg];if(a2&&t2&&!isGone(a2)&&!isGone(t2))startDart(a2,t2,true);}
+  else if(e.type==='act'){var tg=e.tg?(byId[e.tg]||sunBody):sunBody;
+    if(e.k==='born'){var nb=byId[e.id];if(nb&&nb.destroyed&&nb.unborn){undestroy(nb);nb.unborn=false;rebuildLists();}}
+    else if(e.k==='mass'){sunMass=e.v;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();}
+    else if(e.k==='grav'){setGravity(e.on);}
+    else if(!isGone(tg)){FORCE_STAR=tg;try{if(e.k==='bh')blackHole();else if(e.k==='nova')supernova();else if(e.k==='pn')planetaryNebula();else if(e.k==='type')setStarOn(tg,e.i);}finally{FORCE_STAR=null;}}}
   else if(e.type==='rr'){var m=byId[e.id];if(m&&!isGone(m)){m.mod.rr=e.rr;if(m.line)m.line.scale.setScalar(moonVisR(m)/m.def.orbit);if(m.mod.rr<moonRoche(m))roche(m);if(m===focus)syncMoonUI();}}
   tlBusy=false;e.done=true;
 }
@@ -3821,11 +3832,12 @@ function starDotCss(t){return t===6?'background:radial-gradient(circle,#000 36%,
 var SUNNM={4:'Beyaz cüce',5:'Pulsar',6:'Kara delik',7:'Kalıntı'};
 function refreshStarDot(b){var t=b===sunBody?sunType:b.starType,nm=(b===sunBody&&!SYS)?(SUNNM[t]||'Güneş'):null;[b.treeBtn,b.dockBtn].forEach(function(el){var d=el&&el.querySelector('.dot');if(d)d.setAttribute('style',starDotCss(t));if(el&&nm&&el.lastChild&&el.lastChild.nodeType===3)el.lastChild.nodeValue=nm;});if(nm&&b.label&&b.label.firstChild)b.label.firstChild.textContent=nm;}
 /* ek yıldızlar: tür değişimi, süpernova, kara delik */
-function labStar(){return (focus&&focus.def.star&&focus!==sunBody&&!isGone(focus))?focus:sunBody;}
+function labStar(){if(FORCE_STAR)return FORCE_STAR;return (focus&&focus.def.star&&focus!==sunBody&&!isGone(focus))?focus:sunBody;}
 function clearStarExo(b){var x=b.exo;if(!x)return;['beams','neb','disk','ringS'].forEach(function(k){if(x[k]&&x[k].parent)x[k].parent.remove(x[k]);});
   if(b.sunMat){b.mesh.material=b.sunMat;b.sunMat=null;}b.glow1.visible=b.glow2.visible=true;b.exo=null;}
 function setStarOn(b,i){
   if(b===sunBody){setStar(i);return;}
+  b.pend=null;
   var T=SUN_TYPES[i];clearStarExo(b);b.starType=i;
   b.sunU.lo.value.setHex(T.lo);b.sunU.hi.value.setHex(T.hi);b.sunU.spots.value=i>=4?0:1;
   b.glow1.material.color.setHex(T.glow);b.glow2.material.color.setHex(T.glow);
@@ -3848,10 +3860,11 @@ function starNova(t){
   if(EXO.sn){toast('Önce süren patlama bitsin');return;}
   if(t.starType>=5){toast('Yıldız zaten öldü');return;}
   if(t.starType===1){toast('Kırmızı cüceler süpernova olamaz: çok hafifler.',5000);return;}
+  act('nova',{tg:t.id});
   var ia=t.starType===4;
   snStart(t,ia);
   if(ia)setTimeout(function(){if(isGone(t))return;hideStar(t);focusBody('sun',{dist:OVD()*.6});},1800);
-  else setTimeout(function(){if(!isGone(t))setStarOn(t,5);},1800);
+  else{t.pend=5;setTimeout(function(){if(!isGone(t)&&t.pend===5)setStarOn(t,5);},1800);}
   toast(ia?t.def.name+': Tip Ia süpernova! Beyaz cüce kütle sınırını (1,4 Güneş) aşınca karbon tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Evrendeki demirin çoğu böyle oluşur.':t.def.name+' süpernova oldu! Gerçekte bunun için en az 8 Güneş kütlesi gerekir; bu bir "ya olsaydı" senaryosu.',8000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
@@ -3909,6 +3922,7 @@ function pnTex(){
 function planetaryNebula(){
   var t=labStar(),ty=t===sunBody?sunType:t.starType;
   if(!(ty===0||ty===3)){toast(ty===1?'Kırmızı cüceler bu evreye trilyonlarca yıl sonra ulaşır; dış katman atacak kadar şişmezler.':ty===2?'Mavi devler bulutsu bırakarak sönmez; süpernova olarak patlarlar.':'Bu yıldız zaten ölmüş durumda.',6000);return;}
+  act('pn',{tg:t.id});
   var sp=nebPoints('pn');sp.scale.setScalar(t.def.vr*2);t.pivot.add(sp);
   PNEB.push({sp:sp,t:0,R:t.def.vr});
   if(t===sunBody){setStar(4);focusBody('sun',{dist:sunBody.def.vr*40});}else{setStarOn(t,4);focusBody(t.def.id,{dist:t.def.vr*40});}
@@ -3954,11 +3968,12 @@ function supernova(){
   var tg=labStar();if(tg!==sunBody){starNova(tg);return;}
   if(EXO.sn||sunType>=5){toast('Yıldız zaten öldü; önce yıldız türünü değiştir');return;}
   if(sunType===1){toast('Kırmızı cüceler süpernova olamaz: çok hafifler, yakıtlarını trilyonlarca yılda yavaşça yakarlar.',6000);return;}
-  if(sunType===4){snStart(sunBody,true);setTimeout(function(){setStar(7);},1800);focusBody('sun',{dist:OVD()*.9});
+  act('nova',{tg:'sun'});
+  if(sunType===4){snStart(sunBody,true);SUN_PEND=7;setTimeout(function(){if(SUN_PEND===7)setStar(7);},1800);focusBody('sun',{dist:OVD()*.9});
     toast('Tip Ia süpernova! Beyaz cüce 1,4 Güneş kütlesi sınırını aşınca karbon bir anda tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Gerçekte kütlesi yok olduğu için gezegenler düz bir çizgide uzaya savrulurdu; burada yörüngeler korunuyor.',9000);
     if(typeof audWhoosh==='function')audWhoosh();return;}
-  snStart(sunBody,false);
-  setTimeout(function(){setStar(5);},1800);
+  snStart(sunBody,false);SUN_PEND=5;
+  setTimeout(function(){if(SUN_PEND===5)setStar(5);},1800);
   focusBody('sun',{dist:OVD()*.9});
   toast(sunType===2?'Süpernova! Mavi devler gerçekten böyle ölür: demir çekirdek çöker, dış katmanlar ışık hızının onda biriyle savrulur. Geriye bir nötron yıldızı kalır.':'Süpernova! Not: Güneş gerçekte süpernova olamaz, en az 8 Güneş kütlesi gerekir. Bu bir "ya olsaydı" senaryosu.',7000);
   if(typeof audWhoosh==='function')audWhoosh();
@@ -3979,7 +3994,8 @@ function bhBlock(t){var ty=t===sunBody?sunType:t.starType;
   if(ty===5&&!(t===sunBody&&sunMass>=2.3))return 'Nötron yıldızı ancak üzerine madde yağıp yaklaşık 2,3 Güneş kütlesini aşarsa kara deliğe çöker.'+(t===sunBody?' Kütle kaydırıcısını 2,3×\'ün üstüne çıkarıp tekrar dene.':'');
   if(ty===7)return 'Burada artık bir yıldız yok.';return null;}
 function blackHole(){
-  var tg=labStar(),bl=bhBlock(tg);if(bl){toast(bl,7000);return;}if(tg!==sunBody){starBH(tg);return;}
+  var tg=labStar(),bl=bhBlock(tg);if(bl){toast(bl,7000);return;}
+  if(!(tg===sunBody&&(EXO.col||sunType===6))&&!tg.exoCol&&!(tg!==sunBody&&tg.starType===6))act('bh',{tg:tg.id});if(tg!==sunBody){starBH(tg);return;}
   if(EXO.col||sunType===6)return;focusBody('sun',{dist:sunBody.def.vr*9});
   EXO.col={t:0,s0:sunBody.typeScale};toast('Çekirdek çöküyor…',3000);
 }

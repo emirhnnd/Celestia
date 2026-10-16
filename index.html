@@ -116,7 +116,16 @@ button[aria-checked="true"] .sw::after{transform:translateX(13px)}
 .lsec h4{margin:0;font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:flex;justify-content:space-between;gap:8px}
 .chip.find{display:inline-flex;align-items:center;gap:6px;color:var(--fg)}
 #cmdk{position:fixed;inset:0;z-index:60;background:rgba(2,4,10,.55);display:flex;justify-content:center;align-items:flex-start;padding:72px 12px 12px}
-#cmdk[hidden]{display:none}
+#cmdk[hidden],.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(2,4,10,.55);display:flex;justify-content:center;align-items:flex-start;padding:72px 12px 12px}
+#shBody .lsec{border:0;margin:0;padding:0}#shBody .lsec h4{display:none}
+body.surfmode #tree,body.surfmode #mini,body.surfmode #hint{display:none!important}
+#cityCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none}
+.ltabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;margin:0 0 14px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--line);position:sticky;top:0;z-index:3}
+.ltabs button{min-height:34px;border-radius:8px;border:0;background:none;color:var(--dim);font:inherit;font-size:12.5px;font-weight:600}
+.ltabs button.on{background:rgba(140,170,255,.18);color:var(--fg)}
+.lsec.off{display:none!important}
+#tabLab .lsec h4{cursor:default}#tabLab .lsec h4::before{content:none}
 .cmdbox{width:min(580px,100%);max-height:min(72vh,640px);display:flex;flex-direction:column;overflow:hidden;padding:0!important}
 .cmdtop{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);color:var(--dim)}
 #cmdIn{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--fg);font:inherit;font-size:15px}
@@ -327,6 +336,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <button role="menuitem" id="vFs">Tam ekran</button>
         <button role="menuitem" id="vSys">Yıldız sistemleri</button>
         <button role="menuitem" id="vTrip">Ölçek yolculuğu</button>
+        <button role="menuitem" id="vShare">Sistemi paylaş</button>
         <button role="menuitem" id="vReset">Güneş Sistemini sıfırla</button>
         <div class="msep">Mesafeler</div>
         <button role="menuitemradio" class="dsb" data-ds="1">Kompakt</button>
@@ -391,9 +401,9 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <div class="ljump" id="lJump"></div>
         <section class="lsec" id="lsBody">
           <h4>Seçili cisim <b id="labName"></b></h4>
-          <div class="rrow"><label for="sSpin">Dönüş hızı</label><input type="range" id="sSpin" min="-5" max="25" step=".1" value="1"><output id="oSpin"></output></div>
-          <div class="rrow"><label for="sOrbit">Yörünge hızı</label><input type="range" id="sOrbit" min="0" max="12" step=".1" value="1"><output id="oOrbit"></output></div>
-          <div class="rrow"><label for="sSize">Boyut</label><input type="range" id="sSize" min=".3" max="3" step=".05" value="1"><output id="oSize"></output></div>
+          <div class="rrow"><label for="sSpin">Dönüş hızı</label><input type="range" id="sSpin" min="-50" max="100" step=".1" value="1"><output id="oSpin"></output></div>
+          <div class="rrow"><label for="sOrbit">Yörünge hızı</label><input type="range" id="sOrbit" min="-10" max="50" step=".1" value="1"><output id="oOrbit"></output></div>
+          <div class="rrow"><label for="sSize">Boyut</label><input type="range" id="sSize" min=".1" max="20" step=".05" value="1"><output id="oSize"></output></div>
           <div class="rrow"><label for="sTilt">Eksen eğikliği</label><input type="range" id="sTilt" min="0" max="180" step="1" value="0"><output id="oTilt"></output></div>
           <div class="frow" id="lockRow"><label for="sLock">Gelgit kilidi</label><span class="chk"><input type="checkbox" id="sLock"><span>Bir yüzü hep yıldıza baksın</span></span></div>
           <div class="btnrow"><button class="btn" id="labReset">Bu cismi sıfırla</button><button class="btn danger" id="labDel" hidden>Gezegeni sil</button></div>
@@ -428,8 +438,8 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
               <option value="desert">Çöl dünyası</option>
             </select></div>
           <div class="frow"><label for="nColor">Ana renk</label><input type="color" id="nColor" value="#3b82d6"></div>
-          <div class="rrow"><label for="nSize">Çap (Dünya = 1)</label><input type="range" id="nSize" min=".2" max="12" step=".1" value="1.4"><output id="onSize"></output></div>
-          <div class="rrow"><label for="nDist">Güneş'e uzaklık</label><input type="range" id="nDist" min=".3" max="45" step=".1" value="2.6"><output id="onDist"></output></div>
+          <div class="rrow"><label for="nSize">Çap (Dünya = 1)</label><input type="range" id="nSize" min=".1" max="25" step=".1" value="1.4"><output id="onSize"></output></div>
+          <div class="rrow"><label for="nDist">Güneş'e uzaklık</label><input type="range" id="nDist" min=".2" max="100" step=".1" value="2.6"><output id="onDist"></output></div>
           <div class="frow"><label for="nMoons">Uydu sayısı</label>
             <select id="nMoons"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></div>
           <div class="frow"><label for="nRing">Halka</label><span class="chk"><input type="checkbox" id="nRing"><span>Satürn gibi halka ekle</span></span></div>
@@ -440,7 +450,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <h4>Yıldız türü <b id="starName"></b></h4>
           <div class="btnrow" id="starBtns"></div>
           <div class="rrow"><label for="sAge">Güneş yaşı</label><input type="range" id="sAge" min="0" max="14" step=".01" value="4.57"><output id="oAge"></output></div>
-          <div class="rrow"><label for="sAct">Güneş aktivitesi</label><input type="range" id="sAct" min="0" max="2.5" step=".1" value="1"><output id="oAct">1,0×</output></div>
+          <div class="rrow"><label for="sAct">Güneş aktivitesi</label><input type="range" id="sAct" min="0" max="6" step=".1" value="1"><output id="oAct">1,0×</output></div>
           <div class="btnrow"><button class="btn" id="sFlare">Güneş patlaması tetikle</button></div>
           <div class="btnrow"><button class="btn" id="sNova">Süpernova patlat</button><button class="btn" id="sBH">Kara deliğe dönüştür</button></div>
           <div class="btnrow"><button class="btn" id="sPN">Gezegenimsi bulutsu (Güneş'in gerçek sonu)</button></div>
@@ -451,8 +461,8 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <section class="lsec" id="lsStar2">
           <h4>İkinci yıldız ekle</h4>
           <div class="frow"><label for="xType">Tür</label><select id="xType"><option value="0">Sarı cüce</option><option value="1">Kırmızı cüce</option><option value="2" selected>Mavi dev</option><option value="3">Kırmızı dev</option><option value="4">Beyaz cüce</option></select></div>
-          <div class="rrow"><label for="xSize">Boyut</label><input type="range" id="xSize" min=".3" max="2" step=".05" value=".8"><output id="oxSize"></output></div>
-          <div class="rrow"><label for="xDist">Uzaklık</label><input type="range" id="xDist" min="80" max="520" step="1" value="220"><output id="oxDist"></output></div>
+          <div class="rrow"><label for="xSize">Boyut</label><input type="range" id="xSize" min=".1" max="10" step=".05" value=".8"><output id="oxSize"></output></div>
+          <div class="rrow"><label for="xDist">Uzaklık</label><input type="range" id="xDist" min="40" max="1500" step="1" value="220"><output id="oxDist"></output></div>
           <button class="btn pri" id="xAdd">Yıldızı ekle</button>
           <p class="note">Ek yıldız Güneş'in çevresinde döner ve tüm sistemi aydınlatır. En fazla 2 tane eklenebilir.</p>
         </section>
@@ -462,7 +472,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <button class="btn" id="gravBtn" aria-pressed="false">Kapalı</button>
           <div class="frow"><label for="lTarget">Hedef</label><select id="lTarget"></select></div>
           <div class="btnrow"><button class="btn" id="lGo">Seçili cismi hedefe fırlat</button></div>
-          <div class="rrow"><label for="sMass">Güneş kütlesi</label><input type="range" id="sMass" min="0" max="1" step=".002" value=".2915"><output id="oMass"></output></div>
+          <div class="rrow"><label for="sMass">Yıldız kütlesi (Güneş = 1)</label><input type="range" id="sMass" min="0" max="1" step=".001" value=".25"><output id="oMass"></output></div>
           <p class="note">Açıkken gezegenler sabit çember yerine gerçek yerçekimiyle hareket eder ve iz bırakır. Kütleyi değiştir ya da ikinci yıldız ekle: yörüngeler bozulur, gezegenler fırlayabilir veya Güneş'e düşebilir.</p>
         </section>
 
@@ -476,7 +486,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
 
         <section class="lsec" id="lsAll">
           <h4>Tüm sistem</h4>
-          <div class="rrow"><label for="gSpin">Genel dönüş</label><input type="range" id="gSpin" min="0" max="20" step=".1" value="1"><output id="oGSpin"></output></div>
+          <div class="rrow"><label for="gSpin">Genel dönüş</label><input type="range" id="gSpin" min="0" max="100" step=".1" value="1"><output id="oGSpin"></output></div>
           <div class="btnrow"><button class="btn" id="chaos">Kaos</button><button class="btn" id="resetAll">Güneş Sistemini sıfırla</button></div>
           <p class="note">Kaos, her cismin dönüş ve yörünge hızını rastgele değiştirir. Eklediğin gezegenler bu tarayıcıda saklanır.</p>
         </section>
@@ -486,10 +496,11 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
 
   <div id="hint"></div>
   <div id="skyTint"></div>
+  <canvas id="cityCv"></canvas>
   <div id="fade"></div>
   <div id="sysPanel" hidden><div class="card" role="dialog" aria-label="Yıldız sistemleri"><h2>Yıldız sistemleri</h2><p class="note">Gerçek gezegen verileri: NASA Ötegezegen Arşivi. Uzaklıklar ve boyutlar görünürlük için sıkıştırılmıştır.</p><div id="sysList"></div><div class="btnrow"><button class="btn" id="sysClose">Kapat</button></div></div></div>
   <div id="skyLabels" hidden></div>
-  <div class="panel" id="surfBar" hidden><span id="surfName"></span><select id="surfCity" aria-label="Şehir" hidden></select><button class="btn" id="surfExit">Yüzeyden çık</button></div>
+  <div class="panel" id="surfBar" hidden><span id="surfName"></span><select id="surfCity" aria-label="Şehir" hidden></select><button class="btn" id="surfLP" hidden>Işık kirliliği: açık</button><button class="btn" id="surfExit">Yüzeyden çık</button></div>
   <div id="trip" hidden><canvas id="tripCv"></canvas><div class="panel" id="tripCard"><div class="tag" id="tripN"></div><h3 id="tripT"></h3><p id="tripS"></p><div class="btnrow"><button class="btn" id="tripPrev">Geri</button><button class="btn pri" id="tripNext">İleri</button><button class="btn" id="tripClose">Kapat</button></div></div></div>
   <div id="toast" role="status"></div>
   <div class="panel" id="eclView" hidden><canvas id="eclCv" width="150" height="150" aria-label="Dünya'dan Güneş görünümü"></canvas><div class="cap">Dünya'dan Güneş</div><div id="eclTxt"></div></div>
@@ -516,6 +527,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
     <div class="btnrow"><button class="btn" id="coachOk">Anladım</button><button class="btn pri" id="coachLab">Laboratuvar'ı aç</button></div>
   </div>
 
+  <div id="shareDlg" class="modal" hidden><div class="panel cmdbox" role="dialog" aria-label="Sistemi paylaş"><div class="cmdtop"><b style="color:var(--fg);flex:1">Sistemi paylaş</b><button class="cmdx" id="shX">Kapat</button></div><div id="shBody" style="padding:14px;overflow:auto"><p class="note" style="margin-top:0">Eklediğin gezegenleri ve yıldızları bir kodla arkadaşına gönderebilirsin. O da kodu buraya yapıştırıp senin sistemini açar.</p></div></div></div>
   <div id="cmdk" hidden><div class="panel cmdbox" role="dialog" aria-label="Ara"><div class="cmdtop"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="cmdIn" autocomplete="off" spellcheck="false" placeholder="Gezegen, olay ya da deney ara… (ör. kara delik, Samsun, tutulma)"><button class="cmdx" id="cmdX" aria-label="Kapat">Esc</button></div><div id="cmdList" role="listbox"></div></div></div>
   <div id="help" hidden>
     <div class="card" role="dialog" aria-label="Yardım">
@@ -940,10 +952,10 @@ function addSky(){
     col[i*3]=c[0]/255*b;col[i*3+1]=c[1]/255*b;col[i*3+2]=c[2]/255*b;sz[i]=clamp(1.1+(4.6-mag)*.55,1.1,4.6);
   }
   var gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.BufferAttribute(pos,3));gg.setAttribute('color',new THREE.BufferAttribute(col,3));gg.setAttribute('sz',new THREE.BufferAttribute(sz,1));
-  var sm=new THREE.ShaderMaterial({uniforms:{dpr:{value:Math.min(devicePixelRatio||1,2)}},vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  var sm=new THREE.ShaderMaterial({uniforms:{dpr:{value:Math.min(devicePixelRatio||1,2)},lim:{value:0},vis:{value:1}},vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
     vertexShader:'attribute float sz;varying vec3 vC;uniform float dpr;void main(){vC=color;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=sz*dpr;gl_Position=projectionMatrix*mv;}',
-    fragmentShader:'varying vec3 vC;void main(){vec2 p=gl_PointCoord-.5;float r=length(p)*2.0;float a=exp(-r*r*5.0)+.25*exp(-r*r*1.2);gl_FragColor=vec4(vC*a*1.25,1.0);}'});
-  var pts=new THREE.Points(gg,sm);pts.frustumCulled=false;SKYG.add(pts);
+    fragmentShader:'uniform float lim;uniform float vis;varying vec3 vC;void main(){vec2 p=gl_PointCoord-.5;float r=length(p)*2.0;float a=exp(-r*r*5.0)+.25*exp(-r*r*1.2);float L=max(max(vC.r,vC.g),vC.b);float k=lim>0.0?clamp((L-lim)/(1.2-lim),0.0,1.0):1.0;gl_FragColor=vec4(vC*a*1.25*k*vis,1.0);}'});
+  var pts=new THREE.Points(gg,sm);pts.frustumCulled=false;SKYG.add(pts);SKYG.starMat=sm;
   var lp=[];SKYDATA.l.forEach(function(ln){for(var k=0;k+3<ln.length;k+=2){var a=skyDir(ln[k]/20,ln[k+1]/20).multiplyScalar(4100),b=skyDir(ln[k+2]/20,ln[k+3]/20).multiplyScalar(4100);lp.push(a.x,a.y,a.z,b.x,b.y,b.z);}});
   var lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(lp),3));
   SKYG.cons=new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:0x7f9fd0,transparent:true,opacity:.28,depthWrite:false}));SKYG.cons.visible=false;SKYG.cons.frustumCulled=false;SKYG.add(SKYG.cons);
@@ -1291,7 +1303,7 @@ function rebuildLists(){
       pb.innerHTML='<span class="dot" style="'+dotStyle(d.dot)+'"></span>'+esc(d.name);
       pb.addEventListener('click',function(){focusBody(d.id);});pl.appendChild(pb);b.dockBtn=pb;if(isGone(b)||b.engulfed)pb.hidden=true;
     }
-    if(d.star&&typeof refreshStarDot==='function')refreshStarDot(b);
+    if((d.star||b===sunBody)&&typeof refreshStarDot==='function')refreshStarDot(b);
   });
   setActiveUI();
 }
@@ -1559,8 +1571,8 @@ function updateLabels(){
     b.sx=(v3.x*.5+.5)*W;b.sy=(-v3.y*.5+.5)*H;b.pr=pr;
     if(hide){b.label.style.display='none';}
     else cands.push(b);
-    if(b.line)b.line.visible=!b.destroyed&&!b.sysHide&&showOrbits&&(!b.parent||b.parent===sys)&&!(gravityOn&&b.grav)&&(!b.def.minor||b===focus);
-    if(b.trailLine)b.trailLine.visible=gravityOn&&showOrbits;
+    if(b.line)b.line.visible=!SURF&&!b.destroyed&&!b.sysHide&&showOrbits&&(!b.parent||b.parent===sys)&&!(gravityOn&&b.grav)&&(!b.def.minor||b===focus);
+    if(b.trailLine)b.trailLine.visible=gravityOn&&showOrbits&&!SURF;
     if(b.line){b.line.material.opacity=(b===focus||b===sys)&&!b.parent?.55:(b.parent?.35:.26);}
   });
   // çakışma önleme: odak, güneş, gezegenler, uydular
@@ -1712,7 +1724,6 @@ $('goLab').addEventListener('click',function(){showTab('lab');});
 function trn(x){return String(x).toLocaleLowerCase('tr-TR').replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i').replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u').replace(/[âÂ]/g,'a');}
 function clk(id){var e=$(id);if(e&&!e.disabled)e.click();}
 function openSide(){var sd=$('side');if(sd)sd.classList.remove('collapsed');}
-function labGo(sec){openSide();showTab('lab');var el=$(sec);if(!el)return;el.classList.remove('closed');setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'start'});},60);}
 function onStar(fn){return function(){if(!focus||!focus.def.star)focusBody('sun');setTimeout(function(){openSide();showTab('lab');fn();},80);};}
 function nextShowerJump(){
   var c=CITIES[cityIdx],now=new Date(J2000+simDays*864e5),best=null;
@@ -1749,7 +1760,7 @@ var ACTIONS=[
  ['🔔','Olay bildirimleri','Tutulma, fırtına bildirimlerini aç/kapat','bildirim toast',function(){clk('vNote');}],
  ['🗺️','Mini harita','Üstten görünüm','mini harita',function(){clk('vMini');}],
  ['🔗','Sistemi paylaş','Kodla arkadaşına gönder','paylas kod',function(){labGo('lsShare');}],
- ['♻️','Güneş Sistemini sıfırla','Tüm değişiklikleri geri al','sifirla reset',function(){labGo('lsAll');}],
+ ['♻️','Güneş Sistemini sıfırla','Tüm değişiklikleri geri al (iki kez onayla)','sifirla reset',function(){clk('vReset');}],
  ['❓','Yardım','Kontroller ve ipuçları','yardim nasil',function(){clk('tHelp');}]
 ];
 var POPULAR=[0,1,10,11,7,8,2,12];
@@ -1808,15 +1819,21 @@ function renderQuick(){
   q.innerHTML='';list.forEach(function(x){var bt=document.createElement('button');bt.textContent=x[0];bt.addEventListener('click',x[1]);q.appendChild(bt);});
 }
 /* laboratuvar: kısayollar ve katlanabilir bölümler */
-var LSECS=[['lsBody','Cisim'],['moonSec','Uydu'],['climSec','İklim'],['lsStar','Yıldız'],['lsGrav','Çarpışma'],['lsNew','Gezegen ekle'],['lsStar2','Yıldız ekle'],['lsShare','Paylaş'],['lsAll','Sıfırla']];
-(function(){var J=$('lJump');LSECS.forEach(function(x){var bt=document.createElement('button');bt.textContent=x[1];bt.dataset.s=x[0];bt.addEventListener('click',function(){labGo(x[0]);});J.appendChild(bt);});
-  [].forEach.call(document.querySelectorAll('#tabLab .lsec>h4'),function(h){h.addEventListener('click',function(e){if(e.target.closest('input,button,select'))return;h.parentNode.classList.toggle('closed');});});})();
-function labContext(){
-  if(!focus)return;var d=focus.def,st=!!d.star||focus===sunBody,open={lsBody:1};
-  if(st)open.lsStar=1;else if(focus.hab)open.climSec=1;if(d.parent)open.moonSec=1;if(focus.grav&&!d.parent)open.lsGrav=1;
-  LSECS.forEach(function(x){var el=$(x[0]);if(!el)return;el.classList.toggle('closed',!open[x[0]]);});
-  [].forEach.call($('lJump').children,function(bt){var el=$(bt.dataset.s);bt.hidden=!el||el.hidden;bt.classList.toggle('on',!!open[bt.dataset.s]);});
-}
+var LTABS=[['cisim','Cisim',['lsBody','moonSec','climSec']],['yildiz','Yıldız',['lsStar']],['fizik','Fizik',['lsGrav','lsAll']],['ekle','Ekle',['lsNew','lsStar2']]],LTAB='cisim';
+(function(){
+  var J=$('lJump');J.className='ltabs';J.setAttribute('role','tablist');J.innerHTML='';
+  LTABS.forEach(function(x){var bt=document.createElement('button');bt.textContent=x[1];bt.dataset.t=x[0];bt.setAttribute('role','tab');bt.addEventListener('click',function(){showLabTab(x[0]);$('sideBody').scrollTop=0;});J.appendChild(bt);x[2].forEach(function(id){var el=$(id);if(el){el.dataset.tab=x[0];el.classList.remove('closed');}});});
+  var mr=$('sMass').closest('.rrow'),ar=$('sAct').closest('.rrow');if(mr&&ar)ar.parentNode.insertBefore(mr,ar.nextSibling);
+  var ra=$('resetAll');if(ra)ra.hidden=true;
+  $('shBody').appendChild($('lsShare'));
+  $('vShare').addEventListener('click',function(){$('viewMenu').hidden=true;$('tView').setAttribute('aria-expanded','false');$('shareDlg').hidden=false;});
+  $('shX').addEventListener('click',function(){$('shareDlg').hidden=true;});$('shareDlg').addEventListener('click',function(e){if(e.target===this)this.hidden=true;});
+  var h=$('lsAll').querySelector('h4');if(h)h.firstChild.nodeValue='Tüm sistem ';
+})();
+function showLabTab(t){LTAB=t;[].forEach.call($('lJump').children,function(b){b.classList.toggle('on',b.dataset.t===t);b.setAttribute('aria-selected',b.dataset.t===t);});
+  [].forEach.call(document.querySelectorAll('#tabLab .lsec'),function(sc){sc.classList.toggle('off',sc.dataset.tab!==t);});}
+function labGo(sec){openSide();showTab('lab');if(sec==='lsShare'){$('shareDlg').hidden=false;return;}var el=$(sec);if(!el)return;showLabTab(el.dataset.tab||'cisim');setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'start'});},60);}
+function labContext(){if(!focus)return;showLabTab((focus.def.star||focus===sunBody)?'yildiz':'cisim');}
 $('sideToggle').addEventListener('click',function(){$('side').classList.toggle('collapsed');});
 $('sideMini').addEventListener('click',function(){$('side').classList.remove('collapsed');});
 if(innerWidth<=760)$('side').classList.add('collapsed');
@@ -2149,7 +2166,7 @@ function makeHab(def){
 function fluxAt(p){
   var S=0;
   BODIES.forEach(function(s){
-    if(!s.glow1)return;
+    if(!s.glow1||isGone(s))return;
     var d=Math.max(invOrbit(p.distanceTo(s.pos)),.005);
     var L=s.def.id==='sun'?starL():SUN_TYPES[s.starType].L*Math.pow(s.def.vr/9*s.mod.size,2);
     S+=L/(d*d);
@@ -3242,6 +3259,8 @@ function takeSnap(){
     S.b[b.id]={g:[b.gx,b.gy,b.gz,b.gvx,b.gvy,b.gvz],sz:b.mod.size,m:b.mass,d:!!b.destroyed,i0:b.impT0,ik:b.impK,rr:b.mod.rr,rg:!!b.rogue,sc:b.scars?b.scars.length:0,
       h:h?{melt:h.melt||0,water:h.water,st:h.st}:null,dn:b.debris?b.debris.length:0,
       ho:b.homing?{t:b.homing.t.id,r:b.homing.rel.toArray(),v:b.homing.v.toArray()}:null};});
+  S.sun={ty:sunType,m:sunMass,e:EATEN};S.st={};
+  BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;S.st[b.id]={d:!!b.destroyed,ty:b.starType,sz:b.mod.size,r:b.def.r,ang:b.ang};});
   SNAPS.push(S);if(SNAPS.length>3000)SNAPS.shift();lastSnapT=simDays;
 }
 function undestroy(b){
@@ -3261,13 +3280,21 @@ function restoreSnap(S){
     if(S.grav&&gravityOn&&b.grav){b.gx=o.g[0];b.gy=o.g[1];b.gz=o.g[2];b.gvx=o.g[3];b.gvy=o.g[4];b.gvz=o.g[5];b.pivot.position.set(b.gx,b.gy,b.gz);}
     b.homing=o.ho&&byId[o.ho.t]?{t:byId[o.ho.t],rel:new THREE.Vector3().fromArray(o.ho.r),v:new THREE.Vector3().fromArray(o.ho.v)}:null;
   });
-  if(changed){FXL.forEach(function(f){f.o.parent&&f.o.parent.remove(f.o);});FXL=[];}
+  if(S.st)BODIES.forEach(function(b){var o=S.st[b.id];if(!o||!b.def.star||b===sunBody)return;
+    b.dart=null;b.exoCol=null;
+    if(o.d!==!!b.destroyed){changed=true;if(o.d){destroyBody(b);}else{undestroy(b);if(b.cust&&!customs.some(function(c){return c.id===b.id;})){customs.push(b.cust);saveCustom();}}}
+    if(o.ty!==b.starType){setStarOn(b,o.ty);changed=true;}
+    if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);}if(o.r!=null)b.def.r=o.r;if(o.ang!=null){b.ang=o.ang;var rr=b.def.r||0;b.pivot.position.set(Math.cos(b.ang)*rr,0,-Math.sin(b.ang)*rr);}
+  });
+  if(S.sun){if(S.sun.ty!==sunType){EXO.col=null;setStar(S.sun.ty);changed=true;}if(sunMass!==S.sun.m||EATEN!==S.sun.e){sunMass=S.sun.m;EATEN=S.sun.e;$('oMass').textContent=massTxt();}}
+  if(changed){FXL.forEach(function(f){f.o.parent&&f.o.parent.remove(f.o);});FXL=[];clearTDES();rebuildLists();}
   return changed;
 }
 function addEvent(e){EVENTS=EVENTS.filter(function(x){return x.t<=simDays;});takeSnap();e.t=simDays;e.done=true;EVENTS.push(e);}
 function runEvent(e){
   tlBusy=true;
   if(e.type==='launch'){var a=byId[e.a],t=byId[e.tg];if(a&&t&&!isGone(a)&&!isGone(t))doLaunch(a,t,true);}
+  else if(e.type==='dart'){var a2=byId[e.a],t2=byId[e.tg];if(a2&&t2&&!isGone(a2)&&!isGone(t2))startDart(a2,t2,true);}
   else if(e.type==='rr'){var m=byId[e.id];if(m&&!isGone(m)){m.mod.rr=e.rr;if(m.line)m.line.scale.setScalar(moonVisR(m)/m.def.orbit);if(m.mod.rr<moonRoche(m))roche(m);if(m===focus)syncMoonUI();}}
   tlBusy=false;e.done=true;
 }
@@ -3322,13 +3349,14 @@ function updateStarWinds(dt){
     b.wind.geometry.attributes.position.needsUpdate=true;});
 }
 function starWindSpawn(b,k,init){var d=b.wd,u=new THREE.Vector3(Math.random()-.5,(Math.random()-.5)*.8,Math.random()-.5).normalize();d.dir[k*3]=u.x;d.dir[k*3+1]=u.y;d.dir[k*3+2]=u.z;var sr=effVr(b);d.r[k]=init?sr+Math.random()*(sr*30+60*DS):sr;d.sp[k]=(8+Math.random()*14)*DS;}
-function startDart(a,t){
+function startDart(a,t,replay){
   if(a.dart)return;a.homing=null;var p0=a.pivot.position.clone(),d=p0.distanceTo(t.pos);
+  var minD=(effVr(a)+effVr(t))*(isBH(t)?3.5:2.2);if(d<minD){p0=t.pos.clone().add(new THREE.Vector3().subVectors(p0,t.pos).normalize().multiplyScalar(minD));d=minD;a.pivot.position.copy(p0);}
   var up=new THREE.Vector3(0,1,0),side=new THREE.Vector3().subVectors(t.pos,p0).cross(up).normalize().multiplyScalar(d*.18);
   a.dart={t:t,p0:p0,side:side,k:0,T:clamp(d/(OVD()*.18),3.5,8)};
-  if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}
-  focusBody(t.def.id,{dist:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});
-  toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı',3500);
+  if(!replay){if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
+  focusBody(t.def.id,{dist:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});}
+  toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı'+(replay?' (tekrar oynatılıyor)':''),3500);
 }
 var DV=new THREE.Vector3();
 function stepDarts(dt){
@@ -3337,11 +3365,12 @@ function stepDarts(dt){
     DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
-    if(t===sunBody&&sunType===6&&!a.def.star){if(dist<rtOf(a)){a.dart=null;var v=new THREE.Vector3().subVectors(t.pos,DV).normalize().multiplyScalar(.5);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
-    if(isBH(t)&&!isBH(a))touch=Math.max(touch,effVr(t)*(t===sunBody?bhMassK():1)*4);
+    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var v=new THREE.Vector3().subVectors(t.pos,DV).normalize().multiplyScalar(.5);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
+    if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
   });
 }
+function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id===b.id;})[0]||b.cust;destroyBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
 function removeStar(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
 function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
 function starInto(t,ty){if(t===sunBody)setStar(ty);else setStarOn(t,ty);}
@@ -3363,11 +3392,11 @@ function resolveDart(a,t){
     if(ta===6&&tt===6){gwRipple(host,OVD()*.22);addStarMass(t,mA*.95);msg='İki kara delik birleşti! Kütlelerinin yaklaşık %5\'i bir anda kütleçekim dalgası olarak uzay-zamanı dalgalandırdı (LIGO 2015\'ten beri bunları ölçüyor). Birleşen kara delik geri tepmeyle yerinden de fırlayabilir.';}
     else if(tt===6||ta===6){var bh=tt===6?t:a,st=bh===t?a:t;if(bh===a&&t!==sunBody){starInto(t,6);}else if(bh===a&&t===sunBody){setStar(6);}addStarMass(t,(bh===t?mA:mT)*.5);diskBoost=6;msg=(bh===t?nmA:nmT)+' kara deliğe yaklaşınca gelgit kuvvetiyle parçalandı; gazının yarısı diske düşüp X-ışınıyla parladı, yarısı uzaya savruldu.';}
     else if(ta===5&&tt===5){snStart(t,false);gwRipple(host,OVD()*.2);setTimeout(function(){starInto(t,6);},1800);addStarMass(t,mA*.9);msg='Kilonova! İki nötron yıldızı birleşti. Bu çarpışmalar evrendeki altının, platinin ve uranyumun çoğunu üretir (2017\'de GW170817 ile hem kütleçekim dalgası hem ışık olarak görüldü). Kalıntı kara deliğe çöktü.';}
-    else if(ta===4&&tt===4||((ta===4||tt===4)&&M>1.4)){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))removeStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
+    else if(ta===4&&tt===4||((ta===4||tt===4)&&M>1.4)){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))hideStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
     else if(ta===5||tt===5){if(tt===5){if(t===sunBody?sunMass+mA>=2.3:true)setTimeout(function(){starInto(t,6);},300);}else starInto(t,5);addStarMass(t,mA*.3);msg=(tt===5?nmT:nmA)+' diğer yıldızın gazını yuttu. Nötron yıldızı yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker. (Bir nötron yıldızının kırmızı devin içine gömülmesine Thorne-Żytkow nesnesi denir.)';}
     else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M>=1.5?2:Math.min(ta,tt)===1&&Math.max(ta,tt)===1?1:0));starInto(t,ny);addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
       msg='İki yıldız çarpışıp tek yıldızda birleşti. Ortaya çıkan yıldız daha büyük, daha sıcak ve mavimsi: gökbilimciler böyle yıldızlara "mavi başıboş yıldız" der. Yıldız kümelerinde gerçekten görülürler. Sonuç: '+SUN_TYPES[ny].name+'.';}
-    if(kill)removeStar(a);
+    if(kill)hideStar(a);
     if(typeof audWhoosh==='function')audWhoosh();SHAKE.t=1.4;SHAKE.amp=effVr(t)*.08;
   }
   focusBody((isGone(t)||!byId[t.def.id])?(byId[a.def.id]&&!isGone(a)?a.def.id:'sun'):t.def.id,{dist:Math.max(effVr(t),20)*10});
@@ -3378,7 +3407,7 @@ function launchAt(){
   if(b===sunBody){toast('Güneş sistemin merkezinde sabit; onu fırlatamazsın. İkinci bir yıldız ekleyip onu Güneş\'e ya da bir gezegene fırlatabilirsin.',7000);return;}
   if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
   if(isGone(t)){toast('Hedef artık yok');return;}
-  if(b.def.star||t.def.star){startDart(b,t);return;}
+  if(b.def.star||t.def.star){addEvent({type:'dart',a:b.id,tg:t.id});startDart(b,t);return;}
   if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
   if(isGone(t)){toast('Hedef artık yok');return;}
@@ -3455,7 +3484,7 @@ $('lGo').addEventListener('click',launchAt);
 
 /* ================= YÜZEYDEN BAKIŞ ================= */
 var SURF=null,surfFov0=50;
-var SKYCOL={earth:[110,170,255,.92],mars:[214,170,120,.75],venus:[230,190,110,.97],titan:[225,150,70,.9],jupiter:[200,180,150,.6],saturn:[220,200,150,.55],uranus:[150,220,230,.6],neptune:[90,130,240,.6]};
+var SKYCOL={earth:[110,170,255,1],mars:[214,170,120,.75],venus:[230,190,110,.97],titan:[225,150,70,.9],jupiter:[200,180,150,.6],saturn:[220,200,150,.55],uranus:[150,220,230,.6],neptune:[90,130,240,.6]};
 function surfTargetBody(b){return b.parent||sunBody;}
 function enterSurface(b){
   if(!b||b.def.star||b.def.craft||b.def.comet||isGone(b))return;
@@ -3464,10 +3493,11 @@ function enterSurface(b){
   var c=new THREE.Vector3();b.mesh.getWorldPosition(c);var tw=new THREE.Vector3();tb.pivot.getWorldPosition(tw);
   var dw=tw.clone().sub(c).normalize(),inv=new THREE.Matrix4().copy(b.mesh.matrixWorld).invert(),dl=dw.clone().transformDirection(inv);
   var u=dl.clone().applyAxisAngle(new THREE.Vector3(0,1,0).cross(dl).normalize().lengthSq()>.1?new THREE.Vector3(0,1,0).cross(dl).normalize():new THREE.Vector3(1,0,0),-.55).normalize();
-  SURF={b:b,u:u,yaw:0,pitch:.3,init:true};$('surfCity').hidden=b.def.id!=='earth';if(b.def.id==='earth'){$('surfCity').value=cityIdx;setCity(cityIdx);if(SPEEDS[speedIdx].d>1/24){speedIdx=1;speed.value=1;setSpeed();}}
+  SURF={b:b,u:u,yaw:0,pitch:.3,init:true};$('surfCity').hidden=b.def.id!=='earth';$('surfLP').hidden=b.def.id!=='earth';if(b.def.id==='earth'){$('surfCity').value=cityIdx;setCity(cityIdx);if(SPEEDS[speedIdx].d>1/24){speedIdx=1;speed.value=1;setSpeed();}}
   if(b.atmoMesh){SURF.atmoVis=b.atmoMesh.visible;b.atmoMesh.visible=false;}
   if(b.pwx)b.pwx.visible=false;
   surfFov0=camera.fov;mode='surface';trans=null;
+  document.body.classList.add('surfmode');BODIES.forEach(function(x){if(x.line){x.lineVis0=x.line.visible;x.line.visible=false;}});
   $('surfBar').hidden=false;$('surfName').textContent=b.def.name+' yüzeyinden'+(b.parent?' · '+b.parent.def.name+' gökyüzünde':'');
   $('side').classList.add('collapsed');
   toast(b.def.id==='earth'?'Şehirden gökyüzü: üstteki listeden şehir seç. Gerçek yıldızlar, gezegenler ve Ay o şehirden o an nasıl görünüyorsa öyle. Meteor yağmuru tarihlerinde gece kayan yıldızlar çoğalır.':'Yüzeydesin: sürükleyerek etrafa bak, tekerlek veya çimdikle yakınlaştır. Gezegen döndükçe gün doğar ve batar.',7000);
@@ -3475,7 +3505,7 @@ function enterSurface(b){
 function exitSurface(silent){
   if(!SURF)return;var b=SURF.b;
   if(b.atmoMesh&&SURF.atmoVis!=null)b.atmoMesh.visible=SURF.atmoVis;if(b.pwx)b.pwx.visible=true;
-  clearMeteors();SURF=null;camera.fov=surfFov0;camera.updateProjectionMatrix();camera.up.set(0,1,0);
+  clearMeteors();cityClear();document.body.classList.remove('surfmode');BODIES.forEach(function(x){if(x.line&&x.lineVis0!=null){x.line.visible=x.lineVis0&&!isGone(x);x.lineVis0=null;}});SURF=null;camera.fov=surfFov0;camera.updateProjectionMatrix();camera.up.set(0,1,0);
   $('surfBar').hidden=true;$('skyTint').style.opacity=0;mode='free';setMode('orbit');
   if(!silent)focusBody(b.def.id);
 }
@@ -3493,7 +3523,8 @@ function updateSurfaceCam(){
   var cp=Math.cos(SURF.pitch),fw=north.clone().multiplyScalar(cp*Math.cos(SURF.yaw)).addScaledVector(east,cp*Math.sin(SURF.yaw)).addScaledVector(up,Math.sin(SURF.pitch));
   camera.position.copy(p);camera.up.copy(up);camera.lookAt(p.clone().add(fw));
   if(b.def.id==='earth'&&SURF.city!=null){var sdv=new THREE.Vector3().copy(sunBody.pos).sub(p).normalize(),dark=1-ss(-.18,.02,sdv.dot(up));if(sunType>=5)dark=1;
-    updateMeteors(Math.min(.05,FRAME_DT),up.clone(),dark);SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
+    updateMeteors(Math.min(.05,FRAME_DT),up.clone(),dark);cityDraw(p,up.clone(),north.clone(),east.clone(),dark);
+    var lpk=SURF.lp?(SURF.sky&&SURF.sky.kind==='mega'?1:.75):0;if(SKYG.starMat){SKYG.starMat.uniforms.lim.value=lpk*.62*dark;SKYG.starMat.uniforms.vis.value=Math.pow(dark,1.5);}if(SKYG.mw)SKYG.mw.material.opacity=(1-lpk*.9)*dark;SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
   // gökyüzü rengi
   var sc=SKYCOL[b.def.id],h=b.hab,dens=h?({none:0,thin:.45,earth:1,thick:1,co2:1,h2:.8})[h.atm]:(sc?1:0);
   if((h&&h.atm==='none')||isEngulfed(b))dens=0;
@@ -3508,11 +3539,11 @@ function updateSurfaceCam(){
 }
 $('surfExit').addEventListener('click',function(){exitSurface(false);});
 /* ---------- şehirlerden gökyüzü ve meteor yağmurları ---------- */
-var CITIES=[['Samsun',41.29,36.33,3],['Zonguldak',41.45,31.79,3],['İstanbul',41.01,28.98,3],['Ankara',39.93,32.86,3],['Erzurum',39.9,41.27,3],['Tokyo',35.68,139.69,9],['New York',40.71,-74.01,-5],['Londra',51.51,-0.13,0],['Reykjavik (kutup ışıkları)',64.15,-21.94,0],['Sidney',-33.87,151.21,10],['Atacama Çölü (Şili)',-24.63,-70.4,-4],['Kuzey Kutbu',89.9,0,0]];
+var CITIES=[['Samsun',41.29,36.33,3,'city'],['Zonguldak',41.45,31.79,3,'city'],['İstanbul',41.01,28.98,3,'mega'],['Ankara',39.93,32.86,3,'city'],['Erzurum',39.9,41.27,3,'town'],['Tokyo',35.68,139.69,9,'mega'],['New York',40.71,-74.01,-5,'mega'],['Londra',51.51,-0.13,0,'mega'],['Reykjavik (kutup ışıkları)',64.15,-21.94,0,'town'],['Sidney',-33.87,151.21,10,'mega'],['Atacama Çölü (Şili)',-24.63,-70.4,-4,'dark'],['Kuzey Kutbu',89.9,0,0,'ice']];
 var cityIdx=0;try{var ci0=+localStorage.getItem('se_city');if(ci0>=0&&ci0<CITIES.length)cityIdx=ci0;}catch(e){}
 (function(){var sel=$('surfCity');CITIES.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c[0];sel.appendChild(o);});sel.value=cityIdx;
   sel.addEventListener('change',function(){cityIdx=+this.value;try{localStorage.setItem('se_city',cityIdx);}catch(e){}if(SURF&&SURF.b.def.id==='earth')setCity(cityIdx);});})();
-function setCity(i){var c=CITIES[i],la=c[1]*D2R,ph=(c[2]+180)/360*TAU;SURF.u=new THREE.Vector3(-Math.cos(ph)*Math.cos(la),Math.sin(la),Math.sin(ph)*Math.cos(la)).normalize();SURF.city=i;SURF.init=false;SURF.yaw=c[1]>=0?Math.PI:0;SURF.pitch=.35;SURF.lblT=0;}
+function setCity(i){var c0=CITIES[i];SURF.lp=c0[4]!=='dark'&&c0[4]!=='ice';SURF.sky=genSkyline(i);lpBtn();var c=CITIES[i],la=c[1]*D2R,ph=(c[2]+180)/360*TAU;SURF.u=new THREE.Vector3(-Math.cos(ph)*Math.cos(la),Math.sin(la),Math.sin(ph)*Math.cos(la)).normalize();SURF.city=i;SURF.init=false;SURF.yaw=c[1]>=0?Math.PI:0;SURF.pitch=.13;SURF.lblT=0;}
 var SHOWERS=[['Kadrantidler',3.5,.6,110,230,49,'2003 EH1 asteroidi'],['Liridler',112,1.2,18,271,34,'Thatcher kuyruklu yıldızı'],['Eta Akuaridler',126,4,50,338,-1,'Halley kuyruklu yıldızı'],['Perseidler',224.5,3,100,48,58,'Swift-Tuttle kuyruklu yıldızı'],['Orionidler',294,4,20,95,16,'Halley kuyruklu yıldızı'],['Leonidler',321,1.2,15,152,22,'Tempel-Tuttle kuyruklu yıldızı'],['Geminidler',348,1.5,150,112,33,'Phaethon asteroidi']];
 var MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function showerNow(){var dt=new Date(J2000+simDays*864e5),Y=dt.getUTCFullYear(),doy=(dt-Date.UTC(Y,0,1))/864e5,best=null;
@@ -3545,6 +3576,44 @@ function updateMeteors(dt,up,dark){
   var sh=showerNow(),act=sh&&sh.g>.03?sh:null,rate=.06+(act?act.k/100*1.4:0);
   MET.acc+=dt*rate*dark;while(MET.acc>1){MET.acc-=1;metSpawn(up,act&&Math.random()<.85?act:null);}
 }
+/* şehir silüeti ve ışık kirliliği */
+function genSkyline(ci){
+  var kind=CITIES[ci][4],N=3600,H=new Float32Array(N),B=[],sd=ci*97.13+3;function rr(){sd=(sd*9301+49297)%233280;return sd/233280;}
+  function hill(a){return .6*Math.sin(a*3+ci)+.35*Math.sin(a*7+ci*2)+.2*Math.sin(a*17+ci*3);}
+  for(var i=0;i<N;i++){var a=i/N*TAU;H[i]=kind==='ice'?.15+.08*Math.sin(a*5):kind==='dark'?Math.max(.2,1.1+1.2*hill(a)):kind==='town'?Math.max(.2,1.6+1.6*hill(a)):Math.max(.15,.4+.4*hill(a));}
+  if(kind==='city'||kind==='mega'||kind==='town'){
+    var a0=0,den=kind==='mega'?1:kind==='city'?.8:.45;
+    while(a0<TAU){var w=(.3+rr()*1.6)*D2R*(kind==='town'?1.3:1),gap=rr()<.15/den?(.2+rr()*2)*D2R:0;a0+=gap;if(a0>=TAU)break;
+      var base=kind==='mega'?1.2:kind==='city'?.8:.4,h=(base+Math.pow(rr(),2.4)*(kind==='mega'?9:kind==='city'?5.5:2.2))*(kind==='town'?1:1.2);if(rr()<.03&&kind!=='town')h*=1.6;
+      var i0=Math.floor(a0/TAU*N),i1=Math.min(N-1,Math.floor((a0+w)/TAU*N));for(var k=i0;k<=i1;k++)H[k]=Math.max(H[k],h);
+      var win=[],nx=Math.max(1,Math.round(w/D2R*2.2)),ny=Math.max(1,Math.round(h*1.4));for(var x=0;x<nx;x++)for(var y=0;y<ny;y++)if(rr()<.38)win.push([(x+.5)/nx,(y+.5)/ny,rr()]);
+      B.push({a0:a0,a1:a0+w,h:h,win:win,top:rr()<.25});a0+=w;}
+  }
+  return {H:H,B:B,kind:kind};
+}
+function lpBtn(){var b=$('surfLP');if(!b||!SURF)return;b.textContent='Işık kirliliği: '+(SURF.lp?'açık':'kapalı');b.classList.toggle('on',!!SURF.lp);}
+var CV1=new THREE.Vector3(),CV2=new THREE.Vector3();
+function cityDraw(p,up,north,east,dark){
+  var cv=$('cityCv'),dpr=Math.min(devicePixelRatio||1,1.5),Wc=Math.round(innerWidth*dpr),Hc=Math.round(innerHeight*dpr);
+  if(cv.width!==Wc||cv.height!==Hc){cv.width=Wc;cv.height=Hc;}cv.style.display='block';var g=cv.getContext('2d');g.clearRect(0,0,Wc,Hc);
+  var S=SURF.sky;if(!S)return;
+  function proj(az,el,out){CV1.copy(north).multiplyScalar(Math.cos(az)).addScaledVector(east,Math.sin(az)).addScaledVector(up,Math.tan(el)).multiplyScalar(1000).add(p);CV1.project(camera);out.x=(CV1.x*.5+.5)*Wc;out.y=(-CV1.y*.5+.5)*Hc;out.z=CV1.z;return out;}
+  var asp=Wc/Hc,hf=Math.atan(Math.tan(camera.fov*D2R/2)*asp)+.25,yaw=SURF.yaw,st=Math.max(.002,hf*2/700),pt={x:0,y:0,z:0},pts=[],hzY=0,nh=0;
+  for(var az=yaw-hf;az<=yaw+hf;az+=st){var ia=((Math.floor(((az%TAU)+TAU)%TAU/TAU*S.H.length))%S.H.length),h=S.H[ia]*D2R;proj(az,h,pt);if(pt.z<1)pts.push([pt.x,pt.y]);proj(az,0,pt);if(pt.z<1){hzY+=pt.y;nh++;}}
+  hzY=nh?hzY/nh:Hc;var day=Math.pow(1-dark,2.2);
+  if(SURF.lp&&dark>.1){var gl=g.createLinearGradient(0,hzY,0,hzY-Hc*.45),k=dark*(S.kind==='mega'?1:S.kind==='city'?.75:.45);gl.addColorStop(0,'rgba(255,150,80,'+(.34*k)+')');gl.addColorStop(.35,'rgba(200,120,110,'+(.14*k)+')');gl.addColorStop(1,'rgba(60,60,90,0)');g.fillStyle=gl;g.fillRect(0,0,Wc,hzY);
+    g.fillStyle='rgba(28,32,52,'+(.22*k)+')';g.fillRect(0,0,Wc,hzY);}
+  if(pts.length<2)return;
+  var gc=dark>.5?[6,8,12]:[Math.round(30+30*day),Math.round(36+34*day),Math.round(46+40*day)];if(S.kind==='ice')gc=[Math.round(60+150*day),Math.round(70+160*day),Math.round(90+165*day)];if(S.kind==='dark')gc=[Math.round(18+90*day),Math.round(14+60*day),Math.round(12+40*day)];
+  g.fillStyle='rgb('+gc[0]+','+gc[1]+','+gc[2]+')';g.beginPath();g.moveTo(pts[0][0],Hc+10);pts.forEach(function(q){g.lineTo(q[0],q[1]);});g.lineTo(pts[pts.length-1][0],Hc+10);g.closePath();g.fill();
+  if(dark>.25&&S.B.length){var on=SURF.lp?1:.25,wpx=Math.max(1.5,2*dpr),q2={x:0,y:0,z:0};g.globalAlpha=Math.min(1,(dark-.25)*2);
+    S.B.forEach(function(b){var da=Math.atan2(Math.sin((b.a0+b.a1)/2-yaw),Math.cos((b.a0+b.a1)/2-yaw));if(Math.abs(da)>hf)return;
+      b.win.forEach(function(w){if(w[2]>on*.95)return;proj(b.a0+(b.a1-b.a0)*w[0],b.h*D2R*w[1]*.92,q2);if(q2.z>=1)return;g.fillStyle=w[2]<.12?'rgba(190,215,255,.85)':'rgba(255,205,130,.9)';g.fillRect(q2.x-wpx/2,q2.y-wpx/2,wpx,wpx);});
+      if(b.top&&b.h>4){proj((b.a0+b.a1)/2,b.h*D2R,q2);if(q2.z<1&&Math.sin(performance.now()*.004+b.a0*50)>0){g.fillStyle='rgba(255,60,50,.95)';g.fillRect(q2.x-wpx,q2.y-wpx*2,wpx*2,wpx*2);}}});
+    g.globalAlpha=1;}
+}
+function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;}
+$('surfLP').addEventListener('click',function(){if(!SURF)return;SURF.lp=!SURF.lp;lpBtn();toast(SURF.lp?'Işık kirliliği açık: şehrin ışıkları gökyüzünü aydınlatıyor, yalnızca en parlak yıldızlar ve gezegenler görünüyor.':'Işık kirliliği kapalı: şehir karanlıkta. Samanyolu ve binlerce sönük yıldız ortaya çıktı; şehirlerin çoğunda insanlar bu manzarayı hiç görmüyor.',6000);});
 function clearMeteors(){MET.list.forEach(function(m){SKYG.remove(m.ln);SKYG.remove(m.hd);});MET.list=[];MET.acc=0;}
 function surfCityLabel(dark){
   var c=CITIES[SURF.city],dt=new Date(J2000+simDays*864e5+c[3]*36e5),hh=('0'+dt.getUTCHours()).slice(-2),mm=('0'+dt.getUTCMinutes()).slice(-2);
@@ -3748,7 +3817,8 @@ function applyExotic(i){
 }
 var STARDOT={0:['#ffd36b','#ff8a1c'],1:['#ff8a5a','#a8200a'],2:['#eef4ff','#3a6bff'],3:['#ffb070','#b02a0a'],4:['#ffffff','#9fb3dd'],5:['#eef6ff','#5f8fff'],7:['#40304a','#0a0a12']};
 function starDotCss(t){return t===6?'background:radial-gradient(circle,#000 36%,#ffd09a 44%,#c0501a 58%,#1a0800 72%)':dotStyle(STARDOT[t]||STARDOT[0]);}
-function refreshStarDot(b){var t=b===sunBody?sunType:b.starType;[b.treeBtn,b.dockBtn].forEach(function(el){var d=el&&el.querySelector('.dot');if(d)d.setAttribute('style',starDotCss(t));});}
+var SUNNM={4:'Beyaz cüce',5:'Pulsar',6:'Kara delik',7:'Kalıntı'};
+function refreshStarDot(b){var t=b===sunBody?sunType:b.starType,nm=(b===sunBody&&!SYS)?(SUNNM[t]||'Güneş'):null;[b.treeBtn,b.dockBtn].forEach(function(el){var d=el&&el.querySelector('.dot');if(d)d.setAttribute('style',starDotCss(t));if(el&&nm&&el.lastChild&&el.lastChild.nodeType===3)el.lastChild.nodeValue=nm;});if(nm&&b.label&&b.label.firstChild)b.label.firstChild.textContent=nm;}
 /* ek yıldızlar: tür değişimi, süpernova, kara delik */
 function labStar(){return (focus&&focus.def.star&&focus!==sunBody&&!isGone(focus))?focus:sunBody;}
 function clearStarExo(b){var x=b.exo;if(!x)return;['beams','neb','disk','ringS'].forEach(function(k){if(x[k]&&x[k].parent)x[k].parent.remove(x[k]);});
@@ -3779,7 +3849,7 @@ function starNova(t){
   if(t.starType===1){toast('Kırmızı cüceler süpernova olamaz: çok hafifler.',5000);return;}
   var ia=t.starType===4;
   snStart(t,ia);
-  if(ia)setTimeout(function(){if(isGone(t))return;BODIES.filter(function(x){return x.parent===t;}).forEach(disposeBody);var nm=t.def.name;disposeBody(t);customs=customs.filter(function(c){return c.id!==t.id;});saveCustom();rebuildLists();focusBody('sun',{dist:OVD()*.6});},1800);
+  if(ia)setTimeout(function(){if(isGone(t))return;hideStar(t);focusBody('sun',{dist:OVD()*.6});},1800);
   else setTimeout(function(){if(!isGone(t))setStarOn(t,5);},1800);
   toast(ia?t.def.name+': Tip Ia süpernova! Beyaz cüce kütle sınırını (1,4 Güneş) aşınca karbon tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Evrendeki demirin çoğu böyle oluşur.':t.def.name+' süpernova oldu! Gerçekte bunun için en az 8 Güneş kütlesi gerekir; bu bir "ya olsaydı" senaryosu.',8000);
   if(typeof audWhoosh==='function')audWhoosh();
@@ -4018,14 +4088,15 @@ $('sysClose').addEventListener('click',function(){$('sysPanel').hidden=true;});
 
 /* ================= GELGİT PARÇALANMASI (spagettileşme) ================= */
 var TDES=[],diskBoost=0;
-function massFromSlider(v){return .2*Math.pow(250,v);}
-function sliderFromMass(m){return Math.log(m/.2)/Math.log(250);}
+function clearTDES(){TDES.forEach(function(T){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();});TDES=[];}
+function massFromSlider(v){return .1*Math.pow(10000,v);}
+function sliderFromMass(m){return Math.log(m/.1)/Math.log(10000);}
 function rtOf(b){return effVr(sunBody)*4*Math.cbrt(Math.max(1,sunMass))+effVr(b)*1.5;}
 var EATEN=0;
-function eatMass(b){var m=bodyMass(b);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();return m;}
+function eatMass(b){var m=b.def.star?stMass(b)*333000*.5:bodyMass(b);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();return m;}
 function massTxt(){return sunMass<10?(EATEN>0?sunMass.toFixed(4).replace('.',',')+'×':fmtX(sunMass)):Math.round(sunMass)+'×';}
 function startTDE(b){
-  var N=LOWQ?900:2200,pos=new Float32Array(N*3),vel=new Float32Array(N*3),col=new Float32Array(N*3),alive=new Uint8Array(N),R=effVr(b);
+  var N=b.def.star?(LOWQ?1800:4200):(LOWQ?900:2200),pos=new Float32Array(N*3),vel=new Float32Array(N*3),col=new Float32Array(N*3),alive=new Uint8Array(N),R=effVr(b);
   var c=new THREE.Vector3(b.gx,b.gy,b.gz),u=c.clone().normalize(),rr=c.length(),GM=(b.GM||1)*sunMass,w=Math.sqrt(GM/(rr*rr*rr));
   var base=new THREE.Color(b.def.dot?b.def.dot[0]:'#c08060');
   for(var i=0;i<N;i++){
@@ -4041,8 +4112,8 @@ function startTDE(b){
   if(focus===b||focus===sunBody||focus.parent===b){focusBody('sun',{dist:rtOf(b)*7});}
   if(SPEEDS[speedIdx].d>1){speedIdx=3;speed.value=3;setSpeed();}
   TDES.push({pts:pts,pos:pos,vel:vel,col:col,alive:alive,N:N,GM:(b.GM||1),rt:rtOf(b),left:N,age:0,base:base,name:b.def.name});
-  destroyBody(b);var em=eatMass(b);
-  toast(b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Gezegen uzayıp kaya ve lav akıntısına dönüşüyor (spagettileşme). Kara deliğin kütlesi '+(em<10?em.toFixed(2).replace('.',','):Math.round(em))+' Dünya kütlesi artacak.',8000);
+  var isSt=!!b.def.star;if(isSt)hideStar(b);else destroyBody(b);var em=eatMass(b);
+  toast(isSt?b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Yıldız uzayıp sıcak gaz akıntısına dönüşüyor; bu bir "gelgit bozulması olayı" (TDE). Gazın yaklaşık yarısı diske düşüp aylarca X-ışınıyla parlar, yarısı uzaya savrulur.':b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Gezegen uzayıp kaya ve lav akıntısına dönüşüyor (spagettileşme). Kara deliğin kütlesi '+(em<10?em.toFixed(2).replace('.',','):Math.round(em))+' Dünya kütlesi artacak.',9000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
 function stepTDE(h){

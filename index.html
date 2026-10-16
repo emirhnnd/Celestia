@@ -295,6 +295,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <button role="menuitemcheckbox" aria-checked="false" id="vCons">Takımyıldızlar ve gök adları<span class="sw"></span></button>
         <button role="menuitemcheckbox" aria-checked="false" id="vPart">Güneş rüzgârı ve parçacıklar<span class="sw"></span></button>
         <button role="menuitemcheckbox" aria-checked="true" id="vMini">Mini harita<span class="sw"></span></button>
+        <button role="menuitemcheckbox" aria-checked="false" id="vNote">Olay bildirimleri<span class="sw"></span></button>
         <button role="menuitem" id="vFs">Tam ekran</button>
         <button role="menuitem" id="vSys">Yıldız sistemleri</button>
         <button role="menuitem" id="vTrip">Ölçek yolculuğu</button>
@@ -1235,6 +1236,8 @@ function setActiveUI(){
     if(x.def.minor&&x.line)x.line.visible=x===focus;
   });
 }
+var notifyOn=false;try{notifyOn=localStorage.getItem('se_notif')==='1';}catch(e){}
+function note(msg,ms){if(notifyOn)toast(msg,ms);}
 var toastLock=0;function toast(msg,ms){if(performance.now()<toastLock&&!(ms>=6000))return;var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show');},ms||2400);}
 
 /* ---------- durum ---------- */
@@ -1591,8 +1594,9 @@ sw('vPart',function(on){showPart=on;});
 sw('vHa',function(on){if(sunBody&&sunBody.sunU)sunBody.sunU.ha.value=on?1:0;toast(on?'H-alfa filtresi: Güneş\'in kromosferi görünüyor (teleskop fotoğraflarındaki gibi)':'Beyaz ışık: Güneş\'in fotosferi');});
 sw('vCons',function(on){showSkyNames=on;if(SKYG&&SKYG.cons)SKYG.cons.visible=on;});
 var SMALLV=matchMedia('(max-width:1000px),(max-height:640px)');
+$('vNote').setAttribute('aria-checked',String(notifyOn));sw('vNote',function(on){notifyOn=on;try{localStorage.setItem('se_notif',on?'1':'0');}catch(e){}toast(on?'Tutulma, güneş fırtınası gibi olaylar bildirilecek':'Olay bildirimleri kapalı',1800);});
 if(SMALLV.matches){showMini=false;$('vMini').setAttribute('aria-checked','false');}
-sw('vMini',function(on){showMini=on;var m=$('mini');m.style.display=on?'':'none';m.classList.toggle('force',on&&SMALLV.matches);resize();toast(on?'Mini harita açık: Güneş Sistemi\'ni üstten gösterir, dokunduğun gezegene gidersin':'Mini harita kapalı');});
+sw('vMini',function(on){showMini=on;var m=$('mini');m.style.display=on?'':'none';m.classList.toggle('force',on&&SMALLV.matches);resize();});
 $('vFs').addEventListener('click',function(){
   vm.hidden=true;
   try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(function(){toast('Tam ekran bu görünümde kullanılamıyor');});}catch(_){}
@@ -1971,7 +1975,7 @@ function computeClimate(b){
   var st=glow>.5?'molten':((h.surf&&Ts>873)?'crust':(h.water>.05&&Ts>373&&h.surf)?'boil':(ice>.85&&h.clim?'frozen':(ice>.85?'frost':'ok')));
   if(h.st&&st!==h.st&&!isEngulfed(b)&&(b===focus||b.def.id==='earth')){
     var nm=b.def.name;
-    toast(st==='molten'?nm+': yüzey eriyor, lav denizine dönüşüyor':st==='crust'?nm+': lav soğuyup ince bir kabuk bağlıyor, çatlaklardan hâlâ parlıyor':st==='boil'?nm+': okyanuslar kaynıyor, su buhara dönüşüyor':st==='frozen'?nm+': yüzey tamamen dondu (kartopu gezegen)':st==='frost'?nm+': yüzey kırağı ve buzla kaplandı':nm+': sıcaklık yeniden ılımana döndü');
+    note(st==='molten'?nm+': yüzey eriyor, lav denizine dönüşüyor':st==='crust'?nm+': lav soğuyup ince bir kabuk bağlıyor, çatlaklardan hâlâ parlıyor':st==='boil'?nm+': okyanuslar kaynıyor, su buhara dönüşüyor':st==='frozen'?nm+': yüzey tamamen dondu (kartopu gezegen)':st==='frost'?nm+': yüzey kırağı ve buzla kaplandı':nm+': sıcaklık yeniden ılımana döndü');
   }
   h.st=st;
   var U=b.shU;if(U){U.det.value=b.realTex?.5:(h.gas?.3:1);if(h.w0==null)h.w0=h.water;var wv=b.def.id==='earth'?h.water:(h.surf?Math.max(0,h.water-h.w0):0);U.clim.value.set(ice,scorch,glow,wv);U.lightK.value=K;U.melt.value=h.melt;
@@ -2116,7 +2120,7 @@ function emitCme(aimEarth){
     var a=Math.random()*TAU,rr=Math.sqrt(Math.random())*.38,d=dir.clone().add(e1.clone().multiplyScalar(Math.cos(a)*rr)).add(e2.clone().multiplyScalar(Math.sin(a)*rr)).normalize();
     cm.dir[i*3]=d.x;cm.dir[i*3+1]=d.y;cm.dir[i*3+2]=d.z;cm.spd[i]=rnd(5,8.5)*DS;cm.r[i]=effVr(sunBody)*1.02;
   }
-  if(aimEarth)toast('Koronal kütle atımı Dünya\'ya yöneldi');
+  if(aimEarth)note('Koronal kütle atımı Dünya\'ya yöneldi');
 }
 function updateSolarFx(now,dt){
   if(!sunBody||!sunBody.mesh)return;
@@ -2165,7 +2169,7 @@ function updateSolarFx(now,dt){
         if(h.atm==='none')msg+=' (atmosfer yok, yüzey doğrudan parçacık yağmuruna tutuldu)';
         else if(h.mag<.3)msg+=' (manyetik kalkan zayıf, atmosferden bir miktar gaz koptu)';
         else msg+=', kutup ışıkları';
-        if(pb===focus||pb===ea)toast(msg);}
+        if(pb===focus||pb===ea)note(msg);}
     });
     if(far>maxR+5){cm.on=false;FX.cmPts.visible=false;}
   }
@@ -2534,15 +2538,15 @@ function gotoEclipse(lunar){
 function eclOverlap(d,r1,r2){if(d>=r1+r2)return 0;if(d<=Math.abs(r1-r2))return Math.min(r1,r2)*Math.min(r1,r2)/(r1*r1);var a=r1*r1*Math.acos((d*d+r1*r1-r2*r2)/(2*d*r1))+r2*r2*Math.acos((d*d+r2*r2-r1*r1)/(2*d*r2))-.5*Math.sqrt((-d+r1+r2)*(d+r1-r2)*(d-r1+r2)*(d+r1+r2));return a/(Math.PI*r1*r1);}
 function updateEclipse(){
   var e=byId.earth,mo=byId.moon;
-  if(ECL.prevT!=null&&APO_T&&(ECL.prevT-APO_T)*(simDays-APO_T)<0)toast('13 Nisan 2029: Apophis asteroiti Dünya\'nın 32.000 km yakınından geçiyor');
+  if(ECL.prevT!=null&&APO_T&&(ECL.prevT-APO_T)*(simDays-APO_T)<0)note('13 Nisan 2029: Apophis asteroiti Dünya\'nın 32.000 km yakınından geçiyor');
   ECL.prevT=simDays;
   if(mo&&mo.shU)mo.shU.blood.value=1;
   var box=$('eclView');
   if(!e||!mo||isEngulfed(e)||!mo.pivot.visible){box.hidden=true;return;}
   var m=mo.pos.clone().sub(e.pos),E=e.pos.clone(),s=E.clone().negate().normalize(),sep=eclSep(E,m,false),lsep=eclSep(E,m,true);
   var sol=sep<.53,lun=lsep<.95;
-  if(sol&&!ECL.sol)toast('Güneş tutulması başladı: Ay\'ın gölgesi Dünya\'ya düşüyor');
-  if(lun&&!ECL.lun)toast('Ay tutulması başladı: Ay Dünya\'nın gölgesine giriyor ve kızıla dönüyor');
+  if(sol&&!ECL.sol)note('Güneş tutulması başladı: Ay\'ın gölgesi Dünya\'ya düşüyor');
+  if(lun&&!ECL.lun)note('Ay tutulması başladı: Ay Dünya\'nın gölgesine giriyor ve kızıla dönüyor');
   ECL.sol=sol;ECL.lun=lun;
   var show=sep<1.1;box.hidden=!show;if(!show)return;
   var cv=$('eclCv'),g=cv.getContext('2d'),S=cv.width,c=S/2,pxd=S*.36/1.1;
@@ -2655,7 +2659,7 @@ function setSound(on){
   if(on){if(audStart()===false)return;AUD.on=true;AUD.prof=null;audApply();AUD.master.gain.setTargetAtTime(.5,AUD.ctx.currentTime,.6);}
   else{AUD.on=false;if(AUD.ctx)AUD.master.gain.setTargetAtTime(0,AUD.ctx.currentTime,.3);}
   $('tSnd').setAttribute('aria-pressed',String(on));$('tSnd').classList.toggle('on',on);
-  toast(on?'Ses açık (uzayda ses yayılmaz; bu, NASA ses dönüştürmelerinden esinlenen bir sentezdir)':'Ses kapalı');
+  toast(on?'Ses açık':'Ses kapalı',1400);
 }
 $('tSnd').addEventListener('click',function(){setSound(!AUD.on);});
 document.addEventListener('visibilitychange',function(){if(!AUD.ctx)return;if(document.hidden)AUD.ctx.suspend();else if(AUD.on)AUD.ctx.resume();});

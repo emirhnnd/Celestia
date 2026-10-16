@@ -2016,7 +2016,6 @@ function stepGravity(dDays){
         var rq=Math.sqrt(b.gx*b.gx+b.gy*b.gy+b.gz*b.gz);if(sunType===6&&rq<rtOf(b))b.tdeNow=true;else if(sunType!==6&&rq<effVr(sunBody)*.95)b.fallNow=true;
         if(s%2===0)pushTrail(b);
       });
-      stepTDE(h);
       gb.forEach(function(b){
         var H=b.homing;if(!H)return;var t=H.t;
         if(b.destroyed||isGone(t)){b.homing=null;return;}
@@ -3367,7 +3366,7 @@ function stepDarts(dt){
     DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
-    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var v=new THREE.Vector3().subVectors(t.pos,DV).normalize().multiplyScalar(.5);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
+    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt((a.GM||1)*sunMass/Math.max(rl,1e-3))*.55,v=tg.multiplyScalar(vs).addScaledVector(rv.normalize(),-vs*.25);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
   });
@@ -4118,9 +4117,10 @@ function startTDE(b){
   toast(isSt?b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Yıldız uzayıp sıcak gaz akıntısına dönüşüyor; bu bir "gelgit bozulması olayı" (TDE). Gazın yaklaşık yarısı diske düşüp aylarca X-ışınıyla parlar, yarısı uzaya savrulur.':b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Gezegen uzayıp kaya ve lav akıntısına dönüşüyor (spagettileşme). Kara deliğin kütlesi '+(em<10?em.toFixed(2).replace('.',','):Math.round(em))+' Dünya kütlesi artacak.',9000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
-function stepTDE(h){
-  if(!TDES.length)return;var hz=effVr(sunBody)*1.05;
-  for(var k=TDES.length-1;k>=0;k--){var T=TDES[k],p=T.pos,v=T.vel,GM=T.GM*sunMass;
+function stepTDE(h){for(var k=TDES.length-1;k>=0;k--)stepTDEStream(TDES[k],h);}
+function stepTDEStream(T,h){
+  var hz=effVr(sunBody)*(sunType===6?bhMassK():1)*1.05;
+  {var p=T.pos,v=T.vel,GM=T.GM*sunMass;
     for(var i=0;i<T.N;i++){if(!T.alive[i])continue;
       var x=p[i*3],y=p[i*3+1],z=p[i*3+2],r2=x*x+y*y+z*z+.05,r=Math.sqrt(r2),a=-GM/(r2*r)*h;
       v[i*3]+=x*a;v[i*3+1]+=y*a;v[i*3+2]+=z*a;
@@ -4131,6 +4131,7 @@ function stepTDE(h){
   }
 }
 function drawTDE(dt){
+  TDES.forEach(function(T){var GM=T.GM*sunMass,Td=TAU*Math.sqrt(Math.pow(T.rt,3)/GM),H=Math.min(dt,.05)*Td*.25,m=Math.min(40,Math.max(1,Math.ceil(H/(Td/160))));for(var q=0;q<m;q++)stepTDEStream(T,H/m);});
   diskBoost*=Math.exp(-dt*.15);if(EXO.disk&&EXO.disk.material.uniforms.b)EXO.disk.material.uniforms.b.value=1+diskBoost;
   for(var k=TDES.length-1;k>=0;k--){var T=TDES[k],p=T.pos,c=T.col;T.age+=dt;
     for(var i=0;i<T.N;i++){if(!T.alive[i]){c[i*3]=c[i*3+1]=c[i*3+2]=0;continue;}

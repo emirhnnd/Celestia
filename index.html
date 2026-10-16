@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Güneş Sistemi Gezgini</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,7 +63,7 @@ button[aria-checked="true"] .sw{background:var(--accent)}
 button[aria-checked="true"] .sw::after{transform:translateX(13px)}
 
 /* sol liste */
-#tree{left:var(--gx);top:64px;width:178px;max-height:calc(100% - 64px - var(--dockh,150px) - 12px - var(--minih,0px));overflow:auto;padding:8px}
+#tree{left:var(--gx);top:var(--toph,64px);width:178px;max-height:calc(100% - var(--toph,64px) - var(--dockh,150px) - 12px - var(--minih,0px));overflow:auto;padding:8px}
 #tree h3{margin:2px 6px 6px;font:500 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 #tree button{display:flex;align-items:center;gap:9px;width:100%;min-height:30px;padding:0 8px;border-radius:6px;text-align:left;color:var(--dim);font-size:13px;font-weight:500}
 #tree button.moon{padding-left:26px;font-size:12px}
@@ -77,7 +79,7 @@ button[aria-checked="true"] .sw::after{transform:translateX(13px)}
 #mini .cap{position:absolute;left:8px;top:6px;font:500 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);pointer-events:none}
 
 /* yan panel */
-#side{right:var(--gr);top:64px;width:320px;max-height:calc(100% - 64px - var(--dockh,150px) - 12px);display:flex;flex-direction:column;overflow:hidden}
+#side{right:var(--gr);top:var(--toph,64px);width:320px;max-height:calc(100% - var(--toph,64px) - var(--dockh,150px) - 12px);display:flex;flex-direction:column;overflow:hidden}
 #sideHead{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 8px;border-bottom:1px solid var(--line)}
 .tabs{display:flex;gap:2px;flex:1}
 .tabs button{flex:1;min-height:34px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--dim)}
@@ -235,7 +237,7 @@ input[type=range]{accent-color:var(--accent);height:26px;background:transparent;
 #wx[hidden]{display:none!important}
 [hidden]{display:none!important}
 #skyTint{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;z-index:0}
-#surfBar{position:absolute;left:50%;transform:translateX(-50%);top:64px;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;z-index:5;font-weight:600;font-size:13px}
+#surfBar{position:absolute;left:50%;transform:translateX(-50%);top:var(--toph,64px);display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;z-index:5;font-weight:600;font-size:13px}
 #surfBar[hidden],#trip[hidden]{display:none}
 #surfBar{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center}#surfName{flex:1 1 200px;min-width:0;line-height:1.35}#surfCity{background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}#surfCity option{background:#111}
 #trip{position:absolute;inset:0;z-index:6;pointer-events:none}
@@ -252,7 +254,7 @@ input[type=range]{accent-color:var(--accent);height:26px;background:transparent;
 .skl.star{pointer-events:auto;cursor:pointer}
 #ecl{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:8px}
 #ecl[hidden]{display:none}
-#eclView{position:absolute;left:50%;transform:translateX(-50%);top:64px;width:150px;padding:0;overflow:hidden;z-index:3}
+#eclView{position:absolute;left:50%;transform:translateX(-50%);top:var(--toph,64px);width:150px;padding:0;overflow:hidden;z-index:3}
 #eclView[hidden]{display:none}
 #eclView canvas{display:block;width:150px;height:150px}
 #eclView .cap{position:absolute;left:8px;top:6px;font:500 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)}
@@ -277,6 +279,7 @@ input[type=range]{accent-color:var(--accent);height:26px;background:transparent;
 textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--fg);font:400 11px/1.4 var(--mono);word-break:break-all}
 @media (max-width:1000px),(max-height:640px){#mini:not(.force){display:none}#mini.force{bottom:auto;top:56px;z-index:4}}
 @media (max-width:900px){#tree{display:none}}
+@media (min-width:761px) and (max-width:1180px){.brand span{display:none}.brand b{font-size:16px}.chip{padding:0 10px}.seg button{padding:0 10px}}
 @media (max-width:760px){
   #top{top:8px;flex-wrap:nowrap;align-items:center;gap:6px}
   .brand{display:none}
@@ -1720,6 +1723,9 @@ function showTab(t){
 $('tbInfo').addEventListener('click',function(){showTab('info');});
 $('tbLab').addEventListener('click',function(){showTab('lab');});
 $('goLab').addEventListener('click',function(){showTab('lab');});
+/* üst çubuk sarınca paneller altına kaysın */
+function layoutTop(){var t=$('top');if(!t)return;var r=t.getBoundingClientRect(),h=Math.ceil(r.bottom+8);if(innerWidth<=760)h=Math.ceil(r.bottom+6);document.documentElement.style.setProperty('--toph',h+'px');}
+layoutTop();addEventListener('resize',layoutTop);if(window.ResizeObserver)new ResizeObserver(layoutTop).observe($('top'));
 /* ================= ARA / KOMUT PALETİ ================= */
 function trn(x){return String(x).toLocaleLowerCase('tr-TR').replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i').replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u').replace(/[âÂ]/g,'a');}
 function clk(id){var e=$(id);if(e&&!e.disabled)e.click();}

@@ -114,6 +114,32 @@ button[aria-checked="true"] .sw::after{transform:translateX(13px)}
 .lsec{display:grid;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .lsec:last-child{border:0;margin:0;padding-bottom:0}
 .lsec h4{margin:0;font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:flex;justify-content:space-between;gap:8px}
+.chip.find{display:inline-flex;align-items:center;gap:6px;color:var(--fg)}
+#cmdk{position:fixed;inset:0;z-index:60;background:rgba(2,4,10,.55);display:flex;justify-content:center;align-items:flex-start;padding:72px 12px 12px}
+#cmdk[hidden]{display:none}
+.cmdbox{width:min(580px,100%);max-height:min(72vh,640px);display:flex;flex-direction:column;overflow:hidden;padding:0!important}
+.cmdtop{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);color:var(--dim)}
+#cmdIn{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--fg);font:inherit;font-size:15px}
+.cmdx{background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--dim);border-radius:6px;font-size:11px;padding:3px 7px}
+#cmdList{overflow:auto;padding:6px 6px 10px}
+.cmdg{font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:10px 10px 4px}
+.cmdi{display:flex;gap:11px;align-items:center;width:100%;text-align:left;padding:8px 10px;border-radius:9px;background:none;border:0;color:var(--fg);font:inherit;font-size:13.5px;cursor:pointer}
+.cmdi.sel,.cmdi:hover{background:rgba(140,170,255,.12)}
+.cmdi .ic{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:14px;background:rgba(255,255,255,.06)}
+.cmdi small{display:block;color:var(--dim);font-size:11.5px;margin-top:1px;line-height:1.35}
+.qrow{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.qrow:empty{display:none}
+.qrow button{min-height:32px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;color:var(--fg);background:rgba(140,170,255,.1);border:1px solid rgba(140,170,255,.28)}
+.qrow button:hover{background:rgba(140,170,255,.2)}
+.ljump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;position:sticky;top:-1px;z-index:2;padding:6px 0;background:var(--panelSolid,rgba(10,13,22,.96))}
+.ljump button{min-height:30px;padding:0 10px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.ljump button.on{color:var(--fg);border-color:rgba(140,170,255,.5);background:rgba(140,170,255,.14)}
+.lsec h4{cursor:pointer;user-select:none}
+.lsec h4::before{content:'▾';display:inline-block;margin-right:6px;transition:transform .15s;color:var(--dim)}
+.lsec.closed h4::before{transform:rotate(-90deg)}
+.lsec.closed>*:not(h4){display:none!important}
+.lsec.closed{padding-bottom:10px;margin-bottom:10px}
+@media (max-width:760px){.chip.find span{display:none}}
 .lsec h4 b{color:var(--fg);font-weight:500;letter-spacing:.04em;text-transform:none;font-size:12px;text-align:right}
 .rrow{display:grid;grid-template-columns:96px 1fr 46px;align-items:center;gap:8px;font-size:12.5px;color:#c3cadf}
 .rrow output{font-family:var(--mono);font-size:11.5px;text-align:right;color:var(--fg);font-variant-numeric:tabular-nums}
@@ -285,6 +311,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <button id="mOrbit" aria-pressed="true" title="Seçili cismin etrafında dön">Yörünge</button>
         <button id="mFree" aria-pressed="false" title="W A S D ile serbestçe uç">Serbest uçuş</button>
       </div>
+      <button class="chip find" id="tFind" title="Ara ( / tuşu )" aria-label="Ara"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Ara</span></button>
       <button class="chip" id="tOver" title="Tüm sistemi göster">Genel görünüm</button>
       <button class="chip" id="tView" aria-haspopup="true" aria-expanded="false">Görünüm ▾</button>
       <button class="chip sq" id="tSnd" aria-pressed="false" aria-label="Ses" title="Ses (aç / kapat)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path class="w" d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.8 2 6.6 0 8.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
@@ -327,6 +354,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <div id="iKind"></div>
         <h2 id="iName"></h2>
         <p id="iDesc"></p>
+        <div class="qrow" id="quick"></div>
         <dl id="stats"></dl>
         <div id="hab" hidden>
           <div class="tag">Yaşanabilirlik endeksi</div>
@@ -360,7 +388,8 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
       </div>
 
       <div id="tabLab" hidden>
-        <section class="lsec">
+        <div class="ljump" id="lJump"></div>
+        <section class="lsec" id="lsBody">
           <h4>Seçili cisim <b id="labName"></b></h4>
           <div class="rrow"><label for="sSpin">Dönüş hızı</label><input type="range" id="sSpin" min="-5" max="25" step=".1" value="1"><output id="oSpin"></output></div>
           <div class="rrow"><label for="sOrbit">Yörünge hızı</label><input type="range" id="sOrbit" min="0" max="12" step=".1" value="1"><output id="oOrbit"></output></div>
@@ -386,7 +415,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <p class="note">Bu değerler yaşanabilirlik endeksini ve görünümü etkiler. Su oranının görsel etkisi şimdilik Dünya'da görünür.</p>
         </section>
 
-        <section class="lsec">
+        <section class="lsec" id="lsNew">
           <h4>Yeni gezegen ekle</h4>
           <div class="frow"><label for="nName">Ad</label><input type="text" id="nName" maxlength="18" value="Nova" autocomplete="off"></div>
           <div class="frow"><label for="nType">Tür</label>
@@ -407,7 +436,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <div class="btnrow"><button class="btn pri" id="nAdd">Gezegeni ekle</button><button class="btn" id="nRand">Rastgele gezegen</button></div>
         </section>
 
-        <section class="lsec">
+        <section class="lsec" id="lsStar">
           <h4>Yıldız türü <b id="starName"></b></h4>
           <div class="btnrow" id="starBtns"></div>
           <div class="rrow"><label for="sAge">Güneş yaşı</label><input type="range" id="sAge" min="0" max="14" step=".01" value="4.57"><output id="oAge"></output></div>
@@ -419,7 +448,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <p class="note">Yıldızın türü her gezegenin aldığı ışığı, sıcaklığını ve görünümünü değiştirir. Yaş kaydırıcısı (Mr = milyar yıl) yalnızca Güneş benzeri yıldızda çalışır: parlaklığı artar, sonra kırmızı dev ve beyaz cüceye dönüşür; yakın gezegenler yutulur.</p>
         </section>
 
-        <section class="lsec">
+        <section class="lsec" id="lsStar2">
           <h4>İkinci yıldız ekle</h4>
           <div class="frow"><label for="xType">Tür</label><select id="xType"><option value="0">Sarı cüce</option><option value="1">Kırmızı cüce</option><option value="2" selected>Mavi dev</option><option value="3">Kırmızı dev</option><option value="4">Beyaz cüce</option></select></div>
           <div class="rrow"><label for="xSize">Boyut</label><input type="range" id="xSize" min=".3" max="2" step=".05" value=".8"><output id="oxSize"></output></div>
@@ -428,16 +457,16 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <p class="note">Ek yıldız Güneş'in çevresinde döner ve tüm sistemi aydınlatır. En fazla 2 tane eklenebilir.</p>
         </section>
 
-        <section class="lsec">
-          <h4>Yerçekimi simülasyonu</h4>
+        <section class="lsec" id="lsGrav">
+          <h4>Yerçekimi ve çarpışma</h4>
           <button class="btn" id="gravBtn" aria-pressed="false">Kapalı</button>
           <div class="frow"><label for="lTarget">Hedef</label><select id="lTarget"></select></div>
-          <div class="btnrow"><button class="btn" id="lGo">Seçili gezegeni hedefe fırlat</button></div>
+          <div class="btnrow"><button class="btn" id="lGo">Seçili cismi hedefe fırlat</button></div>
           <div class="rrow"><label for="sMass">Güneş kütlesi</label><input type="range" id="sMass" min="0" max="1" step=".002" value=".2915"><output id="oMass"></output></div>
           <p class="note">Açıkken gezegenler sabit çember yerine gerçek yerçekimiyle hareket eder ve iz bırakır. Kütleyi değiştir ya da ikinci yıldız ekle: yörüngeler bozulur, gezegenler fırlayabilir veya Güneş'e düşebilir.</p>
         </section>
 
-        <section class="lsec">
+        <section class="lsec" id="lsShare">
           <h4>Sistemi paylaş</h4>
           <textarea id="shCode" rows="3" readonly aria-label="Sistem kodu" placeholder="Kodu oluştur'a bas"></textarea>
           <button class="btn" id="shMake">Kodu oluştur ve kopyala</button>
@@ -445,7 +474,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <button class="btn" id="shLoad">Kodu yükle</button>
         </section>
 
-        <section class="lsec">
+        <section class="lsec" id="lsAll">
           <h4>Tüm sistem</h4>
           <div class="rrow"><label for="gSpin">Genel dönüş</label><input type="range" id="gSpin" min="0" max="20" step=".1" value="1"><output id="oGSpin"></output></div>
           <div class="btnrow"><button class="btn" id="chaos">Kaos</button><button class="btn" id="resetAll">Güneş Sistemini sıfırla</button></div>
@@ -487,6 +516,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
     <div class="btnrow"><button class="btn" id="coachOk">Anladım</button><button class="btn pri" id="coachLab">Laboratuvar'ı aç</button></div>
   </div>
 
+  <div id="cmdk" hidden><div class="panel cmdbox" role="dialog" aria-label="Ara"><div class="cmdtop"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="cmdIn" autocomplete="off" spellcheck="false" placeholder="Gezegen, olay ya da deney ara… (ör. kara delik, Samsun, tutulma)"><button class="cmdx" id="cmdX" aria-label="Kapat">Esc</button></div><div id="cmdList" role="listbox"></div></div></div>
   <div id="help" hidden>
     <div class="card" role="dialog" aria-label="Yardım">
       <h2>Kontroller</h2>
@@ -749,7 +779,7 @@ var SUN_TYPES=[
   {name:'Kırmızı cüce',lo:0x7a1200,hi:0xff6a2a,light:0xff7a50,I:1.7,glow:0xff3a10,gm:1.1,L:.004,sc:.5,uv:3,life:1,uvName:'Güçlü parlamalar',stage:'Ana kol (uzun ömürlü)'},
   {name:'Mavi dev',lo:0x2a6bff,hi:0xd8eaff,light:0xbcd6ff,I:2.2,glow:0x5fa0ff,gm:.95,L:600,sc:2.4,uv:10,life:.05,uvName:'Çok yüksek UV',stage:'Ana kol (kısa ömürlü)'},
   {name:'Kırmızı dev',lo:0x8a1400,hi:0xff8a30,light:0xff8a50,I:2,glow:0xff5a20,gm:1.15,L:2000,sc:6,uv:.3,life:.1,uvName:'Düşük UV',stage:'Kırmızı dev evresi'},
-  {name:'Beyaz cüce',lo:0xaabbdd,hi:0xffffff,light:0xe0e8ff,I:1.6,glow:0xcfe0ff,gm:2.6,L:.02,sc:.16,uv:.6,life:.02,uvName:'Düşük',stage:'Beyaz cüce (ölü yıldız)'},
+  {name:'Beyaz cüce',lo:0xaabbdd,hi:0xffffff,light:0xe0e8ff,I:1.6,glow:0xcfe0ff,gm:1.3,L:.02,sc:.16,uv:.6,life:.02,uvName:'Düşük',stage:'Beyaz cüce (ölü yıldız)'},
   {name:'Nötron yıldızı',lo:0x8fb0ff,hi:0xffffff,light:0xcfe0ff,I:.9,glow:0x9fc0ff,gm:1.4,L:.0005,sc:.07,uv:50,life:.01,uvName:'Ölümcül X-ışını',stage:'Süpernova sonrası pulsar'},
   {name:'Kara delik',lo:0x000000,hi:0x000000,light:0xffb070,I:.22,glow:0x000000,gm:0,L:.0003,sc:.12,uv:5,life:0,uvName:'Diskten X-ışını',stage:'Kara delik'},
   {name:'Yok (patladı)',lo:0x000000,hi:0x000000,light:0x9fb0ff,I:.03,glow:0x000000,gm:0,L:.00001,sc:.05,uv:0,life:0,uvName:'Yok',stage:'Tip Ia süpernova kalıntısı'}
@@ -932,22 +962,57 @@ function updateSkyLabels(){
     L.el.style.display='';L.el.style.transform='translate('+((tmpV.x*.5+.5)*W)+'px,'+((-tmpV.y*.5+.5)*H)+'px) translate(-50%,-50%)';}
 }
 
-// asteroit kuşağı
-var belt,kuiper;
+// asteroit kuşakları: her taş kendi Kepler yörüngesinde; patlama, kara delik, yıldız ve gezegenlerden etkilenir
+var belt,kuiper,BELTS=[];
+function beltSys(kind,n,gen,size,parent){
+  var P=new Float32Array(n*3),C=new Float32Array(n*3),o={kind:kind,n:n,a:new Float32Array(n),ang:new Float32Array(n),y:new Float32Array(n),R:new Float32Array(n),st:new Uint8Array(n),v:new Float32Array(n*3),t:new Float32Array(n),c0:new Float32Array(n*3),off:new Float32Array(n),P:P,C:C};
+  for(var i=0;i<n;i++){var q=gen(i);o.a[i]=q[0];o.ang[i]=q[1];o.y[i]=q[2];o.off[i]=q[4]||0;o.R[i]=orbitR(q[0]);o.c0[i*3]=q[3][0];o.c0[i*3+1]=q[3][1];o.c0[i*3+2]=q[3][2];C[i*3]=q[3][0];C[i*3+1]=q[3][1];C[i*3+2]=q[3][2];}
+  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('color',new THREE.BufferAttribute(C,3));
+  o.pts=new THREE.Points(g,new THREE.PointsMaterial({vertexColors:true,size:size,sizeAttenuation:false,transparent:true,opacity:.55,depthWrite:false,map:dotTex(),alphaTest:.05}));o.pts.frustumCulled=false;
+  (parent||scene).add(o.pts);BELTS.push(o);beltPlace(o,0);return o;
+}
+function rockCol(){var r=Math.random();return r<.55?[.72,.68,.62]:r<.8?[.78,.62,.5]:[.5,.5,.54];}
 function addBelt(){
-  var n=6000,pos=new Float32Array(n*3),r1=orbitR(2.2),r2=orbitR(3.3);
-  for(var i=0;i<n;i++){
-    var a=Math.random()*TAU,r=r1+(r2-r1)*Math.pow(Math.random(),.9),y=(Math.random()-.5)*2.2*(0.4+Math.random());
-    pos[i*3]=Math.cos(a)*r;pos[i*3+1]=y;pos[i*3+2]=-Math.sin(a)*r;
-  }
-  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  belt=new THREE.Points(g,new THREE.PointsMaterial({color:0xb2aa9c,size:LOWQ?1.3:1.5,sizeAttenuation:false,transparent:true,opacity:.45,depthWrite:false,map:dotTex(),alphaTest:.05}));
-  scene.add(belt);
-  var n2=4500,p2=new Float32Array(n2*3),k1=orbitR(31),k2=orbitR(52);
-  for(var j=0;j<n2;j++){var a2=Math.random()*TAU,r2=k1+(k2-k1)*Math.pow(Math.random(),.8),y2=(Math.random()-.5)*16*Math.random();p2[j*3]=Math.cos(a2)*r2;p2[j*3+1]=y2;p2[j*3+2]=-Math.sin(a2)*r2;}
-  var g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.BufferAttribute(p2,3));
-  kuiper=new THREE.Points(g2,new THREE.PointsMaterial({color:0x8fa3c4,size:LOWQ?1.4:1.6,sizeAttenuation:false,transparent:true,opacity:.45,depthWrite:false,map:dotTex(),alphaTest:.05}));
-  scene.add(kuiper);
+  BELTS=[];
+  var GAPS=[[2.5,.035],[2.82,.025],[2.95,.02],[3.27,.03]];
+  var m=beltSys('main',LOWQ?4500:6000,function(){var a;do{a=2.1+1.25*Math.pow(Math.random(),.9);}while(GAPS.some(function(g){return Math.abs(a-g[0])<g[1];}));return [a,Math.random()*TAU,(Math.random()-.5)*2.2*(.4+Math.random()),rockCol()];},LOWQ?1.3:1.5);
+  belt=m.pts;
+  beltSys('trojan',LOWQ?500:800,function(){var L=Math.random()<.5?1:-1;return [5.2*(1+(Math.random()-.5)*.08),0,(Math.random()-.5)*5*Math.random(),[.62,.55,.5],L*(Math.PI/3)+(Math.random()-.5)*.55];},LOWQ?1.2:1.35,belt);
+  var k=beltSys('kuiper',LOWQ?3500:4500,function(){return [30+20*Math.pow(Math.random(),.8),Math.random()*TAU,(Math.random()-.5)*16*Math.random(),[.56,.64,.77]];},LOWQ?1.4:1.6);
+  kuiper=k.pts;
+}
+function resetBelts(){BELTS.forEach(function(o){o.pts.parent&&o.pts.parent.remove(o.pts);o.pts.geometry.dispose();o.pts.material.dispose();});addBelt();}
+var BV=new THREE.Vector3();
+function beltPlace(o,dDays){
+  var P=o.P,n=o.n,w0=TAU/365.25*Math.sqrt(Math.max(.01,sunMass)),jup=byId&&byId.jupiter,jOk=o.kind==='trojan'&&jup&&!isGone(jup),jA=jOk?jup.ang:0,jR=jOk?jup.pivot.position.length():0;
+  for(var i=0;i<n;i++){var st=o.st[i];if(st===2)continue;
+    if(st===1){P[i*3]+=o.v[i*3]*FRAME_DT;P[i*3+1]+=o.v[i*3+1]*FRAME_DT;P[i*3+2]+=o.v[i*3+2]*FRAME_DT;continue;}
+    if(o.kind==='trojan'&&st===0&&jOk){var an=jA+o.off[i]+.06*Math.sin(simDays/150+i),rr=jR*o.a[i]/5.2;o.ang[i]=an;P[i*3]=Math.cos(an)*rr;P[i*3+1]=o.y[i];P[i*3+2]=-Math.sin(an)*rr;continue;}
+    o.ang[i]+=w0/Math.pow(o.a[i],1.5)*dDays;var a=o.ang[i],R=o.R[i];P[i*3]=Math.cos(a)*R;P[i*3+1]=o.y[i];P[i*3+2]=-Math.sin(a)*R;}
+}
+function beltKill(o,i,vx,vy,vz,hot){o.st[i]=1;o.v[i*3]=vx;o.v[i*3+1]=vy;o.v[i*3+2]=vz;o.t[i]=0;if(hot){o.C[i*3]=1;o.C[i*3+1]=.75;o.C[i*3+2]=.45;}}
+function updateBelts(dDays,dt){
+  if(!BELTS.length)return;
+  var S=EXO.sn,shR=S?S.t*OVD()*.35:0,bh=sunType===6&&!SYS,hz=bh?effVr(sunBody)*bhMassK():0,pullR=bh?hz*9:0,star=effVr(sunBody)*.95;
+  var gp=gravityOn?BODIES.filter(function(b){return b.grav&&!b.parent&&!isGone(b);}):[];
+  BELTS.forEach(function(o){
+    if(o.kind==='trojan'&&!(byId.jupiter&&!isGone(byId.jupiter))){for(var q=0;q<o.n;q++)if(o.st[q]===0&&o.a[q]>4)o.R[q]=orbitR(o.a[q]);}
+    beltPlace(o,dDays);
+    var P=o.P,C=o.C,n=o.n,ch=false;
+    for(var i=0;i<n;i++){var st=o.st[i];if(st===2)continue;var x=P[i*3],y=P[i*3+1],z=P[i*3+2];
+      if(st===1){o.t[i]+=dt;var f=Math.max(0,1-o.t[i]/3.5);C[i*3]*=.985;C[i*3+1]*=.975;C[i*3+2]*=.965;if(f<=0){o.st[i]=2;P[i*3+1]=1e7;}ch=true;continue;}
+      if(st===3){var r3=Math.sqrt(x*x+z*z);o.R[i]*=Math.exp(-dt*.35);o.ang[i]+=dt*2.5*Math.pow(hz/Math.max(r3,hz),1.5);o.y[i]*=Math.exp(-dt*.8);var hot=clamp(1-(o.R[i]-hz)/(pullR-hz),0,1);C[i*3]=.8+.2*hot;C[i*3+1]=.55+.3*hot*hot;C[i*3+2]=.35*hot;ch=true;
+        if(o.R[i]<hz*1.3){o.st[i]=2;P[i*3+1]=1e7;diskBoost=Math.min(6,diskBoost+.0015);}continue;}
+      var Rr=o.R[i];
+      if(S){BV.set(x,y,z).sub(S.c);var dd=BV.length();if(dd<shR){var near=S.cb!==sunBody||o.a[i]<14,sp=OVD()*(near?.18:.05)*(.6+Math.random()*.8);BV.normalize();
+          if(near){beltKill(o,i,BV.x*sp,BV.y*sp,BV.z*sp,true);}else if(!o.v[i*3+1]){o.a[i]*=1+Math.random()*.2;o.R[i]=orbitR(o.a[i]);o.y[i]*=1.6;o.v[i*3+1]=1;}ch=true;continue;}}
+      if(bh&&Rr<pullR){o.st[i]=3;ch=true;continue;}
+      if(Rr<star){beltKill(o,i,0,0,0,true);ch=true;continue;}
+      for(var k=0;k<gp.length;k++){var b=gp[k],ri=effVr(b)*7+2*DS,dx=x-b.gx,dz=z-b.gz;if(Math.abs(dx)>ri||Math.abs(dz)>ri)continue;var dy=y-b.gy,d2=dx*dx+dy*dy+dz*dz;
+        if(d2<ri*ri){if(d2<effVr(b)*effVr(b)*1.2){beltKill(o,i,0,0,0,true);}else{o.a[i]=Math.max(.5,o.a[i]*(1+(Math.random()-.5)*.12));o.R[i]=orbitR(o.a[i]);o.y[i]+=(Math.random()-.5)*ri*.4;o.ang[i]+=(Math.random()-.5)*.05;C[i*3]=Math.min(1,C[i*3]+.08);C[i*3+1]=Math.min(1,C[i*3+1]+.06);}ch=true;break;}}
+    }
+    o.pts.geometry.attributes.position.needsUpdate=true;if(ch)o.pts.geometry.attributes.color.needsUpdate=true;
+  });
 }
 
 function atmoMesh(R,color,scale){
@@ -1299,11 +1364,13 @@ function starInfo(){
   }[sunType];
   return I?{name:I.n,kind:'Yıldız kalıntısı · '+T.stage,desc:I.d,stats:I.s}:null;
 }
+var LAST_LABF=null;
 function updateInfo(){
   var d=starInfo()||focus.def;$('iKind').textContent=d.kind;$('iName').textContent=d.name;$('iDesc').textContent=d.desc;
   $('stats').innerHTML=d.stats.map(function(s){return '<dt>'+esc(s[0])+'</dt><dd'+(s[0]==='Sıcaklık'&&focus.hab?' id="tNow"':'')+'>'+esc(s[1])+'</dd>';}).join('');
   $('sideBody').scrollTop=0;liveT=0;
   $('sideMini').innerHTML='<small>'+esc(d.kind.split(' ')[0])+'</small>'+esc(d.name)+' · ayrıntı için dokun';
+  if(typeof renderQuick==='function')renderQuick();if(typeof labContext==='function'&&LAST_LABF!==focus){LAST_LABF=focus;labContext();}
 }
 function lightTime(au){
   var m=au*AU_LM;
@@ -1343,7 +1410,8 @@ function updateLive(){
 /* ---------- girdi ---------- */
 var pointers=new Map(),moved=0,lastPinch=0,keys={};
 function pinchD(){var a=Array.from(pointers.values());return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1;}
-function minDist(){return effVr(focus)*(focus.parent?2.2:1.7);}
+function solidR(b){var r=effVr(b);if(b===sunBody&&sunType===6&&!SYS)r*=bhMassK()*2.6;else if(b.exo&&b.exo.disk)r*=2.6;if(b.wob)r*=1.25;if(b.atmoMesh)r*=1.04;return r;}
+function minDist(){return solidR(focus)*(focus.parent?2.2:1.7);}
 function zoomBy(k){
   if(mode==='surface'){camera.fov=clamp(camera.fov*k,12,75);camera.updateProjectionMatrix();return;}
   if(mode==='orbit'){dist=clamp(dist*k,minDist(),5000*DS);trans=null;}
@@ -1408,6 +1476,7 @@ function updateBodies(dDays){
     if(d.id!=='sun'){
       if(d.craft&&!d.parent){placeCraft(b);}
       else if(d.craft&&d.parent&&(placeCraft(b),false)){}
+      else if(b.dart){}
       else if(d.comet){b.ang+=dDays*TAU/d.P*b.mod.orbit;cometPos(b.ang,tp,cmSetup(d));b.pivot.position.set(tp.x,0,tp.z);}
       else if(gravityOn&&b.grav){b.tday=(b.tday==null?simDays:b.tday)+dDays;}
       else if(realOk(b)&&b.mod.orbit===1&&!b.destroyed&&(b.tday=(b.tday==null?simDays:b.tday)+dDays,placeReal(b))){}
@@ -1427,7 +1496,7 @@ function updateBodies(dDays){
   });
   if(gravityOn)stepGravity(dDays);
   updateDebrisRings(dDays);
-  belt.rotation.y+=dDays*TAU/1650;kuiper.rotation.y+=dDays*TAU/90000;
+  updateBelts(dDays,FRAME_DT);
 }
 var tmpQ=new THREE.Quaternion();
 function updateShadows(){
@@ -1465,6 +1534,7 @@ function updateCamera(dt){
       trans.t=Math.min(1,trans.t+dt/1.5);var e=trans.t<.5?4*trans.t*trans.t*trans.t:1-Math.pow(-2*trans.t+2,3)/2;
       target.copy(trans.s).lerp(tmpV,e);dist=trans.d0+(trans.d1-trans.d0)*e;if(trans.t>=1)trans=null;
     }else target.copy(tmpV);
+    var md=minDist();if(dist<md){dist+=(md-dist)*Math.min(1,dt*10);if(dist<md*.92)dist=md*.92;}
     camera.position.set(target.x+dist*Math.sin(phi)*Math.cos(theta),target.y+dist*Math.cos(phi),target.z+dist*Math.sin(phi)*Math.sin(theta));
     camera.lookAt(target);applyShake(dt);
   }else{
@@ -1472,6 +1542,7 @@ function updateCamera(dt){
     var sp=nearestSurface()*.9*((keys.ShiftLeft||keys.ShiftRight)?4:1);
     var f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),u=(keys.KeyE?1:0)-(keys.KeyQ?1:0);
     if(f)camera.translateZ(-f*sp*dt);if(s)camera.translateX(s*sp*dt);if(u)camera.translateY(u*sp*dt);
+    BODIES.forEach(function(b){if(isGone(b)||b.def.craft||!b.pivot.visible)return;var r=solidR(b)*1.08,d=camera.position.distanceTo(b.pos);if(d<r&&d>1e-6)camera.position.sub(b.pos).multiplyScalar(r/d).add(b.pos);});
   }
 }
 var v3=new THREE.Vector3();
@@ -1560,10 +1631,11 @@ function frame(now){
     if(perfT>2){perfT=0;
       if(perfEma>.026&&curDpr>.75){curDpr=Math.max(.75,curDpr-.25);renderer.setPixelRatio(curDpr);renderer.setSize(W,H,false);}
       else if(perfEma<.0155&&curDpr<maxDpr){curDpr=Math.min(maxDpr,curDpr+.25);renderer.setPixelRatio(curDpr);renderer.setSize(W,H,false);}}}
-  var dDays=playing?dt*SPEEDS[speedIdx].d*(reverse?-1:1):0;if(gravityOn){dDays=clamp(dDays,-7,7);gSlow+=(gSlowNext-gSlow)*(gSlowNext<gSlow?.5:.05);dDays*=gSlow;if(gSlowNext<.3&&performance.now()-slowWarned>8000){slowWarned=performance.now();toast('Çarpışma yaklaşıyor: zaman yavaşlatıldı');}gSlowNext=1;}simDays+=dDays;
+  if(SLOWMO>0)SLOWMO-=dt;
+  var dDays=playing?dt*SPEEDS[speedIdx].d*(reverse?-1:1)*(SLOWMO>0?.12:1):0;if(gravityOn){dDays=clamp(dDays,-7,7);gSlow+=(gSlowNext-gSlow)*(gSlowNext<gSlow?.5:.05);dDays*=gSlow;if(gSlowNext<.3&&performance.now()-slowWarned>8000){slowWarned=performance.now();toast('Çarpışma yaklaşıyor: zaman yavaşlatıldı');}gSlowNext=1;}simDays+=dDays;
   if(!wxT)wxT=simDays;wxT+=clamp(dDays,-15*dt,15*dt);
   updateBodies(dDays);timeline(dDays);if(SKYG)SKYG.position.copy(camera.position);scene.updateMatrixWorld(true);
-  updateSolarFx(now,dt);updateFxList(dt);updateExotic(dt);tripDraw(dt);drawTDE(dt);updateWeather();updatePlanetWx();updateEclipse();updateSkyLabels();
+  updateSolarFx(now,dt);updateFxList(dt);updateExotic(dt);stepDarts(dt);updateStarWinds(dt);tripDraw(dt);drawTDE(dt);updateWeather();updatePlanetWx();updateEclipse();updateSkyLabels();
   var nr=clamp(nearestSurface()*.25,.1,4);if(Math.abs(nr-camera.near)>.02){camera.near=nr;camera.updateProjectionMatrix();}
   BODIES.forEach(function(b){
     if(!b.glow1)return;var T=SUN_TYPES[b.starType];if(b.sunU)b.sunU.time.value=now*.001;
@@ -1636,6 +1708,115 @@ function showTab(t){
 $('tbInfo').addEventListener('click',function(){showTab('info');});
 $('tbLab').addEventListener('click',function(){showTab('lab');});
 $('goLab').addEventListener('click',function(){showTab('lab');});
+/* ================= ARA / KOMUT PALETİ ================= */
+function trn(x){return String(x).toLocaleLowerCase('tr-TR').replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i').replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u').replace(/[âÂ]/g,'a');}
+function clk(id){var e=$(id);if(e&&!e.disabled)e.click();}
+function openSide(){var sd=$('side');if(sd)sd.classList.remove('collapsed');}
+function labGo(sec){openSide();showTab('lab');var el=$(sec);if(!el)return;el.classList.remove('closed');setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'start'});},60);}
+function onStar(fn){return function(){if(!focus||!focus.def.star)focusBody('sun');setTimeout(function(){openSide();showTab('lab');fn();},80);};}
+function nextShowerJump(){
+  var c=CITIES[cityIdx],now=new Date(J2000+simDays*864e5),best=null;
+  SHOWERS.forEach(function(sh){if(sh[3]<15)return;for(var y=now.getUTCFullYear();y<=now.getUTCFullYear()+1;y++){var t=Date.UTC(y,0,1)+(sh[1]-1)*864e5;var d=new Date(t);var night=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),23-c[3],30);if(night>now.getTime()+864e5&&(!best||night<best.t)){best={t:night,s:sh};}}});
+  if(!best)return;
+  if(gravityOn)setGravity(false);
+  var jump=(best.t-J2000)/864e5-simDays;updateBodies(jump);simDays+=jump;speedIdx=0;speed.value=0;setSpeed();playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
+  focusBody('earth');setTimeout(function(){enterSurface(byId.earth);toast(best.s[0]+' meteor yağmuru: '+c[0].replace(/ \(.*\)/,'')+' gecesi. Kayan yıldızlar gökyüzünde tek bir noktadan (çıkış noktası) dağılıyormuş gibi görünür. Kaynağı: '+best.s[6]+'.',8000);},400);
+}
+var ACTIONS=[
+ ['🕳️','Güneş\'i kara deliğe dönüştür','Işık kesilir, disk parlar; yaklaşan gezegenler spagettileşir','kara delik karadelik black hole cokme',onStar(function(){clk('sBH');})],
+ ['💥','Süpernova patlat','Yıldız patlar, geriye pulsar ve bulutsu kalır','supernova supernova patlama nötron pulsar',onStar(function(){clk('sNova');})],
+ ['🌫️','Gezegenimsi bulutsu (Güneş\'in gerçek sonu)','Kırmızı dev kabuğunu savurur, beyaz cüce kalır','nebula bulutsu beyaz cuce son',onStar(function(){clk('sPN');})],
+ ['☀️','Güneş patlaması tetikle','Parlama ve koronal kütle atımı; Dünya\'ya ulaşırsa kutup ışıkları','gunes patlamasi flare cme firtina kutup isiklari',onStar(function(){clk('sFlare');})],
+ ['⭐','Yıldız türünü değiştir','Kırmızı cüce, mavi dev, kırmızı dev, beyaz cüce','yildiz turu kirmizi dev mavi dev cuce',onStar(function(){labGo('lsStar');})],
+ ['✨','İkinci yıldız ekle','Sisteme yeni bir güneş koy','yildiz ekle ikinci gunes',function(){labGo('lsStar2');}],
+ ['🌍','Kendi gezegenini yarat','Tür, renk, halka ve uydu seç','gezegen ekle yarat olustur',function(){labGo('lsNew');}],
+ ['🎯','Yıldızı bir şeye fırlat','Eklediğin yıldızı Güneş\'e, bir gezegene ya da kara deliğe at','yildiz firlat carpistir kara delik birlesme kilonova',function(){var st=BODIES.filter(function(b){return b.def.star&&b!==sunBody&&!isGone(b);})[0];if(!st){labGo('lsStar2');toast('Önce ikinci bir yıldız ekle, sonra onu hedefe fırlat',5000);return;}focusBody(st.def.id);setTimeout(function(){labGo('lsGrav');},80);}],
+ ['☄️','Gezegenleri çarpıştır','Yerçekimi simülasyonu ve fırlatma','carpistir carpisma firlat yercekimi gravity',function(){if(!focus||!focus.grav)focusBody('mars');setTimeout(function(){labGo('lsGrav');},80);}],
+ ['🌑','Sonraki Güneş tutulması','Gerçek tarihine git','tutulma gunes tutulmasi eclipse',function(){gotoEclipse(false);}],
+ ['🌕','Sonraki Ay tutulması','Ay kızıla döner','tutulma ay tutulmasi kanli ay',function(){gotoEclipse(true);}],
+ ['🌠','Sonraki meteor yağmurunu izle','Seçili şehirden gece gökyüzü','meteor yagmuru kayan yildiz gok tasi perseid',nextShowerJump],
+ ['🏙️','Şehirden gökyüzüne bak','Samsun, İstanbul, Tokyo… gerçek gökyüzü','sehir gokyuzu yuzey samsun istanbul',function(){focusBody('earth');setTimeout(function(){enterSurface(byId.earth);},300);}],
+ ['🔭','Ölçek yolculuğu','Güneş\'ten yakın yıldızlara ve galaksilere','olcek yolculuk evren galaksi mesafe',function(){clk('vTrip');}],
+ ['🪐','Diğer yıldız sistemleri','TRAPPIST-1, Proxima, Kepler-16…','yildiz sistemi trappist proxima exoplanet otegezegen',function(){clk('vSys');}],
+ ['🌌','Takımyıldızlarını göster','Yıldız adları ve çizgileri','takimyildiz yildiz adlari constellation',function(){clk('vCons');}],
+ ['🔴','H-alfa filtresi','Güneş\'in kromosferini gör','h-alfa halfa filtre kromosfer',function(){clk('vHa');}],
+ ['🧭','Genel görünüm','Tüm sistemi göster','genel gorunum tum sistem',function(){clk('tOver');}],
+ ['✈️','Serbest uçuş','W A S D ile uç','serbest ucus kamera',function(){clk('mFree');}],
+ ['⏩','Zamanı hızlandır','Hız menüsünü aç','zaman hiz hizlandir yavaslat',function(){var sp=$('speed');if(sp){sp.focus();try{sp.showPicker();}catch(e){}}}],
+ ['⏪','Zamanı geri sar','Olaylar geri alınır, ileri oynatınca tekrar yaşanır','geri sar zaman rewind',function(){clk('rev');}],
+ ['📅','Bugüne dön','Gerçek tarihe dön','bugun simdi tarih',function(){clk('now');}],
+ ['🔊','Sesi aç / kapat','Gezegen ve pulsar sesleri','ses muzik sound',function(){clk('tSnd');}],
+ ['🔔','Olay bildirimleri','Tutulma, fırtına bildirimlerini aç/kapat','bildirim toast',function(){clk('vNote');}],
+ ['🗺️','Mini harita','Üstten görünüm','mini harita',function(){clk('vMini');}],
+ ['🔗','Sistemi paylaş','Kodla arkadaşına gönder','paylas kod',function(){labGo('lsShare');}],
+ ['♻️','Güneş Sistemini sıfırla','Tüm değişiklikleri geri al','sifirla reset',function(){labGo('lsAll');}],
+ ['❓','Yardım','Kontroller ve ipuçları','yardim nasil',function(){clk('tHelp');}]
+];
+var POPULAR=[0,1,10,11,7,8,2,12];
+var CMD={items:[],sel:0};
+function openCmd(){$('cmdk').hidden=false;$('cmdIn').value='';renderCmd('');setTimeout(function(){$('cmdIn').focus();},20);}
+function closeCmd(){$('cmdk').hidden=true;}
+function bodyIcon(b){return '<span class="ic" style="'+(b.def.star?starDotCss(b===sunBody?sunType:b.starType):dotStyle(b.def.dot))+'"></span>';}
+function renderCmd(q){
+  var t=trn(q).trim(),tk=t?t.split(/\s+/):[],out=[],html='';
+  function hit(str){str=trn(str);return tk.every(function(w){return str.indexOf(w)>=0;});}
+  var acts=t?ACTIONS.filter(function(a){return hit(a[1]+' '+a[2]+' '+a[3]);}):POPULAR.map(function(i){return ACTIONS[i];});
+  var bods=BODIES.filter(function(b){return !b.sysHide&&!isGone(b)&&!b.engulfed&&(t?hit(b.def.name+' '+(b.def.kind||'')):(!b.def.parent&&!b.def.minor));});
+  var cities=t?CITIES.map(function(c,i){return [c,i];}).filter(function(x){return hit(x[0][0]+' sehir gokyuzu');}):[];
+  if(acts.length){html+='<div class="cmdg">'+(t?'Eylemler':'Popüler deneyler')+'</div>';acts.slice(0,t?12:8).forEach(function(a){out.push(a[4]);html+='<button class="cmdi" data-i="'+(out.length-1)+'"><span class="ic">'+a[0]+'</span><span>'+esc(a[1])+'<small>'+esc(a[2])+'</small></span></button>';});}
+  if(cities.length){html+='<div class="cmdg">Şehirden gökyüzü</div>';cities.forEach(function(x){out.push(function(){cityIdx=x[1];try{localStorage.setItem('se_city',cityIdx);}catch(e){}$('surfCity').value=cityIdx;focusBody('earth');setTimeout(function(){enterSurface(byId.earth);},300);});html+='<button class="cmdi" data-i="'+(out.length-1)+'"><span class="ic">🏙️</span><span>'+esc(x[0][0])+'<small>Bu şehirden şu anki gökyüzü</small></span></button>';});}
+  if(bods.length){html+='<div class="cmdg">Gök cisimleri</div>';bods.slice(0,t?14:12).forEach(function(b){out.push(function(){focusBody(b.def.id);});html+='<button class="cmdi" data-i="'+(out.length-1)+'">'+bodyIcon(b)+'<span>'+esc(b.def.name)+'<small>'+esc(b.def.kind||'')+'</small></span></button>';});}
+  if(!out.length)html='<div class="cmdg">Sonuç yok</div><p class="note" style="padding:0 10px">Başka bir kelime dene: "çarpış", "tutulma", "Jüpiter", "meteor"…</p>';
+  CMD.items=out;CMD.sel=0;$('cmdList').innerHTML=html;markCmd();
+}
+function markCmd(){var bs=$('cmdList').querySelectorAll('.cmdi');[].forEach.call(bs,function(b,i){b.classList.toggle('sel',i===CMD.sel);if(i===CMD.sel)b.scrollIntoView({block:'nearest'});});}
+function runCmd(i){var f=CMD.items[i];closeCmd();if(f)setTimeout(f,30);}
+$('tFind').addEventListener('click',openCmd);$('cmdX').addEventListener('click',closeCmd);
+$('cmdk').addEventListener('click',function(e){if(e.target===this)closeCmd();});
+$('cmdIn').addEventListener('input',function(){renderCmd(this.value);});
+$('cmdList').addEventListener('click',function(e){var b=e.target.closest('.cmdi');if(b)runCmd(+b.dataset.i);});
+$('cmdIn').addEventListener('keydown',function(e){
+  if(e.key==='ArrowDown'){CMD.sel=Math.min(CMD.items.length-1,CMD.sel+1);markCmd();e.preventDefault();}
+  else if(e.key==='ArrowUp'){CMD.sel=Math.max(0,CMD.sel-1);markCmd();e.preventDefault();}
+  else if(e.key==='Enter'){runCmd(CMD.sel);e.preventDefault();}
+  else if(e.key==='Escape'){closeCmd();e.preventDefault();}
+  e.stopPropagation();
+});
+window.addEventListener('keydown',function(e){var tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT')return;
+  if((e.key==='/'||(e.key==='k'&&(e.ctrlKey||e.metaKey)))&&$('cmdk').hidden){e.preventDefault();e.stopPropagation();openCmd();}
+  else if(e.key==='Escape'&&!$('cmdk').hidden)closeCmd();},true);
+/* bilgi panelinde bağlama göre hızlı deneyler */
+function renderQuick(){
+  var q=$('quick');if(!q||!focus)return;var b=focus,d=b.def,list=[];
+  function A(lbl,fn){list.push([lbl,fn]);}
+  if(d.star||b===sunBody){var ty=b===sunBody?sunType:b.starType;
+    if(ty<5&&ty!==1)A('💥 Süpernova',function(){showTab('lab');clk('sNova');});
+    if(!bhBlock(b))A('🕳️ Kara delik',function(){showTab('lab');clk('sBH');});
+    if(ty===0||ty===3)A('🌫️ Bulutsu',function(){showTab('lab');clk('sPN');});
+    if(ty<5)A('☀️ Patlama',function(){clk('sFlare');});
+    A('⭐ Türünü değiştir',function(){labGo('lsStar');});
+    if(b!==sunBody)A('🎯 Bir şeye fırlat',function(){labGo('lsGrav');});
+  }else if(d.id==='earth'){
+    A('🏙️ Şehirden gökyüzü',function(){enterSurface(b);});A('🌠 Meteor yağmuru',nextShowerJump);A('🌑 Tutulma',function(){gotoEclipse(false);});A('🔥 İklimi değiştir',function(){labGo('climSec');});
+  }else if(d.craft){
+  }else if(!d.comet){
+    if(b.grav&&!d.parent)A('☄️ Bir şeye çarptır',function(){labGo('lsGrav');});
+    if(b.hab)A('🔥 İklimi değiştir',function(){labGo('climSec');});
+    if(d.parent&&MOONR[d.id])A('🌗 Uyduyu yaklaştır',function(){labGo('moonSec');});
+    A('🎛️ Boyut ve dönüş',function(){labGo('lsBody');});
+  }
+  q.innerHTML='';list.forEach(function(x){var bt=document.createElement('button');bt.textContent=x[0];bt.addEventListener('click',x[1]);q.appendChild(bt);});
+}
+/* laboratuvar: kısayollar ve katlanabilir bölümler */
+var LSECS=[['lsBody','Cisim'],['moonSec','Uydu'],['climSec','İklim'],['lsStar','Yıldız'],['lsGrav','Çarpışma'],['lsNew','Gezegen ekle'],['lsStar2','Yıldız ekle'],['lsShare','Paylaş'],['lsAll','Sıfırla']];
+(function(){var J=$('lJump');LSECS.forEach(function(x){var bt=document.createElement('button');bt.textContent=x[1];bt.dataset.s=x[0];bt.addEventListener('click',function(){labGo(x[0]);});J.appendChild(bt);});
+  [].forEach.call(document.querySelectorAll('#tabLab .lsec>h4'),function(h){h.addEventListener('click',function(e){if(e.target.closest('input,button,select'))return;h.parentNode.classList.toggle('closed');});});})();
+function labContext(){
+  if(!focus)return;var d=focus.def,st=!!d.star||focus===sunBody,open={lsBody:1};
+  if(st)open.lsStar=1;else if(focus.hab)open.climSec=1;if(d.parent)open.moonSec=1;if(focus.grav&&!d.parent)open.lsGrav=1;
+  LSECS.forEach(function(x){var el=$(x[0]);if(!el)return;el.classList.toggle('closed',!open[x[0]]);});
+  [].forEach.call($('lJump').children,function(bt){var el=$(bt.dataset.s);bt.hidden=!el||el.hidden;bt.classList.toggle('on',!!open[bt.dataset.s]);});
+}
 $('sideToggle').addEventListener('click',function(){$('side').classList.toggle('collapsed');});
 $('sideMini').addEventListener('click',function(){$('side').classList.remove('collapsed');});
 if(innerWidth<=760)$('side').classList.add('collapsed');
@@ -1653,7 +1834,7 @@ function syncLab(){
   $('sTilt').value=b.mod.tilt;$('oTilt').textContent=Math.round(b.mod.tilt)+'°';
   $('labDel').hidden=!(b.def.custom&&!b.parent);
   $('lockRow').hidden=!(b.hab&&!b.parent);$('sLock').checked=!!b.mod.lock;
-  syncMoonUI();fillTargets();$('lGo').disabled=!(b.grav&&!b.parent&&!isGone(b));
+  syncMoonUI();fillTargets();$('lGo').disabled=!((b.grav||(b.def.star&&b!==sunBody))&&!b.parent&&!isGone(b));
   var hb=b.hab;$('climSec').hidden=!hb;
   if(hb){$('climName').textContent=b.def.name;$('cAtm').value=hb.atm;$('cWater').value=hb.water;$('oWater').textContent=Math.round(hb.water*100)+'%';$('cMag').value=hb.mag;$('oMag').textContent=Math.round(hb.mag*100)+'%';}
 }
@@ -1666,6 +1847,7 @@ $('sOrbit').addEventListener('input',function(){focus.mod.orbit=+this.value;$('o
 $('sSize').addEventListener('input',function(){focus.mod.size=+this.value;$('oSize').textContent=fmtX(this.value);applySize(focus);});
 $('sTilt').addEventListener('input',function(){focus.mod.tilt=+this.value;$('oTilt').textContent=Math.round(this.value)+'°';setTiltRot(focus,+this.value);});
 function resetBody(b){
+  if(typeof clearScars==='function')clearScars(b);if(b.wob){b.wob=null;b.mesh.scale.set(1,1,1);}
   b.mod={spin:1,orbit:1,size:1,tilt:b.def.tilt||0};setTiltRot(b,b.mod.tilt);applySize(b);
 }
 $('labReset').addEventListener('click',function(){resetBody(focus);syncLab();toast(focus.def.name+' sıfırlandı');});
@@ -1756,7 +1938,7 @@ function resetSystem(e){
   setGravity(false);if(SYS)unloadSystem();
   BODIES.filter(function(b){return b.def.custom&&!b.parent;}).forEach(function(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);});
   customs=[];saveCustom();
-  clearDestruction();
+  clearDestruction();if(typeof resetBelts==='function')resetBelts();
   BODIES.forEach(function(b){resetBody(b);b.hab=makeHab(b.def);b.cl=null;b.aurB=0;if(b.engulfed){b.engulfed=false;b.pivot.visible=true;}});
   gSpin=1;$('gSpin').value=1;$('oGSpin').textContent=fmtX(1);sunMass=1;EATEN=0;$('sMass').value=sliderFromMass(1);$('oMass').textContent=fmtX(1);
   setStar(0);actLevel=1;$('sAct').value=1;$('oAct').textContent='1,0×';auroraBoost=0;
@@ -1792,7 +1974,7 @@ function pushTrail(b){
   b.trailLine.geometry.setDrawRange(0,b.trailN);b.trailLine.geometry.attributes.position.needsUpdate=true;
 }
 function stepGravity(dDays){
-  var gb=BODIES.filter(function(b){return b.grav&&b.trailLine&&!b.sysHide;});
+  var gb=BODIES.filter(function(b){return b.grav&&b.trailLine&&!b.sysHide&&!b.dart;});
   if(!gb.length||!sunBody)return;
   var stars=BODIES.filter(function(b){return b.def.star;});
   var n=clamp(Math.ceil(Math.abs(dDays)*Math.sqrt(Math.max(1,sunMass))/.5),1,240),h=dDays/n,a=[0,0,0];
@@ -2071,7 +2253,7 @@ $('cReset').addEventListener('click',function(){var h=focus.hab;if(!h)return;h.m
 $('cMag').addEventListener('input',function(){if(!focus.hab)return;focus.hab.mag=+this.value;$('oMag').textContent=Math.round(this.value*100)+'%';});
 
 /* ---------- Güneş aktivitesi: protuberans, parlama, CME, kutup ışığı, meteor ---------- */
-var ACT_K=[1,1.8,.7,.6,.1],actLevel=1,auroraBoost=0,showPart=false;
+var ACT_K=[1,1.8,.7,.6,0,0,0,0],actLevel=1,auroraBoost=0,showPart=false;
 var FX=null;
 var PROM_VS='uniform float grow;uniform float R;varying vec3 vN;varying vec3 vV;varying vec2 vU;void main(){vU=uv;float rad=length(position);vec3 d=position/rad;float nr=R+(rad-R)*grow;vec3 p=position+d*(nr-rad);vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(p,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}';
 var PROM_FS='uniform float grow;uniform float time;uniform float seed;uniform vec3 col;varying vec3 vN;varying vec3 vV;varying vec2 vU;\n'+SUN_GLSL+'\nvoid main(){float fr=abs(dot(normalize(vN),vV));float core=pow(fr,1.6);float f1=fbm3(vec3(vU.x*9.0-time*.18,vU.y*1.6,seed));float f2=fbm3(vec3(vU.x*26.0+time*.1,vU.y*3.0,seed+4.0));float fil=smoothstep(.38,.72,f1*.65+f2*.35);float ends=smoothstep(0.0,.12,vU.x)*smoothstep(1.0,.88,vU.x);float a=core*fil*ends*grow*.5*smoothstep(.0,.35,1.0-fr*.6);vec3 c=mix(vec3(.75,.12,.03),vec3(1.0,.42,.14),core*fil);c=mix(c,col,.2);gl_FragColor=vec4(c*a,1.0);}';
@@ -2149,7 +2331,7 @@ function emitCme(aimEarth){
 function updateSolarFx(now,dt){
   if(!sunBody||!sunBody.mesh)return;
   if(!FX)buildFx();
-  var act=actLevel*ACT_K[sunType],R=FX.R,t=now*.001;FX.t=t;
+  var act=actLevel*(ACT_K[sunType]||0)*(EXO.col?0:1),R=FX.R,t=now*.001;FX.t=t;
   /* protuberanslar */
   FX.proms.forEach(function(p){
     var u=p.mesh.material.uniforms;u.time.value=t;
@@ -2201,10 +2383,11 @@ function updateSolarFx(now,dt){
   BODIES.forEach(function(pb){if(!pb.shU||!pb.hab)return;pb.aurB=Math.max(0,(pb.aurB||0)-dt*.05);var base=pb.def.id==='earth'?.07:0,bo=pb.def.id==='earth'?auroraBoost:pb.aurB;pb.shU.aur.value=(base+bo*.9)*(.25+.75*pb.hab.mag)*(pb.hab.atm==='none'?0:1);});
   BODIES.forEach(function(b){if(b.shU)b.shU.tm.value=t;});
   /* güneş rüzgârı */
-  var d=FX.wd,sr=effVr(sunBody);FX.wind.visible=showPart&&act>.02;FX.spPts.visible=showPart;if(cm.on)FX.cmPts.visible=showPart||cm.force;FX.wind.material.opacity=clamp(.16+act*.14,.05,.45);
+  var wAct=sunType===5?1.4:act;FX.wind.material.color.setHex(sunType===5?0x9fc8ff:sunType===1||sunType===3?0xffb090:sunType===2?0xbfd4ff:0xffe0b0);
+  var d=FX.wd,sr=effVr(sunBody);FX.wind.visible=showPart&&wAct>.02&&!SYS;FX.spPts.visible=showPart;if(cm.on)FX.cmPts.visible=showPart||cm.force;FX.wind.material.opacity=clamp(.16+act*.14,.05,.45);
   if(FX.wind.visible){
   for(var k=0;k<d.W;k++){
-    d.r[k]+=d.sp[k]*dt*(.6+act*.5);if(d.r[k]>270*DS)respawnWind(k,false);
+    d.r[k]+=d.sp[k]*dt*(.6+wAct*.5)*(sunType===5?3:1);if(d.r[k]>270*DS)respawnWind(k,false);
     var rr=Math.max(d.r[k],sr*1.03);d.pos[k*3]=d.dir[k*3]*rr;d.pos[k*3+1]=d.dir[k*3+1]*rr;d.pos[k*3+2]=d.dir[k*3+2]*rr;
   }
   FX.wind.geometry.attributes.position.needsUpdate=true;}
@@ -2909,8 +3092,18 @@ function debrisCloud(host,n,R,col,spread){
   p.frustumCulled=false;host.add(p);FXL.push({o:p,t:0,T:9,k:'debris',vel:vel,R:R});
 }
 function updateFxList(dt){
+  BODIES.forEach(function(b){if(!b.wob)return;var W=b.wob;W.t+=dt;var e=W.a*Math.exp(-W.t*.9)*Math.sin(W.t*9);b.mesh.scale.set(1+e,1-e*.8,1+e*.4);if(W.t>6){b.mesh.scale.set(1,1,1);b.wob=null;}});
   for(var i=FXL.length-1;i>=0;i--){var f=FXL[i];f.t+=Math.min(dt,.05);var a=f.t/f.T;
     if(f.k==='fire'||f.k==='ring'||f.k==='ejecta'){updateImpactFx(f,dt);}
+    else if(f.k==='sink'){var e=Math.min(1,a),ee=e*e*(3-2*e);f.o.position.copy(f.p0).multiplyScalar(1-ee*.85);f.o.scale.setScalar(f.k0*Math.max(.05,1-ee*.95));if(a>=1){f.o.parent&&f.o.parent.remove(f.o);FXL.splice(i,1);}continue;}
+    else if(f.k==='scarglow'){var gw=a<.05?a/.05:Math.pow(1-a,1.4);f.o.material.uniforms.op.value=gw;f.o.material.uniforms.c.value.setRGB(1,.35+.45*gw,.1+.3*gw*gw);if(a>=1){f.o.visible=false;FXL.splice(i,1);}continue;}
+    else if(f.k==='scarfade'){f.o.material.uniforms.op.value=.6*(1-a);if(a>=1){f.o.visible=false;FXL.splice(i,1);}continue;}
+    else if(f.k==='dring'){var P2=f.o.geometry.attributes.position.array,C2=f.o.geometry.attributes.color.array,co=Math.min(1,Math.max(0,(a-.25)/.65));
+      for(var q=0;q<f.N;q++){f.ang[q]+=Math.min(dt,.05)*1.6*Math.pow(f.R*2/f.rad[q],1.5);var tgA=f.seed+(q%f.nm)*Math.PI,da=Math.atan2(Math.sin(tgA-f.ang[q]),Math.cos(tgA-f.ang[q]));f.ang[q]+=da*co*.04;
+        var rr=f.rad[q]+(f.R*3.6-f.rad[q])*co*.6;P2[q*3]=Math.cos(f.ang[q])*rr;P2[q*3+1]=f.yy[q]*(1-co);P2[q*3+2]=-Math.sin(f.ang[q])*rr;var cool=Math.max(.25,1-a*.8);C2[q*3]=cool;C2[q*3+1]=cool*.7;C2[q*3+2]=cool*.45;}
+      f.o.geometry.attributes.position.needsUpdate=true;f.o.geometry.attributes.color.needsUpdate=true;f.o.material.opacity=a>.9?(1-a)/.1:1;
+      if(a>=.92&&!f.born){f.born=true;if(!isGone(f.big))for(var mi=0;mi<f.nm;mi++)birthMoon(f.big);}
+      if(a>=1){f.o.parent&&f.o.parent.remove(f.o);f.o.geometry.dispose();f.o.material.dispose();FXL.splice(i,1);}continue;}
     else if(f.k==='flash'){f.o.material.opacity=Math.max(0,1-a)*(a<.08?a/.08:1);f.o.scale.setScalar(f.s*(1+a*1.5));}
     else{var arr=f.o.geometry.attributes.position.array,e=1-Math.exp(-f.t*.9);for(var j=0;j<arr.length;j++)arr[j]=f.vel[j]*e*2.2;f.o.geometry.attributes.position.needsUpdate=true;f.o.material.opacity=Math.max(0,1-a*a);}
     if(a>=1){f.o.parent&&f.o.parent.remove(f.o);f.o.geometry&&f.o.geometry.dispose();f.o.material.dispose();FXL.splice(i,1);}
@@ -2968,6 +3161,43 @@ function applyShake(dt){
   camera.position.x+=(Math.random()-.5)*s;camera.position.y+=(Math.random()-.5)*s;camera.position.z+=(Math.random()-.5)*s;
 }
 
+var SLOWMO=0;
+function scarMat(col,op,cap,add){return new THREE.ShaderMaterial({uniforms:{c:{value:new THREE.Color(col)},op:{value:op},cc:{value:Math.cos(cap)},sd:{value:Math.random()*50}},transparent:true,depthWrite:false,blending:add?THREE.AdditiveBlending:THREE.NormalBlending,
+  vertexShader:'varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform vec3 c;uniform float op;uniform float cc;uniform float sd;varying vec3 vP;float h(vec3 p){return fract(sin(dot(p,vec3(12.9,78.2,37.7))+sd)*43758.5);}void main(){float d=vP.y;float e=smoothstep(cc,cc+(1.0-cc)*.55,d);float rays=.75+.25*sin(atan(vP.z,vP.x)*13.0+sd)*sin(atan(vP.z,vP.x)*7.0);float rim=exp(-pow((d-cc-(1.0-cc)*.28)/((1.0-cc)*.12+.001),2.0))*.6;float a=clamp(e*rays+rim,0.0,1.0)*op;gl_FragColor=vec4(c*a,a);}'});}
+function scarFx(big,nW,ratio){
+  var R=big.def.vr,cap=clamp(Math.sqrt(ratio)*1.5,.12,1.15),gas=big.hab&&big.hab.gas;
+  big.mesh.updateMatrixWorld(true);var nL=nW.clone().transformDirection(new THREE.Matrix4().copy(big.mesh.matrixWorld).invert()).normalize(),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),nL);
+  var g=new THREE.SphereGeometry(R*1.004,48,12,0,TAU,0,cap);
+  var dark=new THREE.Mesh(g,scarMat(gas?0x2a1a14:0x1c100a,gas?.6:.7,cap,false));dark.quaternion.copy(q);dark.renderOrder=1;big.mesh.add(dark);
+  var glow=new THREE.Mesh(g.clone(),scarMat(0xff7a2a,1,cap*1.05,true));glow.quaternion.copy(q);glow.scale.setScalar(1.001);glow.renderOrder=2;big.mesh.add(glow);
+  big.scars=big.scars||[];big.scars.push(dark);big.scars.push(glow);
+  FXL.push({o:glow,t:0,T:gas?20:40,k:'scarglow',d:dark,gas:gas});
+  if(gas)FXL.push({o:dark,t:0,T:180,k:'scarfade',keep:false});
+}
+function clearScars(b){if(!b.scars)return;b.scars.forEach(function(m){m.parent&&m.parent.remove(m);m.geometry.dispose();m.material.dispose();});b.scars=[];}
+function sinkFx(big,sm){
+  var gm=sm.mesh.clone();var k=effVr(sm)/sm.def.vr;gm.scale.setScalar(k);gm.position.set(sm.gx-big.gx,sm.gy-big.gy,sm.gz-big.gz);gm.rotation.copy(sm.mesh.rotation);big.pivot.add(gm);
+  FXL.push({o:gm,t:0,T:1.4,k:'sink',p0:gm.position.clone(),k0:k,keepMat:true});
+}
+function wobbleFx(big,ratio){big.wob={t:0,a:clamp(Math.sqrt(ratio)*.35,.03,.22)};}
+function debrisMoonFx(big,ratio){
+  var N=LOWQ?700:1600,R=effVr(big),pos=new Float32Array(N*3),col=new Float32Array(N*3),rad=new Float32Array(N),ang=new Float32Array(N),yy=new Float32Array(N);
+  var tilt=new THREE.Quaternion().setFromEuler(new THREE.Euler((Math.random()-.5)*.5,0,(Math.random()-.5)*.5));
+  for(var i=0;i<N;i++){rad[i]=R*(1.6+Math.random()*2.6);ang[i]=Math.random()*TAU;yy[i]=(Math.random()-.5)*R*.15;var h=Math.random();col[i*3]=1;col[i*3+1]=.55+.35*h;col[i*3+2]=.3*h;}
+  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  var pm=new THREE.Points(g,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,map:dotTex()}));pm.quaternion.copy(tilt);pm.frustumCulled=false;big.pivot.add(pm);
+  var nMoons=ratio>.3?2:1;
+  FXL.push({o:pm,t:0,T:26,k:'dring',rad:rad,ang:ang,yy:yy,N:N,R:R,big:big,seed:Math.random()*TAU,nm:nMoons,born:false});
+}
+function birthMoon(big,f){
+  var id='dm'+(++dmId),R=effVr(big),v=big.def.vr;
+  var md=buildBody({id:id,custom:true,name:big.def.name+' · yeni uydu '+dmId,kind:'Uydu · çarpışma enkazından doğdu',parent:big.def.id,orbit:v*(3.2+Math.random()*1.4),P:3+Math.random()*6,L0:Math.random()*360,vr:v*(.12+.1*Math.random()),texFn:TEX.smallMoon,tw:256,dot:['#c9b8a6','#6c5a4c'],
+    desc:'Dev bir çarpışmanın yörüngeye savurduğu kızgın enkaz birkaç hafta içinde toplanıp bu uyduyu oluşturdu. Ay\'ımızın da yaklaşık 4,5 milyar yıl önce Theia adlı Mars büyüklüğünde bir gezegenin Dünya\'ya çarpmasıyla böyle doğduğu düşünülüyor.',
+    stats:[['Gezegen',big.def.name],['Doğuşu','Çarpışma enkazı']]});
+  rebuildLists();toast(big.def.name+' çevresindeki enkaz halkası toplandı: yeni bir uydu doğdu!',6000);return md;
+}
+var dmId=0;
 function collide(a,b){
   takeSnap();
   var ma=bodyMass(a),mb=bodyMass(b),big=ma>=mb?a:b,sm=big===a?b:a,mB=Math.max(ma,mb),mS=Math.min(ma,mb),M=mB+mS;
@@ -2977,11 +3207,18 @@ function collide(a,b){
   var ratio=mS/mB;big.impT0=simDays;big.impK=clamp(Math.sqrt(ratio)*4,.15,1);
   if(big.hab&&big.hab.surf&&ratio>.01){big.hab.melt=1;if(big.hab.water>.5)big.hab.water*=.6;}
   var dir=new THREE.Vector3(sm.gx-big.gx,sm.gy-big.gy,sm.gz-big.gz).normalize().multiplyScalar(effVr(big));
-  impactFx(big,sm,ratio);
+  var cat=ratio>.3;if(cat){big.mass*=.85;big.mod.size*=Math.pow(.85,1/3);applySize(big);}
+  impactFx(big,sm,ratio);sinkFx(big,sm);scarFx(big,dir.clone().normalize(),ratio);wobbleFx(big,ratio);
+  var gas=big.hab&&big.hab.gas,smGas=sm.hab&&sm.hab.gas;
   destroyBody(sm);
-  var msg=sm.def.name+', '+big.def.name+' ile çarpıştı';
-  msg+=ratio>.1?': iki gezegen birleşti, yüzey magma okyanusuna döndü. Ay\'ımız da böyle bir dev çarpışmayla oluştu.':(ratio>.01?': '+big.def.name+' kızgın enkazla kaplandı ve büyüdü.':': küçük cisim buharlaştı, çarpma krateri oluştu.');
-  toast(msg,6500);toastLock=performance.now()+6000;if(typeof audWhoosh==='function')audWhoosh();
+  if(ratio>.04&&!big.def.star)debrisMoonFx(big,ratio);
+  focusBody(big.def.id,{dist:effVr(big)*9});SLOWMO=2.5;
+  var msg=sm.def.name+', '+big.def.name+' ile çarpıştı: ';
+  if(cat)msg+='iki gezegen de parçalandı. Kalıntılar tek bir erimiş gezegende birleşti; kütlenin yaklaşık %15\'i uzaya savruldu. Etrafındaki enkaz halkası toplanıp yeni uydu(lar) oluşturabilir.';
+  else if(ratio>.04)msg+=(gas?big.def.name+' çarpanı yuttu; atmosferinde dev bir sıcak leke ve şok dalgası oluştu.':big.def.name+'\'in kabuğu eridi, çarpma bölgesi magma okyanusuna döndü ve gezegen bir süre sarsılıp şekil değiştirdi.')+' Savrulan enkaz yörüngede halka oluşturdu; zamanla yeni bir uyduya toplanacak. Ay\'ımız da Theia çarpışmasıyla böyle doğdu.';
+  else if(ratio>.003)msg+=(gas?'çarpan atmosferde parçalanıp yandı; Shoemaker-Levy 9\'un 1994\'te Jüpiter\'de bıraktığı gibi koyu bir iz kaldı.':'dev bir krater açıldı, kızgın enkaz yüzeye yağdı.');
+  else msg+=(gas?'küçük cisim atmosferde yanıp koyu bir iz bıraktı.':'küçük cisim buharlaştı; geriye bir çarpma krateri kaldı.');
+  toast(msg,8000);toastLock=performance.now()+7500;if(typeof audWhoosh==='function')audWhoosh();
 }
 function checkCollisions(gb){
   var minK=1;
@@ -3002,7 +3239,7 @@ function tlBodies(){return BODIES.filter(function(b){return !b.def.craft&&!b.def
 function takeSnap(){
   var S={t:simDays,grav:gravityOn,b:{},em:EATEN};
   tlBodies().forEach(function(b){var h=b.hab;
-    S.b[b.id]={g:[b.gx,b.gy,b.gz,b.gvx,b.gvy,b.gvz],sz:b.mod.size,m:b.mass,d:!!b.destroyed,i0:b.impT0,ik:b.impK,rr:b.mod.rr,rg:!!b.rogue,
+    S.b[b.id]={g:[b.gx,b.gy,b.gz,b.gvx,b.gvy,b.gvz],sz:b.mod.size,m:b.mass,d:!!b.destroyed,i0:b.impT0,ik:b.impK,rr:b.mod.rr,rg:!!b.rogue,sc:b.scars?b.scars.length:0,
       h:h?{melt:h.melt||0,water:h.water,st:h.st}:null,dn:b.debris?b.debris.length:0,
       ho:b.homing?{t:b.homing.t.id,r:b.homing.rel.toArray(),v:b.homing.v.toArray()}:null};});
   SNAPS.push(S);if(SNAPS.length>3000)SNAPS.shift();lastSnapT=simDays;
@@ -3017,6 +3254,7 @@ function restoreSnap(S){
     if(o.d!==!!b.destroyed){changed=true;if(o.d){destroyBody(b);b.ownDestroy=true;}else{undestroy(b);b.ownDestroy=false;}}
     if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);changed=true;}
     b.mass=o.m;b.impT0=o.i0;b.impK=o.ik;b.rogue=o.rg;
+    if(b.scars&&b.scars.length>(o.sc||0)){b.scars.splice(o.sc||0).forEach(function(m){m.parent&&m.parent.remove(m);});changed=true;}
     if(b.mod.rr!==o.rr){b.mod.rr=o.rr;if(b.line&&b.parent&&b.def.orbit)b.line.scale.setScalar(moonVisR(b)/b.def.orbit);}
     if(o.h&&b.hab){if((b.hab.melt||0)!==o.h.melt)changed=true;b.hab.melt=o.h.melt;b.hab.water=o.h.water;b.hab.st=o.h.st;}
     if(b.debris&&b.debris.length>o.dn){b.debris.splice(o.dn).forEach(function(D){D.g.parent.remove(D.g);D.pts.geometry.dispose();D.pts.material.dispose();});changed=true;}
@@ -3065,9 +3303,83 @@ function gotoStorm(){
 }
 function clearTimeline(){SNAPS=[];EVENTS=[];lastSnapT=-1e18;}
 
+/* ---------- yıldız / kara delik fırlatma ve çarpışmaları ---------- */
+var STARM=[1,.2,15,1,.6,1.4,6,0];
+function stType(b){return b===sunBody?sunType:(b.def.star?b.starType:-1);}
+function stMass(b){return b===sunBody?sunMass:STARM[b.starType]*Math.pow(b.mod.size||1,1.5);}
+function isBH(b){return stType(b)===6;}
+/* ek yıldızların rüzgârı (Görünüm > Güneş rüzgârı ve parçacıklar) */
+var WCOL={0:0xffe0b0,1:0xffa080,2:0xbfd4ff,3:0xffb090,5:0x9fc8ff};
+function updateStarWinds(dt){
+  BODIES.forEach(function(b){if(b===sunBody||!b.def.star)return;var ty=b.starType,on=showPart&&!isGone(b)&&(ty<4||ty===5)&&!b.sysHide;
+    if(!on){if(b.wind)b.wind.visible=false;return;}
+    if(!b.wind){var W=LOWQ?220:420,P=new Float32Array(W*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));
+      b.wind=new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false,map:dotTex()}));b.wind.frustumCulled=false;b.pivot.add(b.wind);
+      b.wd={W:W,dir:new Float32Array(W*3),r:new Float32Array(W),sp:new Float32Array(W)};for(var k=0;k<W;k++)starWindSpawn(b,k,true);}
+    b.wind.visible=true;b.wind.material.color.setHex(WCOL[ty]||0xffe0b0);
+    var d=b.wd,P2=b.wind.geometry.attributes.position.array,sr=effVr(b),mx=sr*30+60*DS,fast=ty===5?3:ty===2?2:1;
+    for(var i=0;i<d.W;i++){d.r[i]+=d.sp[i]*dt*fast;if(d.r[i]>mx)starWindSpawn(b,i,false);var rr=Math.max(d.r[i],sr*1.05);P2[i*3]=d.dir[i*3]*rr;P2[i*3+1]=d.dir[i*3+1]*rr;P2[i*3+2]=d.dir[i*3+2]*rr;}
+    b.wind.geometry.attributes.position.needsUpdate=true;});
+}
+function starWindSpawn(b,k,init){var d=b.wd,u=new THREE.Vector3(Math.random()-.5,(Math.random()-.5)*.8,Math.random()-.5).normalize();d.dir[k*3]=u.x;d.dir[k*3+1]=u.y;d.dir[k*3+2]=u.z;var sr=effVr(b);d.r[k]=init?sr+Math.random()*(sr*30+60*DS):sr;d.sp[k]=(8+Math.random()*14)*DS;}
+function startDart(a,t){
+  if(a.dart)return;a.homing=null;var p0=a.pivot.position.clone(),d=p0.distanceTo(t.pos);
+  var up=new THREE.Vector3(0,1,0),side=new THREE.Vector3().subVectors(t.pos,p0).cross(up).normalize().multiplyScalar(d*.18);
+  a.dart={t:t,p0:p0,side:side,k:0,T:clamp(d/(OVD()*.18),3.5,8)};
+  if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}
+  focusBody(t.def.id,{dist:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});
+  toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı',3500);
+}
+var DV=new THREE.Vector3();
+function stepDarts(dt){
+  BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;return;}
+    D.k+=Math.min(dt,.05)/D.T;var e=Math.pow(Math.min(1,D.k),1.7);
+    DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
+    if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
+    var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
+    if(t===sunBody&&sunType===6&&!a.def.star){if(dist<rtOf(a)){a.dart=null;var v=new THREE.Vector3().subVectors(t.pos,DV).normalize().multiplyScalar(.5);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
+    if(isBH(t)&&!isBH(a))touch=Math.max(touch,effVr(t)*(t===sunBody?bhMassK():1)*4);
+    if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
+  });
+}
+function removeStar(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
+function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
+function starInto(t,ty){if(t===sunBody)setStar(ty);else setStarOn(t,ty);}
+function addStarMass(t,m){if(t===sunBody){sunMass+=m;EATEN+=0;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}}
+function resolveDart(a,t){
+  var ta=stType(a),tt=stType(t),aS=ta>=0,tS=tt>=0,nmA=a.def.name,nmT=t.def.name,host=t.pivot,msg='';
+  var keepA=function(){var P=a.pivot.position;a.ang=Math.atan2(-P.z,P.x);if(a.def.r!=null)a.def.r=Math.max(P.length(),effVr(sunBody)*3);};
+  if(!aS&&tS){ // gezegen → yıldız
+    flashAt(host,new THREE.Vector3().subVectors(a.pos,t.pos),effVr(a)*6,tt===6?0xffd0a0:0xfff0d0);destroyBody(a);
+    if(t===sunBody){var m=bodyMass(a);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();}
+    msg=tt===6?nmA+' kara deliğe düştü ve olay ufkunda kayboldu.':tt===5?nmA+' nötron yıldızına çarptı: çekim o kadar güçlü ki gezegen saniyeler içinde 20 km\'lik yıldızın yüzeyine ince bir tabaka olarak yayıldı.':nmA+' yıldıza düştü ve buharlaştı. Yıldız için bu bir damla: kütlesi neredeyse hiç değişmedi.';
+  }else if(aS&&!tS){ // yıldız → gezegen
+    flashAt(t.pivot,new THREE.Vector3(),effVr(t)*7,ta===6?0xffd0a0:0xffffff);destroyBody(t);keepA();
+    msg=ta===6?nmA+', '+nmT+' gezegenini parçalayıp yuttu.':nmA+', '+nmT+' gezegenini yuttu: gezegen yıldızın sıcak gazına dalıp birkaç saat içinde buharlaştı. Yıldız neredeyse hiç etkilenmedi.';
+    if(typeof audWhoosh==='function')audWhoosh();
+  }else{ // yıldız → yıldız
+    var mA=stMass(a),mT=stMass(t),M=mA+mT,kill=true;
+    flashAt(host,new THREE.Vector3(),Math.max(effVr(t),effVr(a))*14,0xffffff);
+    if(ta===6&&tt===6){gwRipple(host,OVD()*.22);addStarMass(t,mA*.95);msg='İki kara delik birleşti! Kütlelerinin yaklaşık %5\'i bir anda kütleçekim dalgası olarak uzay-zamanı dalgalandırdı (LIGO 2015\'ten beri bunları ölçüyor). Birleşen kara delik geri tepmeyle yerinden de fırlayabilir.';}
+    else if(tt===6||ta===6){var bh=tt===6?t:a,st=bh===t?a:t;if(bh===a&&t!==sunBody){starInto(t,6);}else if(bh===a&&t===sunBody){setStar(6);}addStarMass(t,(bh===t?mA:mT)*.5);diskBoost=6;msg=(bh===t?nmA:nmT)+' kara deliğe yaklaşınca gelgit kuvvetiyle parçalandı; gazının yarısı diske düşüp X-ışınıyla parladı, yarısı uzaya savruldu.';}
+    else if(ta===5&&tt===5){snStart(t,false);gwRipple(host,OVD()*.2);setTimeout(function(){starInto(t,6);},1800);addStarMass(t,mA*.9);msg='Kilonova! İki nötron yıldızı birleşti. Bu çarpışmalar evrendeki altının, platinin ve uranyumun çoğunu üretir (2017\'de GW170817 ile hem kütleçekim dalgası hem ışık olarak görüldü). Kalıntı kara deliğe çöktü.';}
+    else if(ta===4&&tt===4||((ta===4||tt===4)&&M>1.4)){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))removeStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
+    else if(ta===5||tt===5){if(tt===5){if(t===sunBody?sunMass+mA>=2.3:true)setTimeout(function(){starInto(t,6);},300);}else starInto(t,5);addStarMass(t,mA*.3);msg=(tt===5?nmT:nmA)+' diğer yıldızın gazını yuttu. Nötron yıldızı yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker. (Bir nötron yıldızının kırmızı devin içine gömülmesine Thorne-Żytkow nesnesi denir.)';}
+    else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M>=1.5?2:Math.min(ta,tt)===1&&Math.max(ta,tt)===1?1:0));starInto(t,ny);addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
+      msg='İki yıldız çarpışıp tek yıldızda birleşti. Ortaya çıkan yıldız daha büyük, daha sıcak ve mavimsi: gökbilimciler böyle yıldızlara "mavi başıboş yıldız" der. Yıldız kümelerinde gerçekten görülürler. Sonuç: '+SUN_TYPES[ny].name+'.';}
+    if(kill)removeStar(a);
+    if(typeof audWhoosh==='function')audWhoosh();SHAKE.t=1.4;SHAKE.amp=effVr(t)*.08;
+  }
+  focusBody((isGone(t)||!byId[t.def.id])?(byId[a.def.id]&&!isGone(a)?a.def.id:'sun'):t.def.id,{dist:Math.max(effVr(t),20)*10});
+  toast(msg,9000);toastLock=performance.now()+8500;
+}
 function launchAt(){
   var b=focus,t=byId[$('lTarget').value];if(!b||!t||t===b)return;
-  if(!b.grav||b.parent){toast('Yalnızca Güneş\'in çevresinde dönen bir gezegen fırlatılabilir');return;}
+  if(b===sunBody){toast('Güneş sistemin merkezinde sabit; onu fırlatamazsın. İkinci bir yıldız ekleyip onu Güneş\'e ya da bir gezegene fırlatabilirsin.',7000);return;}
+  if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
+  if(isGone(t)){toast('Hedef artık yok');return;}
+  if(b.def.star||t.def.star){startDart(b,t);return;}
+  if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
   if(isGone(t)){toast('Hedef artık yok');return;}
   addEvent({type:'launch',a:b.id,tg:t.id});
@@ -3084,12 +3396,12 @@ function doLaunch(b,t,replay){
   BODIES.forEach(function(x){if(x!==b&&x.homing&&x.homing.t===b)x.homing=null;});
   if(!replay){if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');}
   b.pivot.position.set(b.gx,b.gy,b.gz);
-  if(!replay)focusBody(t.def.id==='sun'?b.def.id:t.def.id);
+  if(!replay)focusBody(t.def.id==='sun'?b.def.id:t.def.id,{dist:t.def.id==='sun'?effVr(b)*14:Math.max(effVr(t),effVr(b))*12+(effVr(t)+effVr(b))*3});
   toast(b.def.name+', '+t.def.name+' hedefine fırlatıldı'+(replay?' (tekrar oynatılıyor)':''));
 }
 function fillTargets(){
   var s=$('lTarget');if(!s)return;var v=s.value;s.innerHTML='';
-  BODIES.forEach(function(b){if((b.grav||b.def.id==='sun')&&!isGone(b)&&b!==focus){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
+  BODIES.forEach(function(b){if((b.grav||b.def.star||b===sunBody)&&!isGone(b)&&!b.sysHide&&b!==focus){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
   if(v)s.value=v;
 }
 function roche(b){
@@ -3152,7 +3464,7 @@ function enterSurface(b){
   var c=new THREE.Vector3();b.mesh.getWorldPosition(c);var tw=new THREE.Vector3();tb.pivot.getWorldPosition(tw);
   var dw=tw.clone().sub(c).normalize(),inv=new THREE.Matrix4().copy(b.mesh.matrixWorld).invert(),dl=dw.clone().transformDirection(inv);
   var u=dl.clone().applyAxisAngle(new THREE.Vector3(0,1,0).cross(dl).normalize().lengthSq()>.1?new THREE.Vector3(0,1,0).cross(dl).normalize():new THREE.Vector3(1,0,0),-.55).normalize();
-  SURF={b:b,u:u,yaw:0,pitch:.3,init:true};$('surfCity').hidden=b.def.id!=='earth';if(b.def.id==='earth'){$('surfCity').value=cityIdx;setCity(cityIdx);}
+  SURF={b:b,u:u,yaw:0,pitch:.3,init:true};$('surfCity').hidden=b.def.id!=='earth';if(b.def.id==='earth'){$('surfCity').value=cityIdx;setCity(cityIdx);if(SPEEDS[speedIdx].d>1/24){speedIdx=1;speed.value=1;setSpeed();}}
   if(b.atmoMesh){SURF.atmoVis=b.atmoMesh.visible;b.atmoMesh.visible=false;}
   if(b.pwx)b.pwx.visible=false;
   surfFov0=camera.fov;mode='surface';trans=null;
@@ -3347,6 +3659,43 @@ function haloMat(){return new THREE.ShaderMaterial({uniforms:{t:{value:0},b:{val
   'float dk=clamp(1.0+.75*dot(d,dop),.25,1.9);'+
   'vec3 c=mix(vec3(1.0,.42,.1),vec3(1.0,.9,.75),clamp(ph*.6+ln*.3,0.0,1.0));'+
   'gl_FragColor=vec4(c*(ph+ln)*dk*b,1.0);}'});}
+var NEBPX={value:600};
+function nebMat(){return new THREE.ShaderMaterial({uniforms:{op:{value:0},px:NEBPX},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  vertexShader:'attribute float aS;attribute vec4 aC;uniform float px;varying vec4 vC;void main(){vC=aC;vec4 mv=modelViewMatrix*vec4(position,1.0);float sc=length(modelMatrix[0].xyz);gl_PointSize=clamp(aS*sc*px/max(-mv.z,.001),1.0,90.0);gl_Position=projectionMatrix*mv;}',
+  fragmentShader:'uniform float op;varying vec4 vC;void main(){vec2 d=gl_PointCoord-.5;float r2=dot(d,d)*4.0;if(r2>1.0)discard;float a=exp(-r2*3.0)*vC.a*op;gl_FragColor=vec4(vC.rgb*a,1.0);}'});}
+function vh3(x,y,z,sd){var v=Math.sin(x*127.1+y*311.7+z*74.7+sd)*43758.5453;return v-Math.floor(v);}
+function vn3(x,y,z,sd){var ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx=x-ix,fy=y-iy,fz=z-iz;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+  function L(a,b,t){return a+(b-a)*t;}
+  return L(L(L(vh3(ix,iy,iz,sd),vh3(ix+1,iy,iz,sd),fx),L(vh3(ix,iy+1,iz,sd),vh3(ix+1,iy+1,iz,sd),fx),fy),L(L(vh3(ix,iy,iz+1,sd),vh3(ix+1,iy,iz+1,sd),fx),L(vh3(ix,iy+1,iz+1,sd),vh3(ix+1,iy+1,iz+1,sd),fx),fy),fz);}
+function nebPoints(kind){
+  var N=kind==='pn'?(LOWQ?4500:8000):(LOWQ?4000:7000),P=new Float32Array(N*3),C=new Float32Array(N*4),S=new Float32Array(N),Rn=Math.random,sd=Rn()*100,n=0;
+  var q=new THREE.Quaternion().setFromEuler(new THREE.Euler(Rn()*TAU,Rn()*TAU,Rn()*TAU)),side=new THREE.Vector3(Rn()-.5,Rn()-.5,Rn()-.5).normalize(),v=new THREE.Vector3();
+  var eb=.62+Rn()*.25,ec=.7+Rn()*.3,bip=kind==='pn'&&Rn()<.65?.5+Rn()*.6:0,tries=0;
+  function put(x,y,z,r,g,b,a,sz){if(n>=N)return;v.set(x,y,z).applyQuaternion(q);P[n*3]=v.x;P[n*3+1]=v.y;P[n*3+2]=v.z;C[n*4]=r;C[n*4+1]=g;C[n*4+2]=b;C[n*4+3]=a;S[n]=sz;n++;}
+  while(n<N&&tries<N*20){tries++;
+    var u=new THREE.Vector3(Rn()*2-1,Rn()*2-1,Rn()*2-1);if(u.lengthSq()>1||u.lengthSq()<1e-4)continue;u.normalize();
+    var cl=vn3(u.x*3+5,u.y*3+1,u.z*3+9,sd),cl2=vn3(u.x*9,u.y*9,u.z*9,sd+7),lop=1+.45*u.dot(side);
+    if(kind==='pn'){
+      var k=Rn();
+      if(k<.68){if(Rn()>Math.pow(cl*.6+cl2*.4,1.6)*lop*1.3)continue;
+        var r0=.25*(1+.18*(cl-.5)),t=(Rn()+Rn()+Rn()-1.5)*.035,r=r0+t,tt=clamp((t+.05)/.1,0,1);
+        put(u.x*r,u.y*r*eb,u.z*r*ec,1,.82-.55*tt,.45-.25*tt,.13*lop,.009+Rn()*.014);}
+      else if(k<.8){var ri=.2*Math.cbrt(Rn());put(u.x*ri,u.y*ri*eb,u.z*ri*ec,.3,.85,.9,.035,.03+Rn()*.03);}
+      else if(k<.92||!bip){if(Rn()>cl)continue;var rh=.33+Rn()*.1;put(u.x*rh,u.y*rh*eb,u.z*rh*ec,.85,.2,.25,.035,.022+Rn()*.02);}
+      else{var sg=Rn()<.5?1:-1,h=.18+Rn()*.28*bip,w2=(.05+h*.35)*Math.sqrt(Rn()),an=Rn()*TAU;put(Math.cos(an)*w2,sg*h,Math.sin(an)*w2,.75,.35,.7,.07,.014+Rn()*.016);}
+    }else{
+      if(Rn()>(.35+.65*cl)*lop*.8)continue;
+      var r1=.12+.31*Math.sqrt(Rn())*(1+.2*(cl2-.5)),f=r1/.43,hot=Rn()<.5;
+      if(Rn()<.12){var rc=.12*Math.cbrt(Rn());put(u.x*rc,u.y*rc,u.z*rc,.45,.6,1,.08,.05+Rn()*.05);continue;}
+      for(var j=0;j<3&&n<N;j++){var rr=r1*(1-j*.04);put(u.x*rr+(Rn()-.5)*.006,u.y*rr+(Rn()-.5)*.006,u.z*rr+(Rn()-.5)*.006,hot?1:.55,hot?.45+.3*(1-f):.7,hot?.25:1,.3*(.5+f),.009+Rn()*.012);}
+    }
+  }
+  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P.subarray(0,n*3),3));g.setAttribute('aC',new THREE.BufferAttribute(C.subarray(0,n*4),4));g.setAttribute('aS',new THREE.BufferAttribute(S.subarray(0,n),1));
+  var pts=new THREE.Points(g,nebMat());pts.frustumCulled=false;pts.renderOrder=1;
+  pts.material.opacity=0;Object.defineProperty(pts.material,'opacity',{get:function(){return this.uniforms.op.value;},set:function(x){if(this.uniforms)this.uniforms.op.value=x;},configurable:true});
+  pts.material.rotation=0;return pts;
+}
+function nebPxUpdate(){NEBPX.value=renderer.domElement.height/(2*Math.tan(camera.fov*D2R/2));}
 function nebTex(){
   var S=512,c=document.createElement('canvas');c.width=c.height=S;var g=c.getContext('2d'),C=S/2;
   var rg=g.createRadialGradient(C,C,0,C,C,C);rg.addColorStop(0,'rgba(170,200,255,.55)');rg.addColorStop(.25,'rgba(120,150,255,.22)');rg.addColorStop(.7,'rgba(255,110,70,.08)');rg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=rg;g.fillRect(0,0,S,S);
@@ -3376,7 +3725,7 @@ function makePulsar(R,parent){
   [1,-1].forEach(function(sg){[[R*2.6,wide],[R*.6,core]].forEach(function(q){var cn=new THREE.Mesh(new THREE.ConeGeometry(q[0],L,32,1,true),q[1]);cn.position.y=sg*L/2;cn.rotation.z=sg>0?Math.PI:0;cn.renderOrder=3;bg.add(cn);});});
   var arm=new THREE.Group();arm.rotation.z=PULS_TILT;arm.add(bg);
   var spin=new THREE.Group();spin.add(arm);parent.add(spin);o.beams=spin;o.bmats=[wide,core];o.ph=Math.random()*TAU;o.fl=0;
-  var ns=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));ns.scale.setScalar(R*44);parent.add(ns);o.neb=ns;o.nebT=0;o.R=R;
+  var ns=nebPoints('snr');ns.scale.setScalar(R*44);parent.add(ns);o.neb=ns;o.nebT=0;o.R=R;
   return o;
 }
 function makeBH(R,parent){
@@ -3393,7 +3742,7 @@ function applyExotic(i){
     var q=makeBH(R,sunBody.pivot);EXO.disk=q.disk;EXO.ringS=q.ringS;
   }else if(i===7){
     sunBody.mesh.visible=false;sunBody.glow1.visible=sunBody.glow2.visible=false;if(FX&&FX.g)FX.g.visible=false;
-    var ns=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));sunBody.pivot.add(ns);EXO.neb=ns;EXO.nebT=0;
+    var ns=nebPoints('snr');sunBody.pivot.add(ns);EXO.neb=ns;EXO.nebT=0;
   }
   refreshStarDot(sunBody);
 }
@@ -3418,7 +3767,8 @@ function setStarOn(b,i){
   if(focus===b){updateInfo();syncLab();}
 }
 function starFlare(){
-  var t=labStar();if(t===sunBody){if(!FX)return;emitFlare();emitCme(true);FX.cm.t=0;FX.cm.force=true;FX.cmPts.visible=true;return;}
+  var t=labStar();if(t===sunBody&&sunType>=4){toast(sunType===4?'Beyaz cücenin yüzeyinde füzyon ve manyetik fırtına yok; patlama olmaz.':sunType===7?'Burada artık bir yıldız yok.':'Bu bir yıldız kalıntısı ('+SUN_TYPES[sunType].name.toLowerCase()+'); yüzeyinde güneş patlaması olmaz.',5000);return;}
+  if(t===sunBody){if(!FX)return;emitFlare();emitCme(true);FX.cm.t=0;FX.cm.force=true;FX.cmPts.visible=true;return;}
   if(t.starType>=5){toast(t.def.name+' artık bir yıldız kalıntısı; yüzeyinde patlama olmaz');return;}
   flashAt(t.pivot,new THREE.Vector3(),effVr(t)*7,SUN_TYPES[t.starType].glow);if(typeof audWhoosh==='function')audWhoosh();
   toast(t.def.name+': yıldız patlaması (parlama). Yüzeydeki manyetik alan çizgileri koptu, saniyeler içinde milyarlarca atom bombası kadar enerji saçıldı.',5000);
@@ -3460,7 +3810,7 @@ function pulsarStep(o,body,dt){
   if(body===sunBody)sunLight.intensity=SUN_TYPES[5].I*(1+o.fl*1.6);else if(body.light)body.light.intensity=SUN_TYPES[5].I*.7*(1+o.fl*1.6);
   nebStep(o,body,dt);
 }
-function nebStep(o,body,dt){if(o.neb){o.nebT+=dt;o.neb.material.opacity=clamp(o.nebT/6,0,1)*.42;o.neb.material.rotation+=dt*.004;o.neb.scale.setScalar(body.def.vr*(36+Math.min(o.nebT,120)*.12));}}
+function nebStep(o,body,dt){if(o.neb){nebPxUpdate();o.nebT+=dt;o.neb.material.opacity=clamp(o.nebT/6,0,1)*1.1;o.neb.rotation.y+=dt*.004;o.neb.scale.setScalar(body.def.vr*(36+Math.min(o.nebT,120)*.12));}}
 /* gezegenimsi bulutsu */
 var PNEB=[];
 function pnTex(){
@@ -3488,14 +3838,14 @@ function pnTex(){
 function planetaryNebula(){
   var t=labStar(),ty=t===sunBody?sunType:t.starType;
   if(!(ty===0||ty===3)){toast(ty===1?'Kırmızı cüceler bu evreye trilyonlarca yıl sonra ulaşır; dış katman atacak kadar şişmezler.':ty===2?'Mavi devler bulutsu bırakarak sönmez; süpernova olarak patlarlar.':'Bu yıldız zaten ölmüş durumda.',6000);return;}
-  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:pnTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));sp.scale.setScalar(t.def.vr*2);t.pivot.add(sp);
+  var sp=nebPoints('pn');sp.scale.setScalar(t.def.vr*2);t.pivot.add(sp);
   PNEB.push({sp:sp,t:0,R:t.def.vr});
   if(t===sunBody){setStar(4);focusBody('sun',{dist:sunBody.def.vr*40});}else{setStarOn(t,4);focusBody(t.def.id,{dist:t.def.vr*40});}
   toast((t===sunBody?'Güneş\'in gerçek sonu: yaklaşık 7,5 milyar yıl sonra kırmızı dev':t.def.name+': kırmızı dev')+' dış katmanlarını yavaşça uzaya savurdu; geriye sıcak çekirdek, yani beyaz cüce kaldı. Çekirdeğin morötesi ışığı bu kabuğu parlatıyor: gezegenimsi bulutsu (adı yanıltıcı, gezegenle ilgisi yok). Yaklaşık 10.000 yıl görünür kalır.',9000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
-function pnStep(dt){for(var i=PNEB.length-1;i>=0;i--){var P=PNEB[i];P.t+=dt;P.sp.scale.setScalar(P.R*(2+58*(1-Math.exp(-P.t/14))));P.sp.material.rotation+=dt*.003;
-  P.sp.material.opacity=clamp(P.t/4,0,1)*.75*(P.t>180?Math.max(0,1-(P.t-180)/40):1);if(P.t>220){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.material.map.dispose();PNEB.splice(i,1);}}}
+function pnStep(dt){if(PNEB.length)nebPxUpdate();for(var i=PNEB.length-1;i>=0;i--){var P=PNEB[i];P.t+=dt;P.sp.scale.setScalar(P.R*(2+58*(1-Math.exp(-P.t/14))));P.sp.rotation.y+=dt*.003;
+  P.sp.material.opacity=clamp(P.t/4,0,1)*.9*(P.t>180?Math.max(0,1-(P.t-180)/40):1);if(P.t>220){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();PNEB.splice(i,1);}}}
 function audPulse(vol){
   if(!AUD.on||!AUD.ctx||document.hidden)return;var ctx=AUD.ctx,t=ctx.currentTime+.005;
   var b=ctx.createBufferSource();b.buffer=AUD.nb||(AUD.nb=audNoise(ctx));var bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1700;bp.Q.value=.9;b.connect(bp);audEnv(bp,t,.0015,.42*vol,.035);b.start(t,Math.random()*3);b.stop(t+.08);

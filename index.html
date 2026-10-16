@@ -497,7 +497,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <tr><td>Mini harita</td><td>Üstten bakışta bir gezegene tıkla, oraya git</td></tr>
         <tr><td>Laboratuvar</td><td>Dönüş, yörünge, boyut, eğiklik; yeni gezegen; yıldız türü; kaos</td></tr>
       </table>
-      <p class="note" style="margin-top:12px">Veri kaynakları: yıldızlar, takımyıldızlar ve Samanyolu biçimi Hipparcos / Yale Parlak Yıldız Kataloğu (d3-celestial, © Olaf Frohn, BSD lisansı); Dünya dokuları NASA Blue Marble ve Black Marble; kıyı çizgileri Natural Earth. Gezegen konumları gerçek başlangıç boylamlarından hesaplanır.</p>
+      <p class="note" style="margin-top:12px">Veri kaynakları: yıldızlar, takımyıldızlar ve Samanyolu biçimi Hipparcos / Yale Parlak Yıldız Kataloğu (d3-celestial, © Olaf Frohn, BSD lisansı); Dünya dokuları NASA Blue Marble ve Black Marble; Güneş, Ay, gezegen, Satürn halkası, Dünya bulutları ve Samanyolu fotoğraf dokuları Solar System Scope (CC BY 4.0, NASA görev verilerinden); kıyı çizgileri Natural Earth. Gezegen konumları gerçek başlangıç boylamlarından hesaplanır.</p>
       <div class="btnrow"><button class="btn pri" id="helpOk">Kapat</button></div>
     </div>
   </div>
@@ -898,7 +898,7 @@ function milkyWayTex(){
 function addSky(){
   SKYG=new THREE.Group();scene.add(SKYG);
   var m=new THREE.Mesh(new THREE.SphereGeometry(5200,64,40),new THREE.MeshBasicMaterial({map:milkyWayTex(),side:THREE.BackSide,depthWrite:false,fog:false,transparent:true,opacity:.9}));
-  m.renderOrder=-10;SKYG.add(m);
+  m.renderOrder=-10;SKYG.add(m);SKYG.mw=m;
   var S=SKYDATA.s,n=S.length/4,pos=new Float32Array(n*3),col=new Float32Array(n*3),sz=new Float32Array(n),R=4200;
   for(var i=0;i<n;i++){
     var d=skyDir(S[i*4]/20,S[i*4+1]/20),mag=S[i*4+2]/10,c=bvColor(S[i*4+3]/100),b=clamp(.22+(6.2-mag)*.17,.2,1.35);
@@ -1005,14 +1005,15 @@ function initialAngle(def){if(def.comet){var C=cmSetup(def);return C.tp!=null?TA
 
 /* ---------- Güneş dokuları, gölgeler ---------- */
 var SUN_GLSL='float h13(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}float vn3(vec3 x){vec3 i=floor(x);vec3 f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(h13(i),h13(i+vec3(1.,0.,0.)),f.x),mix(h13(i+vec3(0.,1.,0.)),h13(i+vec3(1.,1.,0.)),f.x),f.y),mix(mix(h13(i+vec3(0.,0.,1.)),h13(i+vec3(1.,0.,1.)),f.x),mix(h13(i+vec3(0.,1.,1.)),h13(i+vec3(1.,1.,1.)),f.x),f.y),f.z);}float fbm3(vec3 p){\n#ifdef LQ\nreturn .55*vn3(p)+.3*vn3(p*2.03)+.15*vn3(p*4.1);\n#else\nreturn .5*vn3(p)+.25*vn3(p*2.03)+.125*vn3(p*4.1)+.0625*vn3(p*8.3);\n#endif\n}';
+var SUNTEX=null;
 function sunMaterial(i){
   var t=SUN_TYPES[i];
   return new THREE.ShaderMaterial({
     defines:LOWQ?{LQ:1}:{},
-    uniforms:{lo:{value:new THREE.Color(t.lo)},hi:{value:new THREE.Color(t.hi)},time:{value:0},spots:{value:i===4?0:1},ha:{value:0}},
-    vertexShader:'varying vec3 vO;varying vec3 vN;varying vec3 vV;void main(){vO=normalize(position);vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+    uniforms:{lo:{value:new THREE.Color(t.lo)},hi:{value:new THREE.Color(t.hi)},time:{value:0},spots:{value:i===4?0:1},ha:{value:0},sT:{value:SUNTEX||DUMMY},sK:{value:SUNTEX?.55:0}},
+    vertexShader:'varying vec3 vO;varying vec3 vN;varying vec3 vV;varying vec2 vUv;void main(){vUv=uv;vO=normalize(position);vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
     extensions:{derivatives:true},
-    fragmentShader:'uniform vec3 lo;uniform vec3 hi;uniform float time;uniform float spots;uniform float ha;varying vec3 vO;varying vec3 vN;varying vec3 vV;\n'+SUN_GLSL+
+    fragmentShader:'uniform vec3 lo;uniform vec3 hi;uniform float time;uniform float spots;uniform float ha;uniform sampler2D sT;uniform float sK;varying vec3 vO;varying vec3 vN;varying vec3 vV;varying vec2 vUv;\n'+SUN_GLSL+
     'vec3 h33(vec3 p){p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6)));return fract(sin(p)*43758.5453);}'+
     'vec2 vor(vec3 x,float t){vec3 p=floor(x);vec3 f=fract(x);float d1=8.0;float d2=8.0;for(int k=-1;k<=1;k++)for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){vec3 b=vec3(float(i),float(j),float(k));vec3 o=h33(p+b);o=.5+.38*sin(t+6.2831*o);vec3 r=b+o-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2){d2=d;}}return vec2(sqrt(d1),sqrt(d2));}'+
     'void main(){vec3 q=vO;float t=time;'+
@@ -1026,7 +1027,7 @@ function sunMaterial(i){
     'vec3 cen=mix(hi,vec3(1.0,.97,.86),.45);'+
     'vec3 col=mix(cen,mix(lo,hi,.25),pow(1.0-mu,.9)*.85);'+
     'float fac=smoothstep(.6,.72,sf)*(1.0-pen)*pow(1.0-mu,1.5)*spots;'+
-    'col*=1.0+g+sg+fac*.35+(big-.5)*.08;'+
+    'col*=1.0+g+sg+fac*.35+(big-.5)*.08;if(sK>0.0){vec3 st=texture2D(sT,vUv).rgb;float sm=dot(st,vec3(.3,.59,.11));col*=mix(1.0,.5+.75*sm,sK);}'+
     'float stri=.8+.2*sin(atan(q.y,q.x)*90.0+sf*40.0);'+
     'col=mix(col,col*.5*stri,pen);col=mix(col,vec3(.12,.05,.02),umb);'+
     'col*=.36+.64*pow(mu,.5);col*=1.16;'+
@@ -1165,7 +1166,7 @@ function buildBody(def){
     var rmat=new THREE.MeshStandardMaterial({map:rt,transparent:true,side:THREE.DoubleSide,roughness:1,depthWrite:false});
     if(def.ringTint)rmat.color=new THREE.Color(def.ringTint);
     b.ringShU=newShU();patchShadow(rmat,b.ringShU,'shr','diffuseColor.rgb*=lightK*(1.0-0.9*shadowOcc(vWP));');
-    var ring=new THREE.Mesh(rg,rmat);ring.rotation.x=-Math.PI/2;tilt.add(ring);
+    var ring=new THREE.Mesh(rg,rmat);ring.rotation.x=-Math.PI/2;tilt.add(ring);b.ringMesh=ring;
   }
   if(isStar){
     var T=SUN_TYPES[b.starType];
@@ -2268,10 +2269,14 @@ function wxAt(lat,lon,st){
   var d=(st.wA*(dA-.485)+st.wB*(dB-.485))/Math.hypot(st.wA,st.wB);
   var u=(lon+180)/360,v=(90-lat)/180,ann=wxBil(WX.C,360,180,u*360-.5,v*180-.5,0,4,false),sea=wxBil(WX.C,360,180,u*360-.5,v*180-.5,1,4,false);
   var sg=lat>0?1:(lat<0?-1:0),cov=wxBand(lat,st.s)+(ann-.5)+(sea-.5)*st.s*sg;
-  return {x:.5+d+(cov-.5)*.75,d:d,cov:cov};
+  var x=.5+d+(cov-.5)*.75;
+  if(WX.R){var aA=w*D2R*WX.P*(st.fA-.5),aB=w*D2R*WX.P*(st.fB-.5),rr=function(a,o){var uu=u-a/TAU+o;uu-=Math.floor(uu);return wxBil(WX.R,512,256,uu*512-.5,v*256-.5,0,1,false)/255;};
+    var rA=rr(aA,wxROff(st.sA)),rB=rr(aB,wxROff(st.sB)),r=(st.wA*rA+st.wB*rB)/Math.max(st.wA+st.wB,.001);x=x+(.45+r*.3+(cov-.5)*.15-x)*WX.RK;}
+  return {x:x,d:d,cov:cov};
 }
+function wxROff(sd){var f=sd*.6180339;return (f-Math.floor(f))*.5-.25;}
 var WX_GLSL=[
-'uniform vec4 cyc[4];uniform float cyT;uniform sampler2D nT;uniform sampler2D cT;uniform vec4 lay;uniform vec2 wts;uniform float seas;uniform float wP;uniform float op;uniform vec3 tint;',
+'uniform vec4 cyc[4];uniform float cyT;uniform sampler2D nT;uniform sampler2D cT;uniform sampler2D rT;uniform float rK;uniform vec2 rO;varying vec2 vUv;uniform vec4 lay;uniform vec2 wts;uniform float seas;uniform float wP;uniform float op;uniform vec3 tint;',
 'varying vec3 vObj;varying vec3 vN;varying vec3 vP;',
 'float n3(vec3 x){vec3 i=floor(x);vec3 f=fract(x);f=f*f*(3.0-2.0*f);vec2 uv=i.xy+vec2(37.0,17.0)*i.z+f.xy;vec2 rg=texture2D(nT,(uv+.5)/256.0).xy;return mix(rg.x,rg.y,f.z);}',
 'float fb5(vec3 p){float s=0.0;float a=.5;for(int i=0;i<5;i++){s+=a*n3(p);p=vec3(.8*p.y+.6*p.z,-.8*p.x+.36*p.y-.48*p.z,-.6*p.x-.48*p.y+.64*p.z)*2.03;a*=.5;}return s;}',
@@ -2286,6 +2291,7 @@ var WX_GLSL=[
 ' float band=.5+.28*exp(-pow((lat-6.0*seas)/7.0,2.0))-.22*exp(-pow((al-25.0+3.0*seas*sg)/9.0,2.0))+.14*exp(-pow((al-55.0)/12.0,2.0));',
 ' float cov=band+(ct.r-.5)+(ct.g-.5)*seas*sg;',
 ' float x=.5+d+(cov-.5)*.75;',
+' if(rK>0.0){float aA=w*0.0174533*wP*(lay.x-.5);float aB=w*0.0174533*wP*(lay.y-.5);float rA=texture2D(rT,vec2(vUv.x-aA/6.2831853+rO.x,vUv.y)).r;float rB=texture2D(rT,vec2(vUv.x-aB/6.2831853+rO.y,vUv.y)).r;float r=(wts.x*rA+wts.y*rB)/max(wts.x+wts.y,.001);x=mix(x,.45+r*.3+(cov-.5)*.15,rK);}',
 ' for(int i=0;i<4;i++){vec4 cy=cyc[i];if(cy.w>.01){vec3 cc=cy.xyz;float R=.15;float dd=acos(clamp(dot(p,cc),-1.0,1.0));if(dd<R*2.0){vec3 e=normalize(cross(vec3(0.0,1.0,0.0),cc));vec3 nn=cross(cc,e);vec2 q=vec2(dot(p,e),dot(p,nn))/R;float r=length(q);float hs=cc.y>0.0?1.0:-1.0;float ph=atan(q.y,q.x)+hs*cyT;float arm=.5+.5*sin(2.0*ph*hs-log(r+.03)*4.5+fb5(p*30.0)*2.0);float fall=exp(-r*r*1.1);float eye=smoothstep(.05,.11,r*(1.0+.4*(1.0-cy.w)));float wall=exp(-pow((r-.14)/.06,2.0));float core=exp(-r*r*2.2);x=mix(x,.35,fall*cy.w*.6);x+=cy.w*(core*.42+fall*(.05+.3*smoothstep(.25,.85,arm))+wall*.25)*eye;x-=cy.w*(1.0-eye)*.9;}}}',
 ' float a=smoothstep(.47,.67,x)*op;float rn=smoothstep(.62,.72,x);',
 ' vec3 n=normalize(vN);vec3 sp=(viewMatrix*vec4(0.0,0.0,0.0,1.0)).xyz;vec3 L=normalize(sp-vP);float dd=dot(n,L);',
@@ -2296,15 +2302,15 @@ var WX_GLSL=[
 '}'].join('\n');
 function weatherMaterial(){
   wxInit();
-  var U={nT:{value:WX.nTex},cT:{value:WX.cTex},lay:{value:new THREE.Vector4()},wts:{value:new THREE.Vector2(1,0)},seas:{value:0},wP:{value:WX.P},op:{value:1},tint:{value:new THREE.Color(1,1,1)},cyc:{value:[new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4()]},cyT:{value:0}};
+  var U={rT:{value:DUMMY},rK:{value:0},rO:{value:new THREE.Vector2()},nT:{value:WX.nTex},cT:{value:WX.cTex},lay:{value:new THREE.Vector4()},wts:{value:new THREE.Vector2(1,0)},seas:{value:0},wP:{value:WX.P},op:{value:1},tint:{value:new THREE.Color(1,1,1)},cyc:{value:[new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4()]},cyT:{value:0}};
   WX.u=U;
   return new THREE.ShaderMaterial({uniforms:U,transparent:true,depthWrite:false,
-    vertexShader:'varying vec3 vObj;varying vec3 vN;varying vec3 vP;void main(){vObj=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vP=mv.xyz;gl_Position=projectionMatrix*mv;}',
+    vertexShader:'varying vec3 vObj;varying vec3 vN;varying vec3 vP;varying vec2 vUv;void main(){vUv=uv;vObj=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vP=mv.xyz;gl_Position=projectionMatrix*mv;}',
     fragmentShader:WX_GLSL});
 }
 function updateWeather(){
   if(!WX.u)return;var st=wxState(),U=WX.u;
-  U.lay.value.set(st.fA,st.fB,st.sA,st.sB);U.wts.value.set(st.wA,st.wB);U.seas.value=st.s;
+  U.lay.value.set(st.fA,st.fB,st.sA,st.sB);U.wts.value.set(st.wA,st.wB);U.seas.value=st.s;U.rO.value.set(wxROff(st.sA),wxROff(st.sB));
   var e=byId.earth;if(e&&e.shU){e.shU.seas.value=st.s;e.shU.dTg.value=e.cl?clamp(e.cl.Ts-288,-60,60):0;}
   var list=activeStorms();WX.storms=list;
   for(var i=0;i<4;i++){var v=U.cyc.value[i],s=list[i];if(s){var la=s.lat*D2R,a=(s.lon+180)/360*TAU,cl=Math.cos(la);v.set(-Math.cos(a)*cl,Math.sin(la),Math.sin(a)*cl,s.k);}else v.w=0;}
@@ -2450,12 +2456,13 @@ function updatePlanetWx(){
     b.pwx.rotation.y=b.mesh.rotation.y;
     var K=b.cl?b.cl.K:1,h=b.hab,hot=b.cl?ss(500,900,b.cl.Ts):0;U.lk.value=K;
     var noAtm=h&&h.atm==='none';
+    if(b.def.id==='venus'&&b.realMap){var wm=(noAtm&&b.surfMap)?b.surfMap:b.realMap;if(b.mesh.material.map!==wm)b.mesh.material.map=wm;}
     var st=0;
     if(b.def.id==='mars'){var md=marsDust();st=md.reg+md.glob*.75;}
     if(b.def.id==='saturn')st=saturnGWS()*.35;
     U.storm.value=st;
     if(b.def.id==='neptune'){var la=-20*D2R,phi=1.2-wxT*.03;U.spot.value.set(-Math.cos(phi)*Math.cos(la),Math.sin(la),Math.sin(phi)*Math.cos(la));U.spotA.value+=((neptuneGDS()?1:0)-U.spotA.value)*.05;}
-    U.op.value=noAtm?0:c.op*(b.def.id==='venus'?1:(1-hot*(b.def.id==='mars'?0:.7)));
+    U.op.value=noAtm?0:c.op*(b.realTex?(b.def.id==='venus'?.3:.45):1)*(b.def.id==='venus'?1:(1-hot*(b.def.id==='mars'?0:.7)));if(b.realTex&&b.def.id==='neptune')U.spotA.value=0;
   });
 }
 var PWX_INFO={
@@ -2552,13 +2559,24 @@ function updateEclipse(){
   $('eclTxt').textContent=tot?'Tam tutulma':(cov>0?'Güneşin %'+Math.round(cov*100)+' kadarı kapalı':'Ay yaklaşıyor');
 }
 
-var REALTEX={mercury:'tex/mercury.jpg'};
+var REALTEX={mercury:'tex/mercury.jpg',moon:'tex/moon.jpg',venus:'tex/venus-atmo.jpg',mars:'tex/mars.jpg',jupiter:'tex/jupiter.jpg',saturn:'tex/saturn.jpg',uranus:'tex/uranus.jpg',neptune:'tex/neptune.jpg'};
 function loadRealPlanets(){
   var L=new THREE.TextureLoader();
   Object.keys(REALTEX).forEach(function(id){var b=byId[id];if(!b||!b.mesh||!b.mesh.material.map)return;
     L.load(REALTEX[id],function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
       var m=b.mesh.material;if(m.map)m.map.dispose();m.map=t;if(m.bumpMap){m.bumpMap=t;m.bumpScale=.35;}m.needsUpdate=true;
-      b.realTex=true;if(b.shU){b.shU.crat.value=0;}},undefined,function(){});});
+      b.realTex=true;b.realMap=t;if(b.shU){b.shU.crat.value=0;}},undefined,function(){});});
+  var v=byId.venus;if(v)L.load('tex/venus-surface.jpg',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());v.surfMap=t;},undefined,function(){});
+  var s=byId.saturn;if(s&&s.ringMesh)L.load('tex/saturn-ring.png',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    var m=s.ringMesh.material;if(m.map)m.map.dispose();m.map=t;m.needsUpdate=true;if(s.shU&&s.shU.ringT)s.shU.ringT.value=t;},undefined,function(){});
+}
+function loadRealSky(){
+  var L=new THREE.TextureLoader(),an=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  L.load('tex/sun.jpg',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=an;SUNTEX=t;BODIES.forEach(function(b){if(b.sunU&&b.sunU.sT){b.sunU.sT.value=t;b.sunU.sK.value=.55;}});},undefined,function(){});
+  if(SKYG&&SKYG.mw)L.load('tex/milkyway.jpg',function(t){t.encoding=THREE.sRGBEncoding;var m=SKYG.mw.material;if(m.map)m.map.dispose();m.map=t;m.opacity=1;m.needsUpdate=true;},undefined,function(){});
+  L.load('tex/earth-clouds.jpg',function(t){t.wrapS=THREE.RepeatWrapping;t.anisotropy=an;
+    try{var c=document.createElement('canvas');c.width=512;c.height=256;var g=c.getContext('2d');g.drawImage(t.image,0,0,512,256);var d=g.getImageData(0,0,512,256).data,a=new Uint8Array(512*256);for(var i=0;i<a.length;i++)a[i]=d[i*4];WX.R=a;}catch(e){WX.R=null;}
+    WX.RK=WX.R?.62:0;if(WX.u){WX.u.rT.value=t;WX.u.rK.value=.62;}},undefined,function(){});
 }
 function loadRealEarth(){
   var e=byId.earth;if(!e||!e.mesh||!e.mesh.material.uniforms)return;var u=e.mesh.material.uniforms,L=new THREE.TextureLoader(),got={};
@@ -3464,7 +3482,7 @@ function init(){
   DEFS.forEach(buildBody);
   initReal();
   addCraft();
-  loadRealEarth();loadRealPlanets();
+  loadRealEarth();loadRealPlanets();loadRealSky();
   loadCustom();
   buildStarBtns();
   rebuildLists();

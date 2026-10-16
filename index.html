@@ -2552,7 +2552,7 @@ function updateEclipse(){
   $('eclTxt').textContent=tot?'Tam tutulma':(cov>0?'Güneşin %'+Math.round(cov*100)+' kadarı kapalı':'Ay yaklaşıyor');
 }
 
-var REALTEX={};
+var REALTEX={mercury:'tex/mercury.jpg'};
 function loadRealPlanets(){
   var L=new THREE.TextureLoader();
   Object.keys(REALTEX).forEach(function(id){var b=byId[id];if(!b||!b.mesh||!b.mesh.material.map)return;

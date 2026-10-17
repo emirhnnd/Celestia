@@ -3386,7 +3386,7 @@ function stepDarts(dt){
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
     if(a.def.star&&(t.def.star||t===sunBody)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(t.pos,DV).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
-    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt((a.GM||1)*sunMass/Math.max(rl,1e-3))*.55,v=tg.multiplyScalar(vs).addScaledVector(rv.normalize(),-vs*.25);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
+    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
   });
@@ -4176,7 +4176,7 @@ function stepTDEStream(T,h){
     for(var i=0;i<T.N;i++){if(!T.alive[i])continue;
       var x=p[i*3],y=p[i*3+1],z=p[i*3+2],r2=x*x+y*y+z*z+.05,r=Math.sqrt(r2),a=-GM/(r2*r)*h;
       v[i*3]+=x*a;v[i*3+1]+=y*a;v[i*3+2]+=z*a;
-      if(r<T.rt*1.4){var dr=Math.min(.3,Math.abs(h)*.025*(T.rt/r));v[i*3]*=1-dr;v[i*3+1]*=1-dr*1.5;v[i*3+2]*=1-dr;}
+      if(r<T.rt*1.4){var dr=Math.min(.2,Math.abs(h)*.01*(T.rt/r));v[i*3]*=1-dr;v[i*3+1]*=1-dr*1.5;v[i*3+2]*=1-dr;}
       p[i*3]+=v[i*3]*h;p[i*3+1]+=v[i*3+1]*h;p[i*3+2]+=v[i*3+2]*h;
       if(r<hz||r>4000*DS){T.alive[i]=0;T.left--;p[i*3]=p[i*3+1]=p[i*3+2]=0;if(r<hz)diskBoost=Math.min(6,diskBoost+.004);}
     }

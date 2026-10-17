@@ -1948,7 +1948,7 @@ function setStar(i,keepAge){
   if(focus===sunBody&&typeof updateInfo==='function')updateInfo();
 }
 function buildStarBtns(){
-  SUN_TYPES.forEach(function(t,i){if(i>=5)return;var b=document.createElement('button');b.className='btn';b.textContent=t.name;b.addEventListener('click',function(){var tg=labStar();act('type',{tg:tg.id,i:i});setStarOn(tg,i);toast((tg===sunBody?'Yıldız: ':tg.def.name+': ')+t.name);});$('starBtns').appendChild(b);});
+  SUN_TYPES.forEach(function(t,i){if(i>=5)return;var b=document.createElement('button');b.className='btn';b.textContent=t.name;b.addEventListener('click',function(){var tg=labStar();act('type',{tg:tg.id,i:i});chooseType(tg,i);toast((tg===sunBody?'Yıldız: ':tg.def.name+': ')+t.name);});$('starBtns').appendChild(b);});
 }
 /* genel */
 $('gSpin').addEventListener('input',function(){gSpin=+this.value;$('oGSpin').textContent=fmtX(gSpin);});
@@ -2044,7 +2044,7 @@ function stepGravity(dDays){
     var rr=Math.sqrt(b.gx*b.gx+b.gy*b.gy+b.gz*b.gz),sr=effVr(sunBody)*.95;
     if(isNaN(rr)){b.ang=initialAngle(b.def);gInit(b);return;}
     if(sunType===6&&(b.tdeNow||rr<rtOf(b))){b.tdeNow=false;b.homing=null;startTDE(b);return;}
-    if(b.fallNow||rr<sr){b.fallNow=false;b.homing=null;eatMass(b);toast(b.def.name+' Güneş\'e düştü ve buharlaştı',4500);flashAt(scene,new THREE.Vector3(b.gx,b.gy,b.gz),effVr(b)*6,0xffe0a0);var ft=FIRET||(FIRET=glowTex([[0,'rgba(255,255,255,1)'],[.3,'rgba(255,255,255,.75)'],[.65,'rgba(255,255,255,.25)'],[1,'rgba(255,255,255,0)']]));var fs=new THREE.Sprite(new THREE.SpriteMaterial({map:ft,color:0xffd090,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));fs.position.set(b.gx,b.gy,b.gz);scene.add(fs);FXL.push({o:fs,t:0,T:3,k:'fire',s:effVr(b)*5});destroyBody(b);return;}
+    if(b.fallNow||rr<sr){b.fallNow=false;b.homing=null;eatMass(b);toast(fallText(b.def.name,sunType,'Güneş'),7000);flashAt(scene,new THREE.Vector3(b.gx,b.gy,b.gz),effVr(b)*6,0xffe0a0);var ft=FIRET||(FIRET=glowTex([[0,'rgba(255,255,255,1)'],[.3,'rgba(255,255,255,.75)'],[.65,'rgba(255,255,255,.25)'],[1,'rgba(255,255,255,0)']]));var fs=new THREE.Sprite(new THREE.SpriteMaterial({map:ft,color:0xffd090,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));fs.position.set(b.gx,b.gy,b.gz);scene.add(fs);FXL.push({o:fs,t:0,T:3,k:'fire',s:effVr(b)*5});destroyBody(b);return;}
     if(rr>3000*DS&&!b.rogue){b.rogue=true;toast(b.def.name+' sistemden fırlatıldı: artık yıldızı olmayan başıboş bir gezegen, uzaklaştıkça donacak',6000);}
     b.pivot.position.set(b.gx,b.gy,b.gz);b.ang=Math.atan2(-b.gz,b.gx);if(dDays===0)return;pushTrail(b);
   });
@@ -3243,7 +3243,7 @@ function collide(a,b){
   focusBody(big.def.id,{dist:effVr(big)*9});SLOWMO=2.5;
   var msg=sm.def.name+', '+big.def.name+' ile çarpıştı: ';
   if(cat)msg+='iki gezegen de parçalandı. Kalıntılar tek bir erimiş gezegende birleşti; kütlenin yaklaşık %15\'i uzaya savruldu. Etrafındaki enkaz halkası toplanıp yeni uydu(lar) oluşturabilir.';
-  else if(ratio>.04)msg+=(gas?big.def.name+' çarpanı yuttu; atmosferinde dev bir sıcak leke ve şok dalgası oluştu.':big.def.name+'\'in kabuğu eridi, çarpma bölgesi magma okyanusuna döndü ve gezegen bir süre sarsılıp şekil değiştirdi.')+' Savrulan enkaz yörüngede halka oluşturdu; zamanla yeni bir uyduya toplanacak. Ay\'ımız da Theia çarpışmasıyla böyle doğdu.';
+  else if(ratio>.04)msg+=(gas?big.def.name+' çarpanı yuttu; atmosferinde dev bir sıcak leke ve şok dalgası oluştu.':gen(big.def.name)+' kabuğu eridi, çarpma bölgesi magma okyanusuna döndü ve gezegen bir süre sarsılıp şekil değiştirdi.')+' Savrulan enkaz yörüngede halka oluşturdu; zamanla yeni bir uyduya toplanacak. Ay\'ımız da Theia çarpışmasıyla böyle doğdu.';
   else if(ratio>.003)msg+=(gas?'çarpan atmosferde parçalanıp yandı; Shoemaker-Levy 9\'un 1994\'te Jüpiter\'de bıraktığı gibi koyu bir iz kaldı.':'dev bir krater açıldı, kızgın enkaz yüzeye yağdı.');
   else msg+=(gas?'küçük cisim atmosferde yanıp koyu bir iz bıraktı.':'küçük cisim buharlaştı; geriye bir çarpma krateri kaldı.');
   toast(msg,8000);toastLock=performance.now()+7500;if(typeof audWhoosh==='function')audWhoosh();
@@ -3313,7 +3313,7 @@ function runEvent(e){
     if(e.k==='born'){var nb=byId[e.id];if(nb&&nb.destroyed&&nb.unborn){undestroy(nb);nb.unborn=false;rebuildLists();}}
     else if(e.k==='mass'){sunMass=e.v;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();}
     else if(e.k==='grav'){setGravity(e.on);}
-    else if(!isGone(tg)){FORCE_STAR=tg;try{if(e.k==='bh')blackHole();else if(e.k==='nova')supernova();else if(e.k==='pn')planetaryNebula();else if(e.k==='type')setStarOn(tg,e.i);}finally{FORCE_STAR=null;}}}
+    else if(!isGone(tg)){FORCE_STAR=tg;try{if(e.k==='bh')blackHole();else if(e.k==='nova')supernova();else if(e.k==='pn')planetaryNebula();else if(e.k==='type')chooseType(tg,e.i);}finally{FORCE_STAR=null;}}}
   else if(e.type==='rr'){var m=byId[e.id];if(m&&!isGone(m)){m.mod.rr=e.rr;if(m.line)m.line.scale.setScalar(moonVisR(m)/m.def.orbit);if(m.mod.rr<moonRoche(m))roche(m);if(m===focus)syncMoonUI();}}
   tlBusy=false;e.done=true;
 }
@@ -3351,8 +3351,9 @@ function clearTimeline(){SNAPS=[];EVENTS=[];lastSnapT=-1e18;}
 
 /* ---------- yıldız / kara delik fırlatma ve çarpışmaları ---------- */
 var STARM=[1,.2,15,1,.6,1.4,6,0];
+function chooseType(tg,i){setStarOn(tg,i);if(tg===sunBody){sunMass=STARM[i]+EATEN/333000;$('sMass').value=sliderFromMass(Math.max(.1,STARM[i]));$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}else tg.massAbs=null;}
 function stType(b){return b===sunBody?sunType:(b.def.star?b.starType:-1);}
-function stMass(b){return b===sunBody?sunMass:STARM[b.starType]*Math.pow(b.mod.size||1,1.5);}
+function stMass(b){return b===sunBody?sunMass:(b.massAbs!=null?b.massAbs:STARM[b.starType]*Math.pow(b.mod.size||1,1.5));}
 function isBH(b){return stType(b)===6;}
 /* ek yıldızların rüzgârı (Görünüm > Güneş rüzgârı ve parçacıklar) */
 var WCOL={0:0xffe0b0,1:0xffa080,2:0xbfd4ff,3:0xffb090,5:0x9fc8ff};
@@ -3396,7 +3397,16 @@ function unstretch(b){if(b&&b.pivot){b.pivot.quaternion.identity();b.pivot.scale
 function removeStar(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
 function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
 function starInto(t,ty){if(t===sunBody)setStar(ty);else setStarOn(t,ty);}
-function addStarMass(t,m){if(t===sunBody){sunMass+=m;EATEN+=0;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}}
+function addStarMass(t,m){if(t===sunBody){sunMass=Math.max(.05,sunMass+m);$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}else{t.massAbs=Math.max(.05,stMass(t)+m);}}
+function gen(n){var v=(n.toLocaleLowerCase('tr-TR').match(/[aeıioöuü](?=[^aeıioöuü]*$)/)||['e'])[0],end=/[aeıioöuü]$/i.test(n),m={a:'ın',ı:'ın',e:'in',i:'in',o:'un',u:'un',ö:'ün',ü:'ün'}[v];return n+'\''+(end?'n':'')+m;}
+function fallText(nm,tt,tn){
+  if(tt===6)return nm+' kara deliğe düştü: gelgit kuvveti onu uzatıp parçaladı, maddesi diske karışıp olay ufkunda kayboldu.';
+  if(tt===5)return nm+' nötron yıldızına çarptı: çekim Dünya\'nınkinin 100 milyar katı; gezegen saniyeler içinde parçalanıp 20 km\'lik yıldızın yüzeyine milimetrelerce ince bir tabaka olarak yayıldı. Çarpma anında güçlü bir X-ışını parlaması oldu.';
+  if(tt===4)return nm+' beyaz cüceye yaklaşınca gelgit kuvvetiyle parçalandı; enkazı yıldızın yüzeyine yağdı. Gökbilimciler bazı beyaz cücelerin atmosferinde böyle yutulmuş gezegenlerin metallerini (demir, magnezyum, silisyum) gerçekten görüyor.';
+  if(tt===3)return nm+' kırmızı devin seyreltik dış katmanlarına daldı; gazın sürtünmesiyle yavaşlayıp içeri doğru sarmal çizdi ve buharlaştı. Güneş 5 milyar yıl sonra kırmızı dev olunca Merkür ve Venüs\'ün başına bu gelecek.';
+  if(tt===7)return nm+' boş merkezden geçip gitti; burada artık bir yıldız yok.';
+  return nm+' '+(tn==='Güneş'?'Güneş\'e':'yıldıza')+' düştü ve birkaç saat içinde buharlaştı. Yıldız için bu bir damla: kütlesi neredeyse hiç değişmedi, yalnızca yüzeyinde kısa bir parlama oldu.';
+}
 function resolveDart(a,t){
   unstretch(a);unstretch(t);
   var ta=stType(a),tt=stType(t),aS=ta>=0,tS=tt>=0,nmA=a.def.name,nmT=t.def.name,host=t.pivot,msg='';
@@ -3404,25 +3414,34 @@ function resolveDart(a,t){
   if(!aS&&tS){ // gezegen → yıldız
     flashAt(host,new THREE.Vector3().subVectors(a.pos,t.pos),effVr(a)*6,tt===6?0xffd0a0:0xfff0d0);destroyBody(a);
     if(t===sunBody){var m=bodyMass(a);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();}
-    msg=tt===6?nmA+' kara deliğe düştü ve olay ufkunda kayboldu.':tt===5?nmA+' nötron yıldızına çarptı: çekim o kadar güçlü ki gezegen saniyeler içinde 20 km\'lik yıldızın yüzeyine ince bir tabaka olarak yayıldı.':nmA+' yıldıza düştü ve buharlaştı. Yıldız için bu bir damla: kütlesi neredeyse hiç değişmedi.';
+    msg=fallText(nmA,tt,nmT);
   }else if(aS&&!tS){ // yıldız → gezegen
     flashAt(t.pivot,new THREE.Vector3(),effVr(t)*7,ta===6?0xffd0a0:0xffffff);destroyBody(t);keepA();
-    msg=ta===6?nmA+', '+nmT+' gezegenini parçalayıp yuttu.':nmA+', '+nmT+' gezegenini yuttu: gezegen yıldızın sıcak gazına dalıp birkaç saat içinde buharlaştı. Yıldız neredeyse hiç etkilenmedi.';
+    msg=ta===6?nmA+', '+nmT+' gezegenini gelgit kuvvetiyle uzatıp parçaladı ve yuttu.':ta===5?nmA+', '+nmT+' gezegenini parçalayıp yüzeyine yaydı; çarpmada güçlü bir X-ışını parlaması oldu.':ta===4?nmA+', '+nmT+' gezegenini gelgit kuvvetiyle parçaladı; enkazı beyaz cücenin yüzeyine yağdı.':nmA+', '+nmT+' gezegenini yuttu: gezegen yıldızın sıcak gazına dalıp birkaç saat içinde buharlaştı. Yıldız neredeyse hiç etkilenmedi.';
     if(typeof audWhoosh==='function')audWhoosh();
   }else{ // yıldız → yıldız
     var mA=stMass(a),mT=stMass(t),M=mA+mT,kill=true;
     flashAt(host,new THREE.Vector3(),Math.max(effVr(t),effVr(a))*14,0xffffff);
     if(ta===6&&tt===6){gwRipple(host,OVD()*.22);addStarMass(t,mA*.95);msg='İki kara delik birleşti! Kütlelerinin yaklaşık %5\'i bir anda kütleçekim dalgası olarak uzay-zamanı dalgalandırdı (LIGO 2015\'ten beri bunları ölçüyor). Birleşen kara delik geri tepmeyle yerinden de fırlayabilir.';}
-    else if(tt===6||ta===6){var bh=tt===6?t:a,st=bh===t?a:t;if(bh===a&&t!==sunBody){starInto(t,6);}else if(bh===a&&t===sunBody){setStar(6);}addStarMass(t,(bh===t?mA:mT)*.5);diskBoost=6;msg=(bh===t?nmA:nmT)+' kara deliğe yaklaşınca gelgit kuvvetiyle parçalandı; gazının yarısı diske düşüp X-ışınıyla parladı, yarısı uzaya savruldu.';}
+    else if(tt===6||ta===6){var bh=tt===6?t:a,oth=bh===t?a:t,to=stType(oth);
+      if(bh===a)starInto(t,6);
+      if(t===sunBody){var fin=(to===5?mA+mT:(bh===t?mT+mA*.5:mA+mT*.5));addStarMass(t,fin-mT);}
+      diskBoost=6;
+      if(to===5){gwRipple(host,OVD()*.2);msg='Nötron yıldızı–kara delik birleşmesi! Nötron yıldızı ya bütün olarak yutuldu ya da önce parçalanıp diske düştü. Bu çarpışmalar da kütleçekim dalgası yayar; LIGO ve Virgo 2020\'de ilk kez gözledi (GW200105, GW200115).';}
+      else msg=(bh===t?nmA:nmT)+' kara deliğe yaklaşınca gelgit kuvvetiyle parçalandı (gelgit bozulması olayı). Gazının yaklaşık yarısı diske düşüp aylarca X-ışınıyla parladı, yarısı uzaya savruldu.'+(bh===a?' Yıldızın yerinde artık kara delik var.':'');}
     else if(ta===5&&tt===5){snStart(t,false);gwRipple(host,OVD()*.2);setTimeout(function(){starInto(t,6);},1800);addStarMass(t,mA*.9);msg='Kilonova! İki nötron yıldızı birleşti. Bu çarpışmalar evrendeki altının, platinin ve uranyumun çoğunu üretir (2017\'de GW170817 ile hem kütleçekim dalgası hem ışık olarak görüldü). Kalıntı kara deliğe çöktü.';}
-    else if(ta===4&&tt===4||((ta===4||tt===4)&&M>1.4)){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))hideStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
-    else if(ta===5||tt===5){if(tt===5){if(t===sunBody?sunMass+mA>=2.3:true)setTimeout(function(){starInto(t,6);},300);}else starInto(t,5);addStarMass(t,mA*.3);msg=(tt===5?nmT:nmA)+' diğer yıldızın gazını yuttu. Nötron yıldızı yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker. (Bir nötron yıldızının kırmızı devin içine gömülmesine Thorne-Żytkow nesnesi denir.)';}
-    else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M>=1.5?2:Math.min(ta,tt)===1&&Math.max(ta,tt)===1?1:0));
+    else if(ta===4&&tt===4&&M<=1.4){starInto(t,4);addStarMass(t,mA*.95);msg='İki beyaz cüce birleşti. Toplam kütle 1,4 Güneş sınırının altında kaldığı için patlama olmadı; daha ağır ve daha küçük tek bir beyaz cüce oluştu. Bazen bu birleşme sonrası kısa ömürlü, karbonca zengin dev bir yıldız (R Coronae Borealis yıldızı) görülür.';}
+    else if(ta===4&&tt===4){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))hideStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
+    else if(ta===5||tt===5){var nsM=(ta===5?mA:mT),gas=(ta===5?mT:mA),fy=(nsM+gas*.3>=2.3)?6:5;
+      starInto(t,3);if(t===sunBody)SUN_PEND=fy;else t.pend=fy;addStarMass(t,(nsM+gas*.3)-mT);
+      setTimeout(function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===fy)setStar(fy);}else if(t.pend===fy)setStarOn(t,fy);},9000);
+      msg='Nötron yıldızı diğer yıldızın içine gömüldü: dışarıdan şişkin bir kırmızı süperdev gibi görünen bir Thorne-Żytkow nesnesi oluştu (ilk kez 1977\'de öngörüldü, adayları var ama kesin gözlenmedi). Nötron yıldızı içeriden gazı yutar; '+(fy===6?'yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker.':'gaz tükenince geriye yine bir nötron yıldızı kalır.')+' Burada binlerce yıl birkaç saniyeye kısaltıldı.';}
+    else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M<.45?1:0));
       var shell=nebPoints('lrn');shell.scale.setScalar(Math.max(effVr(t),effVr(a))*3);t.pivot.add(shell);PNEB.push({sp:shell,t:0,R:Math.max(effVr(t),effVr(a))*1.2});
       starInto(t,3);if(t===sunBody)SUN_PEND=ny;else t.pend=ny;
       setTimeout(function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===ny)setStar(ny);}else if(t.pend===ny)setStarOn(t,ny);},9000);
       addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
-      msg='Yıldızlar birleşti! Önce ortak bir gaz zarfının içinde sarmal çizdiler, temas anında "parlak kırmızı nova" patlaması oldu (2008\'de V1309 Scorpii\'de gözlendi): dış katmanlar tozlu kırmızı bir kabuk olarak savruldu. Birleşen yıldız önce şişip kızarır, sonra küçülüp ısınır ve daha büyük, mavimsi bir yıldız olur ("mavi başıboş yıldız"). Gerçekte bu durulma binlerce yıl sürer; burada kısaltıldı. Sonuç: '+SUN_TYPES[ny].name+'.';}
+      msg='Yıldızlar birleşti! Önce ortak bir gaz zarfının içinde sarmal çizdiler, temas anında "parlak kırmızı nova" patlaması oldu (2008\'de V1309 Scorpii\'de gözlendi): dış katmanlar tozlu kırmızı bir kabuk olarak savruldu. Birleşen yıldız önce şişip kızarır, sonra küçülüp ısınır ve daha büyük, mavimsi bir yıldız olur ("mavi başıboş yıldız"). Gerçekte bu durulma binlerce yıl sürer; burada kısaltıldı. Sonuç: '+SUN_TYPES[ny].name+(ny===0&&M>1.3?' sınıfında gösteriliyor; gerçekte '+M.toFixed(1).replace('.',',')+' Güneş kütleli, Güneş\'ten sıcak beyaz-sarı bir yıldız (A/F tipi)':'')+(ny===2?' ('+Math.round(M)+' Güneş kütlesi; mavi devler en az ~8 Güneş kütlesiyle doğar)':'')+'.';}
     if(kill)hideStar(a);
     if(typeof audWhoosh==='function')audWhoosh();SHAKE.t=1.4;SHAKE.amp=effVr(t)*.08;
   }
@@ -3434,6 +3453,7 @@ function launchAt(){
   if(b===sunBody){toast('Güneş sistemin merkezinde sabit; onu fırlatamazsın. İkinci bir yıldız ekleyip onu Güneş\'e ya da bir gezegene fırlatabilirsin.',7000);return;}
   if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
   if(isGone(t)){toast('Hedef artık yok');return;}
+  if(t===sunBody&&sunType===7){toast('Merkezde artık bir yıldız yok; önce yıldız türünü seç.',5000);return;}
   if(b.def.star||t.def.star){addEvent({type:'dart',a:b.id,tg:t.id});startDart(b,t);return;}
   if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
@@ -3457,7 +3477,7 @@ function doLaunch(b,t,replay){
 }
 function fillTargets(){
   var s=$('lTarget');if(!s)return;var v=s.value;s.innerHTML='';
-  BODIES.forEach(function(b){if((b.grav||b.def.star||b===sunBody)&&!isGone(b)&&!b.sysHide&&b!==focus){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
+  BODIES.forEach(function(b){if((b.grav||b.def.star||(b===sunBody&&sunType!==7))&&!isGone(b)&&!b.sysHide&&b!==focus){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
   if(v)s.value=v;
 }
 function roche(b){

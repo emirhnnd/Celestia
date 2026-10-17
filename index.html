@@ -1935,6 +1935,7 @@ $('nType').addEventListener('change',function(){$('nColor').value=TYPE_COLORS[th
 var SUN_PEND=null;
 function setStar(i,keepAge){
   SUN_PEND=null;
+  if(i!==0&&sunBody.sunU&&sunBody.sunU.ha.value>0){sunBody.sunU.ha.value=0;$('vHa').setAttribute('aria-checked','false');}
   sunType=i;var t=SUN_TYPES[i];
   sunBody.starType=i;sunBody.sunU.lo.value.setHex(t.lo);sunBody.sunU.hi.value.setHex(t.hi);sunBody.sunU.spots.value=i>=4?0:1;
   sunLight.color.setHex(t.light);sunLight.intensity=t.I;
@@ -3378,22 +3379,26 @@ function startDart(a,t,replay){
 }
 var DV=new THREE.Vector3();
 function stepDarts(dt){
-  BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;return;}
+  BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;unstretch(a);unstretch(t);return;}
     D.k+=Math.min(dt,.05)/D.T;var e=Math.pow(Math.min(1,D.k),1.7);
     DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
+    if(a.def.star&&(t.def.star||t===sunBody)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(t.pos,DV).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
     if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt((a.GM||1)*sunMass/Math.max(rl,1e-3))*.55,v=tg.multiplyScalar(vs).addScaledVector(rv.normalize(),-vs*.25);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
   });
 }
 function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id===b.id;})[0]||b.cust;destroyBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
+function stretchTo(b,dir,k){if(k<=0.001){b.pivot.quaternion.identity();b.pivot.scale.set(1,1,1);return;}b.pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);b.pivot.scale.set(1+k,1-k*.35,1-k*.35);}
+function unstretch(b){if(b&&b.pivot){b.pivot.quaternion.identity();b.pivot.scale.set(1,1,1);}}
 function removeStar(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
 function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
 function starInto(t,ty){if(t===sunBody)setStar(ty);else setStarOn(t,ty);}
 function addStarMass(t,m){if(t===sunBody){sunMass+=m;EATEN+=0;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}}
 function resolveDart(a,t){
+  unstretch(a);unstretch(t);
   var ta=stType(a),tt=stType(t),aS=ta>=0,tS=tt>=0,nmA=a.def.name,nmT=t.def.name,host=t.pivot,msg='';
   var keepA=function(){var P=a.pivot.position;a.ang=Math.atan2(-P.z,P.x);if(a.def.r!=null)a.def.r=Math.max(P.length(),effVr(sunBody)*3);};
   if(!aS&&tS){ // gezegen → yıldız
@@ -3412,8 +3417,12 @@ function resolveDart(a,t){
     else if(ta===5&&tt===5){snStart(t,false);gwRipple(host,OVD()*.2);setTimeout(function(){starInto(t,6);},1800);addStarMass(t,mA*.9);msg='Kilonova! İki nötron yıldızı birleşti. Bu çarpışmalar evrendeki altının, platinin ve uranyumun çoğunu üretir (2017\'de GW170817 ile hem kütleçekim dalgası hem ışık olarak görüldü). Kalıntı kara deliğe çöktü.';}
     else if(ta===4&&tt===4||((ta===4||tt===4)&&M>1.4)){snStart(t,true);if(t===sunBody)setTimeout(function(){setStar(7);},1800);else setTimeout(function(){if(!isGone(t))hideStar(t);},1800);msg='İki yıldız birleşince beyaz cüce 1,4 Güneş kütlesi sınırını aştı: Tip Ia süpernova! Yıldızdan geriye hiçbir şey kalmadı.';}
     else if(ta===5||tt===5){if(tt===5){if(t===sunBody?sunMass+mA>=2.3:true)setTimeout(function(){starInto(t,6);},300);}else starInto(t,5);addStarMass(t,mA*.3);msg=(tt===5?nmT:nmA)+' diğer yıldızın gazını yuttu. Nötron yıldızı yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker. (Bir nötron yıldızının kırmızı devin içine gömülmesine Thorne-Żytkow nesnesi denir.)';}
-    else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M>=1.5?2:Math.min(ta,tt)===1&&Math.max(ta,tt)===1?1:0));starInto(t,ny);addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
-      msg='İki yıldız çarpışıp tek yıldızda birleşti. Ortaya çıkan yıldız daha büyük, daha sıcak ve mavimsi: gökbilimciler böyle yıldızlara "mavi başıboş yıldız" der. Yıldız kümelerinde gerçekten görülürler. Sonuç: '+SUN_TYPES[ny].name+'.';}
+    else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M>=1.5?2:Math.min(ta,tt)===1&&Math.max(ta,tt)===1?1:0));
+      var shell=nebPoints('lrn');shell.scale.setScalar(Math.max(effVr(t),effVr(a))*3);t.pivot.add(shell);PNEB.push({sp:shell,t:0,R:Math.max(effVr(t),effVr(a))*1.2});
+      starInto(t,3);if(t===sunBody)SUN_PEND=ny;else t.pend=ny;
+      setTimeout(function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===ny)setStar(ny);}else if(t.pend===ny)setStarOn(t,ny);},9000);
+      addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
+      msg='Yıldızlar birleşti! Önce ortak bir gaz zarfının içinde sarmal çizdiler, temas anında "parlak kırmızı nova" patlaması oldu (2008\'de V1309 Scorpii\'de gözlendi): dış katmanlar tozlu kırmızı bir kabuk olarak savruldu. Birleşen yıldız önce şişip kızarır, sonra küçülüp ısınır ve daha büyük, mavimsi bir yıldız olur ("mavi başıboş yıldız"). Gerçekte bu durulma binlerce yıl sürer; burada kısaltıldı. Sonuç: '+SUN_TYPES[ny].name+'.';}
     if(kill)hideStar(a);
     if(typeof audWhoosh==='function')audWhoosh();SHAKE.t=1.4;SHAKE.amp=effVr(t)*.08;
   }
@@ -3755,13 +3764,14 @@ function vn3(x,y,z,sd){var ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx
   function L(a,b,t){return a+(b-a)*t;}
   return L(L(L(vh3(ix,iy,iz,sd),vh3(ix+1,iy,iz,sd),fx),L(vh3(ix,iy+1,iz,sd),vh3(ix+1,iy+1,iz,sd),fx),fy),L(L(vh3(ix,iy,iz+1,sd),vh3(ix+1,iy,iz+1,sd),fx),L(vh3(ix,iy+1,iz+1,sd),vh3(ix+1,iy+1,iz+1,sd),fx),fy),fz);}
 function nebPoints(kind){
-  var N=kind==='pn'?(LOWQ?4500:8000):(LOWQ?4000:7000),P=new Float32Array(N*3),C=new Float32Array(N*4),S=new Float32Array(N),Rn=Math.random,sd=Rn()*100,n=0;
+  var N=kind==='pn'||kind==='lrn'?(LOWQ?4500:8000):(LOWQ?4000:7000),P=new Float32Array(N*3),C=new Float32Array(N*4),S=new Float32Array(N),Rn=Math.random,sd=Rn()*100,n=0;
   var q=new THREE.Quaternion().setFromEuler(new THREE.Euler(Rn()*TAU,Rn()*TAU,Rn()*TAU)),side=new THREE.Vector3(Rn()-.5,Rn()-.5,Rn()-.5).normalize(),v=new THREE.Vector3();
   var eb=.62+Rn()*.25,ec=.7+Rn()*.3,bip=kind==='pn'&&Rn()<.65?.5+Rn()*.6:0,tries=0;
   function put(x,y,z,r,g,b,a,sz){if(n>=N)return;v.set(x,y,z).applyQuaternion(q);P[n*3]=v.x;P[n*3+1]=v.y;P[n*3+2]=v.z;C[n*4]=r;C[n*4+1]=g;C[n*4+2]=b;C[n*4+3]=a;S[n]=sz;n++;}
   while(n<N&&tries<N*20){tries++;
     var u=new THREE.Vector3(Rn()*2-1,Rn()*2-1,Rn()*2-1);if(u.lengthSq()>1||u.lengthSq()<1e-4)continue;u.normalize();
     var cl=vn3(u.x*3+5,u.y*3+1,u.z*3+9,sd),cl2=vn3(u.x*9,u.y*9,u.z*9,sd+7),lop=1+.45*u.dot(side);
+    if(kind==='lrn'){if(Rn()>(.3+.7*cl)*lop)continue;var rl=.22*(1+.25*(cl-.5))+(Rn()-.5)*.06,hot2=Rn();put(u.x*rl,u.y*rl*eb,u.z*rl*ec,1,.25+.35*hot2,.12+.1*hot2,.16*lop,.012+Rn()*.018);continue;}
     if(kind==='pn'){
       var k=Rn();
       if(k<.68){if(Rn()>Math.pow(cl*.6+cl2*.4,1.6)*lop*1.3)continue;

@@ -3658,6 +3658,10 @@ function updateSurfaceCam(){
   if(b.def.id==='earth'&&SURF.city!=null){var sdv=new THREE.Vector3().copy(sunBody.pos).sub(p).normalize(),dark=1-ss(-.18,.02,sdv.dot(up));if(sunType>=5)dark=1;
     updateMeteors(Math.min(.05,FRAME_DT),up.clone(),dark);cityDraw(p,up.clone(),north.clone(),east.clone(),dark);
     var lpk=SURF.lp?(SURF.sky&&SURF.sky.kind==='mega'?1:.75):0;if(SKYG.starMat){SKYG.starMat.uniforms.lim.value=lpk*.62*dark;SKYG.starMat.uniforms.vis.value=Math.pow(dark,1.5);}if(SKYG.mw)SKYG.mw.material.opacity=(1-lpk*.95)*dark*.45;if(SKYG.faint)SKYG.faint.material.uniforms.op.value=(1-lpk)*Math.pow(dark,1.5)*.3;SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
+  /* Ay'ın sahnedeki uzaklığı gerçeğin ~20'de biri; yüzeyden bakınca bu dev bir paralaks yaratıp Ay'ı günde birkaç saatlik
+     kısa bir yaya sıkıştırıyordu. Ay'ı, yönü Dünya'nın merkezinden görülen (gerçek) yön olacak şekilde gözlemciye göre yerleştiriyoruz. */
+  if(b.def.id==='earth')BODIES.forEach(function(x){if(x.parent!==b||x.def.craft||isGone(x)||!x.pivot.parent)return;var gd=x.pos.clone().sub(c).normalize(),dd=x.pos.distanceTo(p),Wp=p.clone().addScaledVector(gd,dd);
+    x.pivot.position.copy(x.pivot.parent.worldToLocal(Wp.clone()));x.pivot.updateMatrixWorld(true);x.pos.copy(Wp);});
   surfApparent(b);
   // gökyüzü rengi
   var sc=SKYCOL[b.def.id],h=b.hab,dens=h?({none:0,thin:.45,earth:1,thick:1,co2:1,h2:.8})[h.atm]:(sc?1:0);

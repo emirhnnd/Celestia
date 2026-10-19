@@ -3104,7 +3104,7 @@ function addCraft(){
   });
 }
 function placeCraft(b){
-  var c=b.craftC,t=simDays,act=t>=c.t0&&t<=c.t1&&!b.sysHide;b.inactive=!act;b.pivot.visible=act;
+  var c=b.craftC,t=simDays,act=t>=c.t0&&t<=c.t1&&!b.sysHide;b.inactive=!act;b.pivot.visible=act&&mode!=='surface';
   if(b.model)b.model.visible=focus===b||camera.position.distanceTo(b.pos)<(c.special==='iss'?3:5);
   if(!act)return;
   if(c.special==='iss')return;
@@ -3324,7 +3324,7 @@ function takeSnap(){
       h:h?{melt:h.melt||0,water:h.water,st:h.st}:null,dn:b.debris?b.debris.length:0,
       ho:b.homing?{t:b.homing.t.id,r:b.homing.rel.toArray(),v:b.homing.v.toArray()}:null};});
   S.belt=beltCopy();
-  S.sun={ty:EXO.col?6:(SUN_PEND!=null?SUN_PEND:sunType),m:SUN_PEND===5&&sunMass>2.3?1.4+EATEN/333000:sunMass,e:EATEN};S.st={};
+  S.sun={ty:EXO.col?6:(SUN_PEND!=null?SUN_PEND:sunType),m:EXO.col?colRemnant(EXO.col)+EATEN/333000:SUN_PEND===5&&sunMass>2.3?1.4+EATEN/333000:sunMass,e:EATEN};S.st={};
   BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;S.st[b.id]={d:!!b.destroyed,ty:b.exoCol?6:(b.pend!=null?b.pend:b.starType),sz:b.mod.size,r:b.def.r,ang:b.ang};});
   SNAPS.push(S);if(SNAPS.length>3000)SNAPS.shift();lastSnapT=simDays;
 }
@@ -3347,13 +3347,13 @@ function restoreSnap(S){
     b.homing=o.ho&&byId[o.ho.t]?{t:byId[o.ho.t],rel:new THREE.Vector3().fromArray(o.ho.r),v:new THREE.Vector3().fromArray(o.ho.v)}:null;
   });
   if(S.st)BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;var o=S.st[b.id];if(!o){if(!b.destroyed){b.dart=null;destroyBody(b);b.unborn=true;changed=true;}return;}if(b.unborn&&!o.d)b.unborn=false;
-    b.dart=null;if(b.exoCol){colAbort(b.exoCol);b.exoCol=null;}
+    var keepD=b.dart&&b.dart.t0!=null&&S.t>=b.dart.t0;if(!keepD)b.dart=null;if(b.exoCol){colAbort(b.exoCol);b.exoCol=null;}
     if(o.d!==!!b.destroyed){changed=true;if(o.d){destroyBody(b);}else{undestroy(b);if(b.cust&&!customs.some(function(c){return c.id===b.id;})){customs.push(b.cust);saveCustom();}}}
     if(o.ty!==b.starType||b.pend!=null){setStarOn(b,o.ty);changed=true;}
-    if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);}if(o.r!=null)b.def.r=o.r;if(o.ang!=null){b.ang=o.ang;var rr=b.def.r||0;b.pivot.position.set(Math.cos(b.ang)*rr,0,-Math.sin(b.ang)*rr);}
+    if(b.mod.size!==o.sz){b.mod.size=o.sz;applySize(b);}if(o.r!=null)b.def.r=o.r;if(o.ang!=null&&!keepD){b.ang=o.ang;var rr=b.def.r||0;b.pivot.position.set(Math.cos(b.ang)*rr,0,-Math.sin(b.ang)*rr);}
   });
   if(S.sun){if(S.sun.ty!==sunType||EXO.col||SUN_PEND!=null){if(EXO.col)colAbort(EXO.col);EXO.col=null;setStar(S.sun.ty);changed=true;}if(sunMass!==S.sun.m||EATEN!==S.sun.e){sunMass=S.sun.m;EATEN=S.sun.e;$('oMass').textContent=massTxt();}}
-  TDES=TDES.filter(function(T){if(T.ts>S.t){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();changed=true;return false;}return true;});
+  TDES=TDES.filter(function(T){if(T.ts>S.t){tdeUndo(T,true);changed=true;return false;}return true;});TDEDONE=TDEDONE.filter(function(T){if(T.ts>S.t){tdeUndo(T,true);return false;}return true;});
   PNEB=PNEB.filter(function(P){if(P.ts>S.t){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();changed=true;return false;}return true;});
   if(beltRestore(S.belt))changed=true;
   if(EXO.sn&&EXO.sn.ts>S.t){scene.remove(EXO.sn.shell);scene.remove(EXO.sn.flash);EXO.sn=null;changed=true;}
@@ -3374,7 +3374,7 @@ function runEvent(e){
   flushPending();
   tlBusy=true;
   if(e.type==='launch'){var a=byId[e.a],t=byId[e.tg];if(a&&t&&!isGone(a)&&!isGone(t))doLaunch(a,t,true);}
-  else if(e.type==='dart'){var a2=byId[e.a],t2=byId[e.tg];if(a2&&t2&&!isGone(a2)&&!isGone(t2))startDart(a2,t2,true);}
+  else if(e.type==='dart'){var a2=byId[e.a],t2=byId[e.tg];if(a2&&t2&&!isGone(a2)&&!isGone(t2))startDart(a2,t2,true,e.Ts,e.t);}
   else if(e.type==='act'){var tg=e.tg?(byId[e.tg]||sunBody):sunBody;
     if(e.k==='born'){var nb=byId[e.id];if(nb&&nb.destroyed&&nb.unborn){undestroy(nb);nb.unborn=false;rebuildLists();}}
     else if(e.k==='mass'){sunMass=e.v;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();massRetype(true);}
@@ -3435,26 +3435,30 @@ function updateStarWinds(dt){
     b.wind.geometry.attributes.position.needsUpdate=true;});
 }
 function starWindSpawn(b,k,init){var d=b.wd,u=new THREE.Vector3(Math.random()-.5,(Math.random()-.5)*.8,Math.random()-.5).normalize();d.dir[k*3]=u.x;d.dir[k*3+1]=u.y;d.dir[k*3+2]=u.z;var sr=effVr(b);d.r[k]=init?sr+Math.random()*(sr*30+60*DS):sr;d.sp[k]=(8+Math.random()*14)*DS;}
-function startDart(a,t,replay){
+function startDart(a,t,replay,Ts,t0){
   if(a.dart)return;a.homing=null;var p0=a.pivot.position.clone(),d=p0.distanceTo(t.pos);
   var minD=(effVr(a)+effVr(t))*(isBH(t)?3.5:2.2);if(d<minD){p0=t.pos.clone().add(new THREE.Vector3().subVectors(p0,t.pos).normalize().multiplyScalar(minD));d=minD;a.pivot.position.copy(p0);}
   var up=new THREE.Vector3(0,1,0),side=new THREE.Vector3().subVectors(t.pos,p0).cross(up).normalize().multiplyScalar(d*.18);
   a.dart={t:t,p0:p0,side:side,k:0,T:clamp(d/(OVD()*.18),3.5,8)};
   if(!replay){if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
   focusBody(t.def.id,{dist:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});}
+  var D=a.dart;D.t0=t0!=null?t0:simDays;D.Ts=Ts||D.T*Math.max(SPEEDS[speedIdx].d,1e-6);D.lk=Math.max(0,(simDays-D.t0)/D.Ts);
   toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı'+(replay?' (tekrar oynatılıyor)':''),3500);
+  return D.Ts;
 }
 var DV=new THREE.Vector3();
 function stepDarts(dt){
   BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;unstretch(a);unstretch(t);return;}
-    D.k+=Math.min(dt,.05)/D.T;var e=Math.pow(Math.min(1,D.k),1.7);
+    /* fırlatma simülasyon saatine bağlı: zaman durunca durur, geri sarınca yıldız geldiği yola geri döner */
+    var kk=(simDays-D.t0)/D.Ts;if(kk<0){a.dart=null;a.pivot.position.copy(D.p0);if(a.grav){a.gx=D.p0.x;a.gy=D.p0.y;a.gz=D.p0.z;}unstretch(a);unstretch(t);return;}
+    var fwd=kk>D.lk+1e-12;D.lk=kk;D.k=kk;var e=Math.pow(Math.min(1,D.k),1.7);
     DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
     if(a.def.star&&(t.def.star||t===sunBody)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(t.pos,DV).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
-    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd){a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a);}return;}
+    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd&&fwd){var Dsv=D;a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a,Dsv);}return;}
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
-    if(dist<=touch||D.k>=1){a.dart=null;resolveDart(a,t);}
+    if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;resolveDart(a,t);}
   });
 }
 function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id===b.id;})[0]||b.cust;destroyBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
@@ -3506,8 +3510,8 @@ function resolveDart(a,t){
       var shell=nebPoints('lrn');shell.scale.setScalar(Math.max(effVr(t),effVr(a))*3);t.pivot.add(shell);PNEB.push({ts:simDays,k:'lrn',sp:shell,t:0,R:Math.max(effVr(t),effVr(a))*1.2});
       starInto(t,3);if(t===sunBody)SUN_PEND=ny;else t.pend=ny;
       after(9,function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===ny)setStar(ny);}else if(t.pend===ny)setStarOn(t,ny);});
-      addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
-      msg='Yıldızlar birleşti! Önce ortak bir gaz zarfının içinde sarmal çizdiler, temas anında "parlak kırmızı nova" patlaması oldu (2008\'de V1309 Scorpii\'de gözlendi): dış katmanlar tozlu kırmızı bir kabuk olarak savruldu. Birleşen yıldız önce şişip kızarır, sonra küçülüp ısınır ve daha büyük, mavimsi bir yıldız olur ("mavi başıboş yıldız"). Gerçekte bu durulma binlerce yıl sürer; burada kısaltıldı. Sonuç: '+SUN_TYPES[ny].name+(ny===0&&M>1.3?' sınıfında gösteriliyor; gerçekte '+M.toFixed(1).replace('.',',')+' Güneş kütleli, Güneş\'ten sıcak beyaz-sarı bir yıldız (A/F tipi)':'')+(ny===2?' ('+Math.round(M)+' Güneş kütlesi; mavi devler en az ~8 Güneş kütlesiyle doğar)':'')+'.';}
+      var Mf=mT+mA*.9;addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
+      msg='Yıldızlar birleşti! Önce ortak bir gaz zarfının içinde sarmal çizdiler, temas anında "parlak kırmızı nova" patlaması oldu (2008\'de V1309 Scorpii\'de gözlendi): dış katmanlar tozlu kırmızı bir kabuk olarak savruldu. Birleşen yıldız önce şişip kızarır, sonra küçülüp ısınır ve daha büyük, mavimsi bir yıldız olur ("mavi başıboş yıldız"). Gerçekte bu durulma binlerce yıl sürer; burada kısaltıldı. Sonuç: '+SUN_TYPES[ny].name+(ny===0&&M>1.3?' sınıfında gösteriliyor; gerçekte '+Mf.toFixed(1).replace('.',',')+' Güneş kütleli, Güneş\'ten sıcak beyaz-sarı bir yıldız (A/F tipi)':'')+(ny===2?' ('+Math.round(Mf)+' Güneş kütlesi; mavi devler en az ~8 Güneş kütlesiyle doğar)':'')+'.';}
     if(kill)hideStar(a);
     if(typeof audWhoosh==='function')audWhoosh();SHAKE.t=1.4;SHAKE.amp=effVr(t)*.08;
   }
@@ -3520,7 +3524,7 @@ function launchAt(){
   if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
   if(isGone(t)){toast('Hedef artık yok');return;}
   if(t===sunBody&&sunType===7){toast('Merkezde artık bir yıldız yok; önce yıldız türünü seç.',5000);return;}
-  if(b.def.star||t.def.star){addEvent({type:'dart',a:b.id,tg:t.id});startDart(b,t);return;}
+  if(b.def.star||t.def.star){var de={type:'dart',a:b.id,tg:t.id};addEvent(de);de.Ts=startDart(b,t);return;}
   if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
   if(isGone(t)){toast('Hedef artık yok');return;}
@@ -3610,7 +3614,7 @@ function enterSurface(b){
   if(b.atmoMesh){SURF.atmoVis=b.atmoMesh.visible;b.atmoMesh.visible=false;}
   if(b.pwx)b.pwx.visible=false;
   surfFov0=camera.fov;mode='surface';trans=null;
-  document.body.classList.add('surfmode');BODIES.forEach(function(x){if(x.line){x.lineVis0=x.line.visible;x.line.visible=false;}});
+  document.body.classList.add('surfmode');BODIES.forEach(function(x){if(x.line){x.lineVis0=x.line.visible;x.line.visible=false;}if(x.def.craft){x.craftVis0=x.pivot.visible;x.pivot.visible=false;}});
   $('surfBar').hidden=false;$('surfName').textContent=b.def.name+' yüzeyinden'+(b.parent?' · '+b.parent.def.name+' gökyüzünde':'');
   $('side').classList.add('collapsed');
   toast(b.def.id==='earth'?'Şehirden gökyüzü: üstteki listeden şehir seç. Gerçek yıldızlar, gezegenler ve Ay o şehirden o an nasıl görünüyorsa öyle. Meteor yağmuru tarihlerinde gece kayan yıldızlar çoğalır.':'Yüzeydesin: sürükleyerek etrafa bak, tekerlek veya çimdikle yakınlaştır. Gezegen döndükçe gün doğar ve batar.',7000);
@@ -3618,7 +3622,7 @@ function enterSurface(b){
 function exitSurface(silent){
   if(!SURF)return;var b=SURF.b;
   if(b.atmoMesh&&SURF.atmoVis!=null)b.atmoMesh.visible=SURF.atmoVis;if(b.pwx)b.pwx.visible=true;
-  clearMeteors();cityClear();document.body.classList.remove('surfmode');BODIES.forEach(function(x){if(x.line&&x.lineVis0!=null){x.line.visible=x.lineVis0&&!isGone(x);x.lineVis0=null;}});SURF=null;camera.fov=surfFov0;camera.updateProjectionMatrix();camera.up.set(0,1,0);
+  clearMeteors();cityClear();document.body.classList.remove('surfmode');BODIES.forEach(function(x){if(x.line&&x.lineVis0!=null){x.line.visible=x.lineVis0&&!isGone(x);x.lineVis0=null;}if(x.craftVis0!=null){x.pivot.visible=x.craftVis0;x.craftVis0=null;}});SURF=null;camera.fov=surfFov0;camera.updateProjectionMatrix();camera.up.set(0,1,0);
   $('surfBar').hidden=true;$('skyTint').style.opacity=0;mode='free';setMode('orbit');
   if(!silent)focusBody(b.def.id);
 }
@@ -3689,41 +3693,120 @@ function updateMeteors(dt,up,dark){
   var sh=showerNow(),act=sh&&sh.g>.03?sh:null,rate=.06+(act?act.k/100*1.4:0);
   MET.acc+=dt*rate*dark;while(MET.acc>1){MET.acc-=1;metSpawn(up,act&&Math.random()<.85?act:null);}
 }
-/* şehir silüeti ve ışık kirliliği */
+/* şehir silüeti ve ışık kirliliği: üç derinlik katmanı (uzak tepeler + ev ışıkları, orta, yakın), kıyı şehirlerinde deniz,
+   Türk şehirlerinde cami kubbe ve minareleri. Pencereler yerel saate göre yanıp söner. */
+var CITYPROF={'Samsun':{sea:[0,1.2],mosque:.1,hills:3.4},'Zonguldak':{sea:[.05,1],mosque:.08,hills:5},'İstanbul':{sea:[3.4,.7],mosque:.14,hills:1.6},
+  'Ankara':{mosque:.07,hills:2.2},'Erzurum':{mosque:.08,hills:1,mtn:4.5},'Tokyo':{sea:[2.7,.55],tower:1},'New York':{sea:[3.4,.5],spire:.1},
+  'Londra':{spire:.04,low:1},'Reykjavik (kutup ışıkları)':{sea:[5.3,1.2],pitch:1,mtn:3.2},'Sidney':{sea:[.25,.55]}};
 function genSkyline(ci){
-  var kind=CITIES[ci][4],N=3600,H=new Float32Array(N),B=[],sd=ci*97.13+3;function rr(){sd=(sd*9301+49297)%233280;return sd/233280;}
-  function hill(a){return .6*Math.sin(a*3+ci)+.35*Math.sin(a*7+ci*2)+.2*Math.sin(a*17+ci*3);}
-  for(var i=0;i<N;i++){var a=i/N*TAU;H[i]=kind==='ice'?.15+.08*Math.sin(a*5):kind==='dark'?Math.max(.2,1.1+1.2*hill(a)):kind==='town'?Math.max(.2,1.6+1.6*hill(a)):Math.max(.15,.4+.4*hill(a));}
-  if(kind==='city'||kind==='mega'||kind==='town'){
-    var a0=0,den=kind==='mega'?1:kind==='city'?.8:.45;
-    while(a0<TAU){var w=(.3+rr()*1.6)*D2R*(kind==='town'?1.3:1),gap=rr()<.15/den?(.2+rr()*2)*D2R:0;a0+=gap;if(a0>=TAU)break;
-      var base=kind==='mega'?1.2:kind==='city'?.8:.4,h=(base+Math.pow(rr(),2.4)*(kind==='mega'?9:kind==='city'?5.5:2.2))*(kind==='town'?1:1.2);if(rr()<.03&&kind!=='town')h*=1.6;
-      var i0=Math.floor(a0/TAU*N),i1=Math.min(N-1,Math.floor((a0+w)/TAU*N));for(var k=i0;k<=i1;k++)H[k]=Math.max(H[k],h);
-      var win=[],nx=Math.max(1,Math.round(w/D2R*2.2)),ny=Math.max(1,Math.round(h*1.4));for(var x=0;x<nx;x++)for(var y=0;y<ny;y++)if(rr()<.38)win.push([(x+.5)/nx,(y+.5)/ny,rr()]);
-      B.push({a0:a0,a1:a0+w,h:h,win:win,top:rr()<.25});a0+=w;}
+  var C=CITIES[ci],kind=C[4],P=CITYPROF[C[0]]||{},sd=(ci*2654435761+12345)>>>0;function rr(){sd=(sd+0x6D2B79F5)>>>0;var t=sd;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
+  var N=1440,city=kind==='city'||kind==='mega'||kind==='town';
+  function seaW(a){if(!P.sea)return 0;var d=Math.abs(Math.atan2(Math.sin(a-P.sea[0]),Math.cos(a-P.sea[0])));return clamp((P.sea[1]-d)/.1+.5,0,1);}
+  function nz(a,f,ph){return Math.sin(a*f+ph+ci)*.5+Math.sin(a*f*2.3+ph*1.7+ci*2)*.3+Math.sin(a*f*5.1+ph*.3+ci*3)*.2;}
+  var L=[],sea=!!P.sea;
+  for(var l=0;l<3;l++){var H=new Float32Array(N);
+    for(var i=0;i<N;i++){var a=i/N*TAU,s=seaW(a),h;
+      if(kind==='ice')h=l===0?.25+.1*nz(a,4,1):l===1?.12:.05;
+      else if(kind==='dark')h=l===0?Math.max(.3,2.6+2.4*nz(a,3,0)):l===1?Math.max(.15,.9+.8*nz(a,6,2)):Math.max(.05,.25+.25*nz(a,11,4));
+      else if(l===0){var mt=P.mtn||0,hl=P.hills||.5;h=Math.max(.12,hl*(.75+.55*nz(a,3,0))+(mt?Math.max(0,mt*(.5+.9*nz(a,2,5))):0));}
+      else h=l===1?.15:.05;
+      H[i]=s>0?h*(1-s)+(l===0?-.04:l===1?-40:-6.5)*s:h;}
+    L.push({H:H,B:[]});}
+  var dots=[],ships=[],lamps=[];
+  if(city){
+    var den=kind==='mega'?1:kind==='city'?.8:.5;
+    [[0,.35,.9,.16,0],[1,.45,1.6,.45,-.5],[2,1.1,3.6,1.5,-3.2]].forEach(function(cf){var l=cf[0],Ly=L[l],a0=rr()*TAU,end=a0+TAU;
+      while(a0<end){var w=(cf[1]+rr()*(cf[2]-cf[1]))*D2R*(kind==='town'?1.2:1),gap=rr()<(l===2?.35:.12)/den?(.3+rr()*(l===2?5:1.5))*D2R:0;a0+=gap;if(a0>=end)break;
+        var am=a0+w/2,ia=Math.floor((((am%TAU)+TAU)%TAU)/TAU*N);if(seaW(am)>.25){a0+=w;continue;}
+        var base=(kind==='mega'?1.4:kind==='city'?.85:.45)*(P.low?.7:1),h=(base+Math.pow(rr(),2.6)*(kind==='mega'?(P.low?4:8.5):kind==='city'?4.5:1.6))*cf[3]*(l===0?1:1.1);
+        if(rr()<.04&&kind!=='town')h*=1.7;
+        var b={a0:a0,a1:a0+w,h:h-cf[4],b0:l===0?Math.max(0,L[0].H[ia]-.05):cf[4],ty:'box',win:[],top:rr()<.3&&h>3,sd:rr()};
+        var q=rr();
+        if(P.mosque&&q<P.mosque&&l>0){b.ty='mosque';b.h=Math.min(h,1.1*cf[3]+.4);b.nm=1+Math.floor(rr()*(kind==='mega'?4:2.6));}
+        else if(P.pitch||kind==='town'){b.ty=rr()<.8?'pitch':'box';b.h=Math.min(h,1.4*cf[3]+.3);}
+        else if(P.spire&&q<P.spire+(P.mosque||0)&&h>3)b.ty='spire';
+        else if(q<.3&&h>2)b.ty='step';else if(q<.42&&h>2.5)b.ty='ant';
+        if(l>0){var dx=l===2?2.4:3.4,nx=Math.max(1,Math.round(w/D2R*dx)),ny=Math.max(1,Math.round(b.h*dx*.8));if(b.ty==='mosque')ny=Math.min(ny,2);
+          for(var x=0;x<nx;x++)for(var y=0;y<ny;y++){if(b.win.length>90)break;if(rr()<.72)b.win.push([(x+.5)/nx,(y+.55)/ny*.9,rr(),rr()]);}}
+        Ly.B.push(b);a0+=w;}});
+    if(P.tower){var ta=2.4+rr()*.5;L[1].B.push({a0:ta,a1:ta+.9*D2R,h:14,b0:0,ty:'tower',win:[],top:true,sd:.5});}
+    var nd=kind==='mega'?2200:kind==='city'?1700:600;
+    for(var k=0;k<nd;k++){var a=rr()*TAU;if(seaW(a)>.1)continue;var ia2=Math.floor(a/TAU*N),hh=L[0].H[ia2];dots.push([a,Math.pow(rr(),.8)*Math.max(.05,hh-.08),rr(),rr()]);}
+    if(sea){for(var s2=0;s2<(kind==='mega'?9:5);s2++){var sa=P.sea[0]+(rr()*2-1)*P.sea[1]*.8;ships.push([sa,-.03-rr()*.12,rr()]);}
+      for(var la=P.sea[0]-P.sea[1]+.15;la<P.sea[0]+P.sea[1]-.15;la+=(3.2+rr()*1.5)*D2R)lamps.push(la);}
   }
-  return {H:H,B:B,kind:kind};
+  return {L:L,dots:dots,ships:ships,lamps:lamps,kind:kind,sea:sea,P:P};
 }
 function lpBtn(){var b=$('surfLP');if(!b||!SURF)return;b.textContent='Işık kirliliği: '+(SURF.lp?'açık':'kapalı');b.classList.toggle('on',!!SURF.lp);}
 var CV1=new THREE.Vector3(),CV2=new THREE.Vector3();
+function bShape(b){var t=b.ty,h=b.h;
+  if(t==='step')return [[0,0],[0,h*.72],[.18,h*.72],[.18,h*.9],[.3,h*.9],[.3,h],[.72,h],[.72,h*.82],[1,h*.82],[1,0]];
+  if(t==='spire')return [[0,0],[0,h],[.3,h],[.42,h*1.18],[.5,h*1.42],[.58,h*1.18],[.7,h],[1,h],[1,0]];
+  if(t==='ant')return [[0,0],[0,h],[.47,h],[.47,h*1.32],[.53,h*1.32],[.53,h],[1,h],[1,0]];
+  if(t==='pitch')return [[0,0],[0,h],[.5,h*1.45],[1,h],[1,0]];
+  if(t==='tower')return [[.42,0],[.46,h*.78],[.3,h*.8],[.3,h*.84],[.47,h*.86],[.49,h],[.51,h],[.53,h*.86],[.7,h*.84],[.7,h*.8],[.54,h*.78],[.58,0]];
+  if(t==='mosque'){var w=(b.a1-b.a0)/D2R,dh=w*.42,pts=[[0,0],[0,h],[.12,h]];for(var k=0;k<=10;k++){var u=k/10;pts.push([.12+.76*u,h+dh*Math.sin(Math.PI*u)*(1-.15*Math.pow(2*u-1,2))]);}
+    pts.push([.88,h],[1,h],[1,0]);return pts;}
+  return [[0,0],[0,h],[1,h],[1,0]];}
 function cityDraw(p,up,north,east,dark){
   var cv=$('cityCv'),dpr=Math.min(devicePixelRatio||1,1.5),Wc=Math.round(innerWidth*dpr),Hc=Math.round(innerHeight*dpr);
   if(cv.width!==Wc||cv.height!==Hc){cv.width=Wc;cv.height=Hc;}cv.style.display='block';var g=cv.getContext('2d');g.clearRect(0,0,Wc,Hc);
-  var S=SURF.sky;if(!S)return;
+  var S=SURF.sky;if(!S||!S.L)return;
   function proj(az,el,out){CV1.copy(north).multiplyScalar(Math.cos(az)).addScaledVector(east,Math.sin(az)).addScaledVector(up,Math.tan(el)).multiplyScalar(1000).add(p);CV1.project(camera);out.x=(CV1.x*.5+.5)*Wc;out.y=(-CV1.y*.5+.5)*Hc;out.z=CV1.z;return out;}
-  var asp=Wc/Hc,hf=Math.atan(Math.tan(camera.fov*D2R/2)*asp)+.25,yaw=SURF.yaw,st=Math.max(.002,hf*2/700),pt={x:0,y:0,z:0},pts=[],hzY=0,nh=0;
-  for(var az=yaw-hf;az<=yaw+hf;az+=st){var ia=((Math.floor(((az%TAU)+TAU)%TAU/TAU*S.H.length))%S.H.length),h=S.H[ia]*D2R;proj(az,h,pt);if(pt.z<1)pts.push([pt.x,pt.y]);proj(az,0,pt);if(pt.z<1){hzY+=pt.y;nh++;}}
-  hzY=nh?hzY/nh:Hc;var day=Math.pow(1-dark,2.2);
-  if(SURF.lp&&dark>.1){var gl=g.createLinearGradient(0,hzY,0,hzY-Hc*.45),k=dark*(S.kind==='mega'?1:S.kind==='city'?.75:.45);gl.addColorStop(0,'rgba(255,150,80,'+(.34*k)+')');gl.addColorStop(.35,'rgba(200,120,110,'+(.14*k)+')');gl.addColorStop(1,'rgba(60,60,90,0)');g.fillStyle=gl;g.fillRect(0,0,Wc,hzY);
-    g.fillStyle='rgba(28,32,52,'+(.22*k)+')';g.fillRect(0,0,Wc,hzY);}
-  if(pts.length<2)return;
-  var gc=dark>.5?[6,8,12]:[Math.round(30+30*day),Math.round(36+34*day),Math.round(46+40*day)];if(S.kind==='ice')gc=[Math.round(60+150*day),Math.round(70+160*day),Math.round(90+165*day)];if(S.kind==='dark')gc=[Math.round(18+90*day),Math.round(14+60*day),Math.round(12+40*day)];
-  g.fillStyle='rgb('+gc[0]+','+gc[1]+','+gc[2]+')';g.beginPath();g.moveTo(pts[0][0],Hc+10);pts.forEach(function(q){g.lineTo(q[0],q[1]);});g.lineTo(pts[pts.length-1][0],Hc+10);g.closePath();g.fill();
-  if(dark>.25&&S.B.length){var on=SURF.lp?1:.25,wpx=Math.max(1.5,2*dpr),q2={x:0,y:0,z:0};g.globalAlpha=Math.min(1,(dark-.25)*2);
-    S.B.forEach(function(b){var da=Math.atan2(Math.sin((b.a0+b.a1)/2-yaw),Math.cos((b.a0+b.a1)/2-yaw));if(Math.abs(da)>hf)return;
-      b.win.forEach(function(w){if(w[2]>on*.95)return;proj(b.a0+(b.a1-b.a0)*w[0],b.h*D2R*w[1]*.92,q2);if(q2.z>=1)return;g.fillStyle=w[2]<.12?'rgba(190,215,255,.85)':'rgba(255,205,130,.9)';g.fillRect(q2.x-wpx/2,q2.y-wpx/2,wpx,wpx);});
-      if(b.top&&b.h>4){proj((b.a0+b.a1)/2,b.h*D2R,q2);if(q2.z<1&&Math.sin(performance.now()*.004+b.a0*50)>0){g.fillStyle='rgba(255,60,50,.95)';g.fillRect(q2.x-wpx,q2.y-wpx*2,wpx*2,wpx*2);}}});
-    g.globalAlpha=1;}
+  var asp=Wc/Hc,hf=Math.atan(Math.tan(camera.fov*D2R/2)*asp)+.12,yaw=SURF.yaw,st=Math.max(.002,hf*2/600),pt={x:0,y:0,z:0},q2={x:0,y:0,z:0},hzY=0,nh=0;
+  for(var az=yaw-hf;az<=yaw+hf;az+=hf/8){proj(az,0,pt);if(pt.z<1){hzY+=pt.y;nh++;}}hzY=nh?hzY/nh:Hc;
+  var ppd=Hc/camera.fov,day=Math.pow(1-dark,1.6),now=performance.now()*.001,lp=!!SURF.lp;
+  var c0=CITIES[SURF.city],hr=((new Date(J2000+simDays*864e5+c0[3]*36e5)).getUTCHours()+(new Date(J2000+simDays*864e5)).getUTCMinutes()/60);
+  var lit=(hr>=18&&hr<23?.62:hr>=23||hr<1?.42:hr<5?.16:hr<7?.3:.45)*(lp?1:.18),slot=Math.floor(simDays*96);
+  var k=dark*(S.kind==='mega'?1:S.kind==='city'?.75:S.kind==='town'?.45:0)*(lp?1:.15);
+  /* gökyüzü parıltısı: şehrin turuncu sodyum ışıkları atmosferden geri saçılıyor */
+  if(k>.02){var gl=g.createLinearGradient(0,hzY,0,hzY-Hc*.5);gl.addColorStop(0,'rgba(255,150,80,'+(.36*k)+')');gl.addColorStop(.3,'rgba(205,120,110,'+(.15*k)+')');gl.addColorStop(1,'rgba(60,60,90,0)');g.fillStyle=gl;g.fillRect(0,0,Wc,hzY);
+    g.fillStyle='rgba(28,32,52,'+(.2*k)+')';g.fillRect(0,0,Wc,hzY);}
+  function mix(n,d){return [Math.round(n[0]*(1-day)+d[0]*day),Math.round(n[1]*(1-day)+d[1]*day),Math.round(n[2]*(1-day)+d[2]*day)];}
+  function rgb(c,a){return a==null?'rgb('+c[0]+','+c[1]+','+c[2]+')':'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')';}
+  var LC=S.kind==='ice'?[mix([40,48,64],[205,215,232]),mix([28,34,48],[190,200,220]),mix([18,22,32],[175,185,205])]:
+         S.kind==='dark'?[mix([26,22,30],[150,120,105]),mix([16,13,16],[120,88,70]),mix([8,7,8],[95,68,52])]:
+         [mix([34+40*k,30+20*k,46+6*k],[132,148,170]),mix([16+12*k,16+7*k,26+3*k],[86,96,112]),mix([7,8,13],[52,57,68])];
+  /* deniz: ufukta gökyüzünü yansıtır, aşağı doğru koyulaşır; ışık yansımaları dalgalarla titrer */
+  if(S.sea){var sg=g.createLinearGradient(0,hzY,0,Hc),top=mix([14+40*k,16+22*k,30+10*k],[120,155,190]),bot=mix([3,5,10],[30,62,96]);sg.addColorStop(0,rgb(top));sg.addColorStop(.25,rgb(mix([8+16*k,10+10*k,20+5*k],[64,102,140])));sg.addColorStop(1,rgb(bot));g.fillStyle=sg;g.fillRect(0,hzY-1,Wc,Hc-hzY+1);
+    var P=S.P;function hsh(n){var v=Math.sin(n*127.1+31.7)*43758.5453;return v-Math.floor(v);}for(var sw=0;sw<160;sw++){var sa=P.sea[0]+(hsh(sw)*2-1)*P.sea[1],da=Math.atan2(Math.sin(sa-yaw),Math.cos(sa-yaw));if(Math.abs(da)>hf)continue;
+      var el=-(.12+Math.pow(hsh(sw+500),1.8)*6)*D2R;proj(sa,el,pt);if(pt.z>=1)continue;var fl=.5+.5*Math.sin(now*(1.3+sw%5*.4)+sw*2.1),len=(4+(sw%7)*3)*dpr*(1+ -el*8);
+      g.fillStyle=dark>.4?'rgba(255,190,120,'+(.25*fl*k+.04*fl)+')':'rgba(255,255,255,'+(.18*fl*day)+')';g.fillRect(pt.x-len/2,pt.y,len,Math.max(1,dpr));}
+    if(dark>.3)S.ships.forEach(function(s){proj(s[0],s[1]*D2R,pt);if(pt.z>=1)return;g.fillStyle=s[2]<.2?'rgba(255,90,80,.9)':s[2]<.35?'rgba(120,255,140,.9)':'rgba(255,240,215,.95)';g.fillRect(pt.x-1.2*dpr,pt.y-1.2*dpr,2.4*dpr,2.4*dpr);
+      g.fillStyle='rgba(255,220,170,.18)';g.fillRect(pt.x-.6*dpr,pt.y+2*dpr,1.2*dpr,(10+s[2]*14)*dpr);});}
+  var wpx=Math.max(1.2,.2*ppd);
+  S.L.forEach(function(Ly,li){
+    var pts=[],hz=[];for(var az=yaw-hf;az<=yaw+hf;az+=st){var ia=((Math.floor(((az%TAU)+TAU)%TAU/TAU*Ly.H.length))%Ly.H.length);proj(az,Ly.H[ia]*D2R,pt);if(pt.z<1){pts.push([pt.x,pt.y]);if(li===0){proj(az,0,q2);hz.push([q2.x,q2.y]);}}}
+    if(pts.length<2)return;var col=LC[li];g.fillStyle=li===2&&S.L[2].B.length?rgb(mix([16+16*k,13+9*k,13+5*k],[78,80,84])):rgb(col);
+    /* uzak katman yalnızca ufkun üstünde (altı denizi ya da yakın katmanlar örter) */
+    g.beginPath();if(li===0){g.moveTo(hz[0][0],hz[0][1]);pts.forEach(function(q){g.lineTo(q[0],q[1]);});for(var z=hz.length-1;z>=0;z--)g.lineTo(hz[z][0],hz[z][1]+1);}
+    else{g.moveTo(pts[0][0],Hc+10);pts.forEach(function(q){g.lineTo(q[0],Math.min(q[1],Hc+10));});g.lineTo(pts[pts.length-1][0],Hc+10);}g.closePath();g.fill();
+    /* uzak tepelerdeki evlerin ışıkları */
+    if(li===0&&dark>.2&&S.dots.length){g.globalAlpha=Math.min(1,(dark-.2)*2);S.dots.forEach(function(d){var da=Math.atan2(Math.sin(d[0]-yaw),Math.cos(d[0]-yaw));if(Math.abs(da)>hf)return;
+      var on=((Math.sin((d[2]*917.3+Math.floor(slot/4+d[3]*9))*12.9898)*43758.5453)%1+1)%1<lit*1.25;if(!on)return;proj(d[0],d[1]*D2R,pt);if(pt.z>=1)return;var sz=Math.max(1,.7*dpr);g.fillStyle=d[3]<.15?'rgba(200,220,255,.75)':'rgba(255,196,120,.8)';g.fillRect(pt.x-sz/2,pt.y-sz/2,sz,sz);});g.globalAlpha=1;}
+    var bcol=rgb(col),wl=[],wc=[],wt=[];
+    Ly.B.forEach(function(b){var da=Math.atan2(Math.sin((b.a0+b.a1)/2-yaw),Math.cos((b.a0+b.a1)/2-yaw));if(Math.abs(da)>hf+.05)return;
+      var sh=bShape(b);g.beginPath();for(var v=0;v<sh.length;v++){proj(b.a0+(b.a1-b.a0)*sh[v][0],(b.b0+sh[v][1])*D2R,q2);if(v===0)g.moveTo(q2.x,q2.y);else g.lineTo(q2.x,q2.y);}g.closePath();
+      if(day>.15&&b.ty==='pitch'&&S.P.pitch){var hue=Math.floor(b.sd*360);g.fillStyle='hsl('+hue+',35%,'+Math.round(18+30*day)+'%)';}else{var f=.84+.32*b.sd*day+(b.ty==='mosque'?.12*day:0);g.fillStyle=rgb([Math.min(255,Math.round(col[0]*f)),Math.min(255,Math.round(col[1]*f)),Math.min(255,Math.round(col[2]*f*(1+.04*day)))]);}g.fill();
+      if(day>.35&&li>0&&b.win.length&&b.ty!=='mosque'){g.fillStyle='rgba(170,200,235,'+(.16+.14*b.sd)*day+')';var ws=li===2?1.3:.8,ww0=Math.max(1,wpx*ws),wh0=Math.max(1,wpx*ws*1.3);for(var w3=0;w3<b.win.length;w3++){var W0=b.win[w3];proj(b.a0+(b.a1-b.a0)*W0[0],(b.b0+b.h*W0[1])*D2R,q2);if(q2.z<1)g.fillRect(q2.x-ww0/2,q2.y-wh0/2,ww0,wh0);}}
+      if(b.ty==='mosque'&&li>0){var w=(b.a1-b.a0),mh=b.h*2.6+(b.a1-b.a0)/D2R*.6,mw=Math.max(.06*D2R,w*.045);
+        for(var m=0;m<b.nm;m++){var ma=m%2===0?b.a0-mw*1.6-(m>>1)*mw*3:b.a1+mw*.6+(m>>1)*mw*3;
+          g.beginPath();proj(ma,0,q2);g.moveTo(q2.x,q2.y);proj(ma,(b.b0+mh)*D2R,q2);g.lineTo(q2.x,q2.y);proj(ma+mw/2,(b.b0+mh*1.16)*D2R,q2);g.lineTo(q2.x,q2.y);proj(ma+mw,(b.b0+mh)*D2R,q2);g.lineTo(q2.x,q2.y);proj(ma+mw,0,q2);g.lineTo(q2.x,q2.y);g.closePath();g.fill();
+          if(dark>.4&&lp){proj(ma+mw/2,(b.b0+mh*.78)*D2R,q2);wt.push(q2.x,q2.y);}}}
+      if(dark>.25&&b.win.length){for(var w2=0;w2<b.win.length;w2++){var W=b.win[w2],hs=((Math.sin((W[2]*917.3+Math.floor(slot+W[3]*7))*12.9898)*43758.5453)%1+1)%1;if(hs>lit)continue;
+          proj(b.a0+(b.a1-b.a0)*W[0],(b.b0+b.h*W[1])*D2R,q2);if(q2.z>=1)continue;(W[3]<.1?wc:wl).push(q2.x,q2.y,W[3]);}}
+      if(b.top&&dark>.3){proj((b.a0+b.a1)/2,(b.b0+b.h*(b.ty==='spire'?1.42:b.ty==='ant'?1.32:1))*D2R,q2);if(q2.z<1&&Math.sin(now*3+b.a0*50)>.2){g.fillStyle='rgba(255,60,50,.95)';g.fillRect(q2.x-wpx*.6,q2.y-wpx*1.2,wpx*1.2,wpx*1.2);}}});
+    if(wl.length||wc.length){var sc=li===2?1.35:.85,ww=Math.max(1,wpx*sc),wh=Math.max(1,wpx*sc*1.3);g.globalAlpha=Math.min(1,(dark-.25)*2);
+      for(var i=0;i<wl.length;i+=3){var t=wl[i+2];g.fillStyle=t<.55?'rgba(255,206,128,.92)':t<.8?'rgba(255,228,170,.9)':'rgba(255,175,95,.9)';g.fillRect(wl[i]-ww/2,wl[i+1]-wh/2,ww,wh);}
+      for(i=0;i<wc.length;i+=3){var tv=wc[i+2]<.05;g.fillStyle=tv?'rgba(150,180,255,'+(.5+.4*Math.sin(now*9+wc[i]))+')':'rgba(200,222,255,.88)';g.fillRect(wc[i]-ww/2,wc[i+1]-wh/2,ww,wh);}g.globalAlpha=1;}
+    for(var j=0;j<wt.length;j+=2){g.fillStyle='rgba(180,255,190,.85)';g.fillRect(wt[j]-wpx*.4,wt[j+1]-wpx*.4,wpx*.8,wpx*.8);}
+  });
+  /* sahil yolu lambaları ve denizdeki yansımaları */
+  if(S.sea&&S.lamps&&S.lamps.length){S.lamps.forEach(function(la){var da=Math.atan2(Math.sin(la-yaw),Math.cos(la-yaw));if(Math.abs(da)>hf)return;
+    proj(la,-6.5*D2R,pt);proj(la,-3.6*D2R,q2);if(pt.z>=1||q2.z>=1)return;g.strokeStyle=rgb(LC[2]);g.lineWidth=Math.max(1,1.2*dpr);g.beginPath();g.moveTo(pt.x,pt.y);g.lineTo(q2.x,q2.y);g.stroke();
+    if(dark>.3){var r0=Math.max(2,.5*ppd),gr=g.createRadialGradient(q2.x,q2.y,0,q2.x,q2.y,r0*3);gr.addColorStop(0,'rgba(255,214,150,.95)');gr.addColorStop(.25,'rgba(255,170,90,.35)');gr.addColorStop(1,'rgba(255,150,70,0)');g.fillStyle=gr;g.fillRect(q2.x-r0*3,q2.y-r0*3,r0*6,r0*6);}});}
+  /* yakındaki sokak lambaları ufkun hemen altında turuncu bir parıltı bırakır */
+  if(k>.05&&S.L[2].B.length){var sl=g.createLinearGradient(0,hzY,0,Hc);sl.addColorStop(0,'rgba(255,150,70,'+(.0)+')');sl.addColorStop(.06,'rgba(255,150,70,'+(.1*k)+')');sl.addColorStop(.35,'rgba(255,140,60,0)');g.fillStyle=sl;g.fillRect(0,hzY,Wc,Hc-hzY);}
 }
 function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;if(SKYG&&SKYG.faint)SKYG.faint.material.uniforms.op.value=1;}
 $('surfLP').addEventListener('click',function(){if(!SURF)return;SURF.lp=!SURF.lp;lpBtn();toast(SURF.lp?'Işık kirliliği açık: şehrin ışıkları gökyüzünü aydınlatıyor, yalnızca en parlak yıldızlar ve gezegenler görünüyor.':'Işık kirliliği kapalı: şehir karanlıkta. Samanyolu ve binlerce sönük yıldız ortaya çıktı; şehirlerin çoğunda insanlar bu manzarayı hiç görmüyor.',6000);});
@@ -3978,7 +4061,8 @@ function starBH(t){
   t.exoCol=colInit(t);if(t.starType===5)clearStarExo(t);focusBody(t.def.id,{dist:t.exoCol.mode==='grb'?Math.max(effVr(t)*9,OVD()*.15):effVr(t)*9});toast(t.def.name+': çekirdek çöküyor…'+pauseNote(),4000);
 }
 var _v1=new THREE.Vector3(),_v2=new THREE.Vector3(),_v3=new THREE.Vector3(),_q1=new THREE.Quaternion();
-function bhMassK(){return Math.cbrt(Math.max(.2,sunMass));}
+/* gerçekte olay ufku kütleyle doğru orantılı (1000 Güneş kütlesi = 2950 km, yine de Güneş'ten 240 kat küçük). Ekranda görünsün diye büyütülmüş ama kütleyle yavaşça büyür: 1000 kat kütle yıldızdan büyük bir delik demek değildir */
+function bhMassK(){var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M,.16);}
 function bhStep(o,body,dt){
   var kM=body===sunBody?bhMassK():1,sh=effVr(body)*kM;
   o.disk.scale.setScalar(sh*2.3);if(body!==sunBody)o.disk.material.uniforms.t.value+=dt;
@@ -4063,7 +4147,7 @@ function updateExotic(dt){
   BODIES.forEach(function(b){
     if(b.parent||b.def.star||b.def.craft||b.def.id==='sun'||S.hit[b.id]||isGone(b)||b.engulfed)return;
     var d=b.pos.distanceTo(S.c);if(d>r||(S.cb!==sunBody&&d>OVD()*.5))return;S.hit[b.id]=1;
-    var rocky=b.hab&&b.hab.surf;
+    var rocky=b.hab&&!b.hab.gas&&(b.hab.surf||b.hab.atm==='co2');
     if(rocky&&invOrbit(d)<1.8){flashAt(b.pivot,new THREE.Vector3(),effVr(b)*5,0xcfe0ff);destroyBody(b);S.gone.push(b.def.name);}
     else if(b.hab){b.hab.atm=b.hab.gas?'h2':'none';b.hab.water=0;b.hab.melt=rocky?1:b.hab.melt;b.impT0=simDays;b.impK=rocky?1:.4;atmoVisual(b);S.burnt.push(b.def.name);}
   });
@@ -4107,7 +4191,10 @@ function bhBlock(t){var ty=t===sunBody?sunType:t.starType;
    ≥40 M☉ kolapsar: iki kutup jeti = uzun gama ışını patlaması. Nötron yıldızı: doğrudan çöküş. */
 function pauseNote(){return playing&&!reverse?'':' Zaman durdurulmuş: oynatınca devam eder.';}
 function rsOf(M){var r=2.95*M;return (r<10?r.toFixed(1):Math.round(r).toLocaleString('tr-TR')).replace('.',',')+' km';}
-function colInit(b){var ty=stType(b),M=stMass(b);return {t:0,s0:b.typeScale,M:M,mode:ty===5?'ns':M>=40?'grb':M>=20?'failed':'fallback',objs:[]};}
+function colRemnant(C){var M=C.M;return C.mode==='ns'?M*.98:C.mode==='failed'?M*.9:C.mode==='grb'?M*.8:(M<8?M*.9:Math.max(3,M*.4));}
+function colInit(b){var ty=stType(b),M=stMass(b),C={t:0,s0:b.typeScale,M:M,mode:ty===5?'ns':M>=40?'grb':M>=20?'failed':'fallback',objs:[]};C.Mr=colRemnant(C);return C;}
+/* kalıntı kütlesi: patlamada savrulan madde sistemden çıkar (yerçekimi açıksa gezegen yörüngeleri genişler, hatta çözülür) */
+function colApplyMass(b,C){var Mr=colRemnant(C);if(b===sunBody){sunMass=Mr+EATEN/333000;$('sMass').value=sliderFromMass(Math.max(.1,Mr));$('oMass').textContent=massTxt();}else b.massAbs=Mr;}
 function colAbort(C){if(!C||!C.objs)return;C.objs.forEach(function(o){o.parent&&o.parent.remove(o);});C.objs=[];}
 function burstRing(host,R,col,T){var rg=new THREE.Mesh(new THREE.RingGeometry(.93,1,160),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:0,T:T||3,k:'ring',s:R});}
 function makeJets(){
@@ -4118,7 +4205,7 @@ function makeJets(){
   var G=new THREE.Group(),j1=new THREE.Mesh(g,m),j2=new THREE.Mesh(g,m);j2.rotation.z=Math.PI;j1.frustumCulled=j2.frustumCulled=false;G.add(j1);G.add(j2);G.userData.m=m;return G;
 }
 function colMsg(b,C){
-  var nm=b===sunBody?'Güneş':b.def.name,rs=' Olay ufku yarıçapı: '+rsOf(C.M)+'.';
+  var nm=b===sunBody?'Güneş':b.def.name,Mr=colRemnant(C),lost=1-Mr/C.M,rs=(lost>.05?' Patlamada kütlenin %'+Math.round(lost*100)+'\'i uzaya savruldu; kara deliğin kütlesi '+(Mr<10?Mr.toFixed(1).replace('.',','):Math.round(Mr))+' Güneş'+(gravityOn&&b===sunBody?'. Çekim zayıfladığı için gezegenlerin yörüngeleri genişleyecek':'')+'.':'')+' Olay ufku yarıçapı: '+rsOf(Mr)+'.';
   if(C.mode==='ns')return nm+': nötron yıldızı kütle sınırını aştı. Nötron basıncı bile ağırlığı taşıyamadı ve yıldız milisaniyeler içinde kara deliğe çöktü. Kısa bir nötrino ve kütleçekim dalgası parlaması oldu; savrulacak dış katman olmadığı için patlama yok.'+rs;
   var core='Çekirdek çöktü! Demir çekirdek saniyenin onda birinde birkaç bin km\'den 20-30 km\'ye büzüldü ve geri sekti. Açığa çıkan kütleçekim enerjisi yaklaşık 3×10⁴⁶ J: Güneş\'in 10 milyar yıllık ömrü boyunca saldığının 250 katı. Bunun %99\'unu birkaç saniyede kaçan nötrinolar taşır. ';
   if(C.mode==='fallback')return core+'Şok dalgası dış katmanları savurdu (süpernova), ama yetmedi: maddenin bir kısmı geri düştü ve yeni doğan nötron yıldızını kara deliğe çevirdi (geri düşmeli süpernova).'+(C.M<8?' Not: '+nm+' gerçekte bunun için fazla hafif; en az 20 Güneş kütlesi gerekir.':'')+rs;
@@ -4145,7 +4232,7 @@ function colStep(b,C,dt){
   if(C.mode==='failed')light(I0*(1+.9*Math.sin(Math.PI*Math.min(1,f*2.2)))*(1-e));
   else if(!(sun&&EXO.sn&&EXO.sn.t<2))light(I0*(1-e)+(f<.1?(1-f/.1)*I0*3:0));
   if(C.jets){var L=OVD()*(.02+.33*Math.pow(Math.min(1,(t-TB)/2.2),.7)),m=C.jets.userData.m;C.jets.scale.setScalar(L);m.uniforms.op.value=Math.min(1,(t-TB)/.25)*Math.pow(1-f,.6)*1.1;m.uniforms.t.value=t;}
-  if(f>=1){colAbort(C);return true;}
+  if(f>=1){colAbort(C);colApplyMass(b,C);return true;}
   return false;
 }
 function blackHole(){
@@ -4261,14 +4348,23 @@ $('sysClose').addEventListener('click',function(){$('sysPanel').hidden=true;});
 
 /* ================= GELGİT PARÇALANMASI (spagettileşme) ================= */
 var TDES=[],diskBoost=0;
-function clearTDES(){TDES.forEach(function(T){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();});TDES=[];}
+function clearTDES(){TDES.forEach(function(T){if(T.pts){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();}});TDES=[];TDEDONE=[];}
+var TDEDONE=[];
+/* geri sarma TDE'nin başladığı ana gelince: gaz akıntısı kalkar, yıldız parçalanmadan hemen önceki haline ve fırlatma yoluna döner */
+function tdeUndo(T,fromRestore){
+  if(T.pts){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;}
+  var a=T.body;if(!a||!byId[a.id])return;
+  if(a.def.star){if(a.destroyed){undestroy(a);a.ownDestroy=false;if(a.cust&&!customs.some(function(c){return c.id===a.id;})){customs.push(a.cust);saveCustom();}rebuildLists();}
+    if(T.D){a.dart=T.D;T.D.lk=(simDays-T.D.t0)/T.D.Ts;}}
+  if(!fromRestore&&T.em){EATEN-=T.em;sunMass-=T.em/333000;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}
+}
 function massFromSlider(v){return .1*Math.pow(10000,v);}
 function sliderFromMass(m){return Math.log(m/.1)/Math.log(10000);}
 function rtOf(b){return effVr(sunBody)*4*Math.cbrt(Math.max(1,sunMass))+effVr(b)*1.5;}
 var EATEN=0;
 function eatMass(b){var m=b.def.star?stMass(b)*333000*.5:bodyMass(b);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();return m;}
 function massTxt(){return sunMass<10?(EATEN>0?sunMass.toFixed(4).replace('.',',')+'×':fmtX(sunMass)):Math.round(sunMass)+'×';}
-function startTDE(b){
+function startTDE(b,Dsv){
   var N=b.def.star?(LOWQ?1800:4200):(LOWQ?900:2200),pos=new Float32Array(N*3),vel=new Float32Array(N*3),col=new Float32Array(N*3),alive=new Uint8Array(N),R=effVr(b);
   var c=new THREE.Vector3(b.gx,b.gy,b.gz),u=c.clone().normalize(),rr=c.length(),GM=(b.GM||1)*sunMass,w=Math.sqrt(GM/(rr*rr*rr));
   var base=new THREE.Color(b.def.dot?b.def.dot[0]:'#c08060');
@@ -4280,12 +4376,13 @@ function startTDE(b){
     col[i*3]=base.r;col[i*3+1]=base.g;col[i*3+2]=base.b;alive[i]=1;
   }
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  var pts=new THREE.Points(g,new THREE.PointsMaterial({size:3,sizeAttenuation:false,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,map:dotTex()}));
+  var pts=new THREE.Points(g,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,map:dotTex()}));
   pts.frustumCulled=false;scene.add(pts);
   if(focus===b||focus===sunBody||focus.parent===b){focusBody('sun',{dist:rtOf(b)*7});}
   if(SPEEDS[speedIdx].d>1){speedIdx=3;speed.value=3;setSpeed();}
-  TDES.push({ts:simDays,pts:pts,pos:pos,vel:vel,col:col,alive:alive,N:N,GM:(b.GM||1),rt:rtOf(b),left:N,age:0,base:base,name:b.def.name});
-  var isSt=!!b.def.star;if(isSt)hideStar(b);else destroyBody(b);var em=eatMass(b);
+  var Tobj={ts:simDays,body:b,D:Dsv||null,tau:0,pts:pts,pos:pos,vel:vel,col:col,alive:alive,N:N,GM:(b.GM||1),rt:rtOf(b),left:N,age:0,base:base,name:b.def.name};TDES.push(Tobj);
+  var isSt=!!b.def.star;if(isSt)hideStar(b);else destroyBody(b);var em=eatMass(b);Tobj.em=em;
+  {var GM0=Tobj.GM*sunMass;Tobj.k=TAU*Math.sqrt(Math.pow(Tobj.rt,3)/GM0)*.25;}
   toast(isSt?b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Yıldız uzayıp sıcak gaz akıntısına dönüşüyor; bu bir "gelgit bozulması olayı" (TDE). Gazın yaklaşık yarısı diske düşüp aylarca X-ışınıyla parlar, yarısı uzaya savrulur.':b.def.name+' gelgit sınırını geçti: kara deliğe yakın yüzü uzak yüzünden çok daha güçlü çekiliyor. Gezegen uzayıp kaya ve lav akıntısına dönüşüyor (spagettileşme). Kara deliğin kütlesi '+(em<10?em.toFixed(2).replace('.',','):Math.round(em))+' Dünya kütlesi artacak.',9000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
@@ -4303,15 +4400,22 @@ function stepTDEStream(T,h){
   }
 }
 function drawTDE(dt){
-  TDES.forEach(function(T){var GM=T.GM*sunMass,Td=TAU*Math.sqrt(Math.pow(T.rt,3)/GM),H=clamp(dt,-.05,.05)*Td*.25,m=Math.min(40,Math.max(1,Math.ceil(Math.abs(H)/(Td/160))));if(!H)return;for(var q=0;q<m;q++)stepTDEStream(T,H/m);});
+  for(var u=TDES.length-1;u>=0;u--)if(simDays<TDES[u].ts){tdeUndo(TDES[u]);TDES.splice(u,1);}
+  for(u=TDEDONE.length-1;u>=0;u--)if(simDays<TDEDONE[u].ts){tdeUndo(TDEDONE[u]);TDEDONE.splice(u,1);}
+  /* akıntı simülasyon saatine bağlı: iç zaman = (şimdi − başlangıç) × k; geri sarınca aynı yoldan geri akar */
+  TDES.forEach(function(T){var GM=T.GM*sunMass,Td=TAU*Math.sqrt(Math.pow(T.rt,3)/GM),hs=Td/160,del=(simDays-T.ts)*T.k-T.tau;if(Math.abs(del)<1e-9)return;
+    var m=Math.ceil(Math.abs(del)/hs);if(m>60){m=60;del=(del>0?1:-1)*60*hs;}var h=del/m;for(var q=0;q<m;q++)stepTDEStream(T,h);T.tau+=del;T.age=T.tau/(Td*.25);});
   diskBoost*=Math.exp(-Math.abs(dt)*.15);if(EXO.disk&&EXO.disk.material.uniforms.b)EXO.disk.material.uniforms.b.value=1+diskBoost;
   for(var k=TDES.length-1;k>=0;k--){var T=TDES[k],p=T.pos,c=T.col;T.age+=dt;
     for(var i=0;i<T.N;i++){if(!T.alive[i]){c[i*3]=c[i*3+1]=c[i*3+2]=0;continue;}
-      var r=Math.sqrt(p[i*3]*p[i*3]+p[i*3+1]*p[i*3+1]+p[i*3+2]*p[i*3+2]),q=clamp(T.rt/(r+1e-3)-.6,0,3)/3,hot=Math.min(1,q*1.4);
-      var R=T.base.r*(1-hot)+1*hot,G=T.base.g*(1-hot)+(.55+.4*q)*hot,B=T.base.b*(1-hot)+(.2+.75*q*q)*hot,br=.55+1.2*hot;
+      var r=Math.sqrt(p[i*3]*p[i*3]+p[i*3+1]*p[i*3+1]+p[i*3+2]*p[i*3+2]),x=r/T.rt,hot=clamp(1.6-x*.6,0,1),cool=clamp((x-2)/10,0,1),fresh=clamp(1-T.age/6,0,1);
+      /* diske yakın gaz yüz binlerce derece (beyaz-mavi, X-ışını), uzaklaştıkça genişleyip soğur: turuncu-kırmızı ve sönük */
+      var R=1*hot+(1-hot)*(.95*(1-cool)+.75*cool),G=(.92)*hot+(1-hot)*(.6*(1-cool)+.28*cool),B=1*hot+(1-hot)*(.35*(1-cool)+.16*cool);
+      R=R*(1-fresh)+T.base.r*fresh;G=G*(1-fresh)+T.base.g*fresh;B=B*(1-fresh)+T.base.b*fresh;
+      var br=(.25+1.3*hot)/(1+x*.12);
       c[i*3]=R*br;c[i*3+1]=G*br;c[i*3+2]=B*br;}
     T.pts.geometry.attributes.position.needsUpdate=true;T.pts.geometry.attributes.color.needsUpdate=true;
-    if(T.left<=T.N*.02||T.age>120||sunType!==6){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();TDES.splice(k,1);
+    if(T.left<=T.N*.02||T.age>120||sunType!==6){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;TDES.splice(k,1);TDEDONE.push(T);
       if(sunType===6)toast(T.name+' artık yok: maddesinin çoğu diskte ısınıp X-ışını saçarak olay ufkundan içeri düştü.',6000);}
   }
 }

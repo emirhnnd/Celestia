@@ -1982,7 +1982,15 @@ function resetSystem(e){
   if(now-resetArm>3500){resetArm=now;toast('Tüm değişiklikler ve eklediğin cisimler silinecek. Onaylamak için tekrar dokun.');if(el){var t0=el.textContent;el.textContent='Emin misin? Tekrar dokun';setTimeout(function(){el.textContent=t0;},3500);}return;}
   resetArm=0;vm.hidden=true;tv.setAttribute('aria-expanded','false');
   setGravity(false);if(SYS)unloadSystem();
-  BODIES.filter(function(b){return b.def.custom&&!b.parent;}).forEach(function(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);});
+  /* süren her şeyi durdur: patlama kabuğu, çöküş, gaz akıntıları, bulutsular, fırlatmalar, bekleyen dönüşümler */
+  TIMERS=[];SLOWMO=0;diskBoost=0;clearTDES();
+  PNEB.forEach(function(P){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();});PNEB=[];
+  if(EXO.sn){scene.remove(EXO.sn.shell);scene.remove(EXO.sn.flash);EXO.sn=null;}
+  if(EXO.col){colAbort(EXO.col);EXO.col=null;}
+  BODIES.forEach(function(b){b.dart=null;b.homing=null;b.unborn=false;b.ownDestroy=false;b.massAbs=null;if(b.pivot&&!b.parent)unstretch(b);});
+  /* eklenen tüm cisimler: yıldızlar, gezegenler, gerçek gezegenlere eklenen uydular ve çarpışma enkazından doğan uydular */
+  var cus=BODIES.filter(function(b){return b.def.custom;});
+  cus.filter(function(b){return b.parent;}).forEach(disposeBody);cus.filter(function(b){return !b.parent;}).forEach(function(b){BODIES.filter(function(x){return x.parent===b&&BODIES.indexOf(x)>=0;}).forEach(disposeBody);disposeBody(b);});
   customs=[];saveCustom();
   clearDestruction();if(typeof resetBelts==='function')resetBelts();
   BODIES.forEach(function(b){resetBody(b);b.hab=makeHab(b.def);b.cl=null;b.aurB=0;if(b.engulfed){b.engulfed=false;b.pivot.visible=true;}});

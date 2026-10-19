@@ -2087,7 +2087,13 @@ function setGravity(on){
   syncLab();
 }
 $('gravBtn').addEventListener('click',function(){act('grav',{on:!gravityOn});setGravity(!gravityOn);toast(gravityOn?'Yerçekimi simülasyonu açıldı':'Sabit yörüngelere dönüldü');});
-var massEv=null;$('sMass').addEventListener('change',function(){massEv=null;});
+var massEv=null;$('sMass').addEventListener('change',function(){massEv=null;massRetype();});
+/* ana kol yıldızında kütle türü belirler: <0,5 M☉ kırmızı cüce, 0,5–8 sarı/beyazımsı, ≥8 mavi dev (O/B tipi) */
+function massRetype(quiet){
+  if(SYS||sunType>2)return;var M=sunMass,ny=M<.5?1:M<8?0:2;if(ny===sunType)return;
+  setStar(ny,true);syncLab();if(focus===sunBody)updateInfo();
+  if(!quiet)toast(ny===1?'Kütle 0,5 Güneş\'in altına indi: bu kütlede bir yıldız kırmızı cüce olur (soğuk, sönük, trilyonlarca yıl yaşar).':ny===2?'Kütle 8 Güneş\'i geçti: bu kütlede bir ana kol yıldızı sıcak, mavi bir dev olur (O/B tipi). Ömrü birkaç milyon yıl; sonunda süpernova olur.':'Bu kütlede yıldız Güneş benzeri bir ana kol yıldızı olur.',7000);
+}
 $('sMass').addEventListener('input',function(){if(!massEv)massEv=act('mass',{v:sunMass});sunMass=massFromSlider(+this.value)+EATEN/333000;if(massEv)massEv.v=sunMass;$('oMass').textContent=massTxt();if(focus===sunBody&&sunType>=4)updateInfo();});
 
 /* ---------- ikinci yıldız ---------- */
@@ -3299,7 +3305,7 @@ function takeSnap(){
       h:h?{melt:h.melt||0,water:h.water,st:h.st}:null,dn:b.debris?b.debris.length:0,
       ho:b.homing?{t:b.homing.t.id,r:b.homing.rel.toArray(),v:b.homing.v.toArray()}:null};});
   S.belt=beltCopy();
-  S.sun={ty:EXO.col?6:(SUN_PEND!=null?SUN_PEND:sunType),m:sunMass,e:EATEN};S.st={};
+  S.sun={ty:EXO.col?6:(SUN_PEND!=null?SUN_PEND:sunType),m:SUN_PEND===5&&sunMass>2.3?1.4+EATEN/333000:sunMass,e:EATEN};S.st={};
   BODIES.forEach(function(b){if(!b.def.star||b===sunBody)return;S.st[b.id]={d:!!b.destroyed,ty:b.exoCol?6:(b.pend!=null?b.pend:b.starType),sz:b.mod.size,r:b.def.r,ang:b.ang};});
   SNAPS.push(S);if(SNAPS.length>3000)SNAPS.shift();lastSnapT=simDays;
 }
@@ -3352,7 +3358,7 @@ function runEvent(e){
   else if(e.type==='dart'){var a2=byId[e.a],t2=byId[e.tg];if(a2&&t2&&!isGone(a2)&&!isGone(t2))startDart(a2,t2,true);}
   else if(e.type==='act'){var tg=e.tg?(byId[e.tg]||sunBody):sunBody;
     if(e.k==='born'){var nb=byId[e.id];if(nb&&nb.destroyed&&nb.unborn){undestroy(nb);nb.unborn=false;rebuildLists();}}
-    else if(e.k==='mass'){sunMass=e.v;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();}
+    else if(e.k==='mass'){sunMass=e.v;$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();massRetype(true);}
     else if(e.k==='grav'){setGravity(e.on);}
     else if(!isGone(tg)){FORCE_STAR=tg;try{if(e.k==='bh')blackHole();else if(e.k==='nova')supernova();else if(e.k==='pn')planetaryNebula();else if(e.k==='type')chooseType(tg,e.i);}finally{FORCE_STAR=null;}}}
   else if(e.type==='rr'){var m=byId[e.id];if(m&&!isGone(m)){m.mod.rr=e.rr;if(m.line)m.line.scale.setScalar(moonVisR(m)/m.def.orbit);if(m.mod.rr<moonRoche(m))roche(m);if(m===focus)syncMoonUI();}}
@@ -3941,10 +3947,13 @@ function starNova(t){
   var ia=t.starType===4;
   snStart(t,ia);
   if(ia)after(1.8,function(){if(isGone(t))return;hideStar(t);focusBody('sun',{dist:OVD()*.6});});
-  else{t.pend=5;after(1.8,function(){if(!isGone(t)&&t.pend===5)setStarOn(t,5);});}
-  toast(ia?t.def.name+': Tip Ia süpernova! Beyaz cüce kütle sınırını (1,4 Güneş) aşınca karbon tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Evrendeki demirin çoğu böyle oluşur.':t.def.name+' süpernova oldu! Gerçekte bunun için en az 8 Güneş kütlesi gerekir; bu bir "ya olsaydı" senaryosu.',8000);
+  else if(stMass(t)>=20){t.exoCol=colInit(t);t.exoCol.mode=stMass(t)>=40?'grb':'fallback';}
+  else{t.pend=5;after(1.8,function(){if(!isGone(t)&&t.pend===5){setStarOn(t,5);nsMass(t);}});}
+  toast(!ia&&stMass(t)>=20?t.def.name+' süpernova oldu! Çekirdeği nötron yıldızı olarak kalamayacak kadar ağır: geriye kara delik kalacak.':ia?t.def.name+': Tip Ia süpernova! Beyaz cüce kütle sınırını (1,4 Güneş) aşınca karbon tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Evrendeki demirin çoğu böyle oluşur.':t.def.name+' süpernova oldu! Gerçekte bunun için en az 8 Güneş kütlesi gerekir; bu bir "ya olsaydı" senaryosu.',8000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
+/* süpernovadan kalan nötron yıldızı ~1,4 M☉: geri kalan kütle uzaya savrulur */
+function nsMass(b){if(stMass(b)<=2.3)return;if(b===sunBody){sunMass=1.4+EATEN/333000;$('sMass').value=sliderFromMass(1.4);$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}else b.massAbs=1.4;}
 function starBH(t){
   if(t.starType===6||t.exoCol)return;
   t.exoCol=colInit(t);if(t.starType===5)clearStarExo(t);focusBody(t.def.id,{dist:t.exoCol.mode==='grb'?Math.max(effVr(t)*9,OVD()*.15):effVr(t)*9});toast(t.def.name+': çekirdek çöküyor…'+pauseNote(),4000);
@@ -4044,13 +4053,15 @@ function supernova(){
   if(EXO.sn||sunType>=5){toast('Yıldız zaten öldü; önce yıldız türünü değiştir');return;}
   if(sunType===1){toast('Kırmızı cüceler süpernova olamaz: çok hafifler, yakıtlarını trilyonlarca yılda yavaşça yakarlar.',6000);return;}
   act('nova',{tg:'sun'});
+  if(sunType!==4&&sunMass>=20){EXO.col=colInit(sunBody);EXO.col.mode=sunMass>=40?'grb':'fallback';focusBody('sun',{dist:EXO.col.mode==='grb'?Math.max(effVr(sunBody)*9,OVD()*.15):OVD()*.9});
+    toast('Süpernova! '+Math.round(sunMass)+' Güneş kütleli bir yıldızın çekirdeği nötron yıldızı olarak kalamayacak kadar ağır: geriye kara delik kalacak. Çekirdek çöküyor…'+pauseNote(),6000);return;}
   if(sunType===4){snStart(sunBody,true);SUN_PEND=7;after(1.8,function(){if(SUN_PEND===7)setStar(7);});focusBody('sun',{dist:OVD()*.9});
     toast('Tip Ia süpernova! Beyaz cüce 1,4 Güneş kütlesi sınırını aşınca karbon bir anda tutuşur ve yıldız tamamen parçalanır; geriye hiçbir şey kalmaz. Gerçekte kütlesi yok olduğu için gezegenler düz bir çizgide uzaya savrulurdu; burada yörüngeler korunuyor.',9000);
     if(typeof audWhoosh==='function')audWhoosh();return;}
   snStart(sunBody,false);SUN_PEND=5;
-  after(1.8,function(){if(SUN_PEND===5)setStar(5);});
+  after(1.8,function(){if(SUN_PEND===5){setStar(5);nsMass(sunBody);}});
   focusBody('sun',{dist:OVD()*.9});
-  toast(sunType===2?'Süpernova! Mavi devler gerçekten böyle ölür: demir çekirdek çöker, dış katmanlar ışık hızının onda biriyle savrulur. Geriye bir nötron yıldızı kalır.':'Süpernova! Not: Güneş gerçekte süpernova olamaz, en az 8 Güneş kütlesi gerekir. Bu bir "ya olsaydı" senaryosu.',7000);
+  toast((sunType===2?'Süpernova! Mavi devler gerçekten böyle ölür: demir çekirdek çöker, dış katmanlar ışık hızının onda biriyle savrulur. Geriye bir nötron yıldızı kalır.':'Süpernova! Not: Güneş gerçekte süpernova olamaz, en az 8 Güneş kütlesi gerekir. Bu bir "ya olsaydı" senaryosu.')+(sunMass>2.3?' Kütlenin çoğu uzaya savrulur: geriye yaklaşık 1,4 Güneş kütleli nötron yıldızı kalır, gezegenler çok daha zayıf çekilir.':''),8000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
 function snStart(cb,ia){

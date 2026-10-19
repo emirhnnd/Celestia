@@ -3654,7 +3654,9 @@ function updateSurfaceCam(){
   if(SURF.init){var tb=surfTargetBody(b),tw=new THREE.Vector3();tb.pivot.getWorldPosition(tw);var td=tw.sub(p).normalize();
     SURF.yaw=Math.atan2(td.dot(east),td.dot(north));SURF.pitch=clamp(Math.asin(clamp(td.dot(up),-1,1)),.05,1.2);SURF.init=false;}
   var cp=Math.cos(SURF.pitch),fw=north.clone().multiplyScalar(cp*Math.cos(SURF.yaw)).addScaledVector(east,cp*Math.sin(SURF.yaw)).addScaledVector(up,Math.sin(SURF.pitch));
-  camera.position.copy(p);camera.up.copy(up);camera.lookAt(p.clone().add(fw));
+  /* tepeye bakarken bakış yönü 'yukarı' ile çakışıp kamera dönüyordu: kameranın üst yönünü bakış yönüne dik hesaplıyoruz */
+  var rgt=east.clone().multiplyScalar(Math.cos(SURF.yaw)).addScaledVector(north,-Math.sin(SURF.yaw)),cu=new THREE.Vector3().crossVectors(rgt,fw).normalize();
+  camera.position.copy(p);camera.up.copy(cu);camera.lookAt(p.clone().add(fw));
   if(b.def.id==='earth'&&SURF.city!=null){var sdv=new THREE.Vector3().copy(sunBody.pos).sub(p).normalize(),dark=1-ss(-.18,.02,sdv.dot(up));if(sunType>=5)dark=1;
     updateMeteors(Math.min(.05,FRAME_DT),up.clone(),dark);cityDraw(p,up.clone(),north.clone(),east.clone(),dark);
     var lpk=SURF.lp?(SURF.sky&&SURF.sky.kind==='mega'?1:.75):0;if(SKYG.starMat){SKYG.starMat.uniforms.lim.value=lpk*.62*dark;SKYG.starMat.uniforms.vis.value=Math.pow(dark,1.5);}if(SKYG.mw)SKYG.mw.material.opacity=(1-lpk*.95)*dark*.45;if(SKYG.faint)SKYG.faint.material.uniforms.op.value=(1-lpk)*Math.pow(dark,1.5)*.3;SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
@@ -3774,7 +3776,9 @@ function cityDraw(p,up,north,east,dark){
   if(cv.width!==Wc||cv.height!==Hc){cv.width=Wc;cv.height=Hc;}cv.style.display='block';var g=cv.getContext('2d');g.clearRect(0,0,Wc,Hc);
   var S=SURF.sky;if(!S||!S.L)return;
   function proj(az,el,out){CV1.copy(north).multiplyScalar(Math.cos(az)).addScaledVector(east,Math.sin(az)).addScaledVector(up,Math.tan(el)).multiplyScalar(1000).add(p);CV1.project(camera);out.x=(CV1.x*.5+.5)*Wc;out.y=(-CV1.y*.5+.5)*Hc;out.z=CV1.z;return out;}
-  var asp=Wc/Hc,hf=Math.atan(Math.tan(camera.fov*D2R/2)*asp)+.12,yaw=SURF.yaw,st=Math.max(.002,hf*2/600),pt={x:0,y:0,z:0},q2={x:0,y:0,z:0},hzY=0,nh=0;
+  /* ufuk ve binalar görüş alanının çok altında kaldıysa (tepeye bakılıyor) silüet çizilmez; aksi halde ekran dışındaki noktalar çokgenleri bozuyordu */
+  if(SURF.pitch-camera.fov*D2R/2>.45)return;
+  var asp=Wc/Hc,hf=Math.min(Math.PI,(Math.atan(Math.tan(camera.fov*D2R/2)*asp)+.12)/Math.max(.3,Math.cos(SURF.pitch))),yaw=SURF.yaw,st=Math.max(.002,hf*2/600),pt={x:0,y:0,z:0},q2={x:0,y:0,z:0},hzY=0,nh=0;
   for(var az=yaw-hf;az<=yaw+hf;az+=hf/8){proj(az,0,pt);if(pt.z<1){hzY+=pt.y;nh++;}}hzY=nh?hzY/nh:Hc;
   var ppd=Hc/camera.fov,day=Math.pow(1-dark,1.6),now=performance.now()*.001,lp=!!SURF.lp;
   var c0=CITIES[SURF.city],hr=((new Date(J2000+simDays*864e5+c0[3]*36e5)).getUTCHours()+(new Date(J2000+simDays*864e5)).getUTCMinutes()/60);

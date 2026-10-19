@@ -4039,7 +4039,7 @@ function updateExotic(dt){
   S.flash.scale.setScalar(S.R*(6+S.t*30));S.flash.material.opacity=clamp(1-S.t/2.5,0,1);
   if(S.cb===sunBody)sunLight.intensity=S.t<2?8*(1-S.t/2)+.9:sunLight.intensity;
   BODIES.forEach(function(b){
-    if(b.parent||b.def.star||b.def.craft||b.def.id==='sun'||S.hit[b.id]||isGone(b))return;
+    if(b.parent||b.def.star||b.def.craft||b.def.id==='sun'||S.hit[b.id]||isGone(b)||b.engulfed)return;
     var d=b.pos.distanceTo(S.c);if(d>r||(S.cb!==sunBody&&d>OVD()*.5))return;S.hit[b.id]=1;
     var rocky=b.hab&&b.hab.surf;
     if(rocky&&invOrbit(d)<1.8){flashAt(b.pivot,new THREE.Vector3(),effVr(b)*5,0xcfe0ff);destroyBody(b);S.gone.push(b.def.name);}

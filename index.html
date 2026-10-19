@@ -2843,10 +2843,29 @@ function loadRealPlanets(){
   var s=byId.saturn;if(s&&s.ringMesh)L.load('tex/saturn-ring.png',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
     var m=s.ringMesh.material;if(m.map)m.map.dispose();m.map=t;m.needsUpdate=true;if(s.shU&&s.shU.ringT)s.shU.ringT.value=t;},undefined,function(){});
 }
+/* sönük yıldız tozu: Samanyolu fotoğrafındaki yıldızlar büyütülünce bulanık leke olur; onları dokudan sildik ve yerine
+   her çözünürlükte keskin kalan noktalar koyuyoruz. Yoğunluk Samanyolu'nun parlaklığını izler (galaksi düzleminde daha çok yıldız). */
+function buildFaintStars(img){
+  if(!SKYG||SKYG.faint)return;
+  var W=256,H=128,D=null;try{var c=document.createElement('canvas');c.width=W;c.height=H;var g=c.getContext('2d');g.drawImage(img,0,0,W,H);D=g.getImageData(0,0,W,H).data;}catch(e){D=null;}
+  var N=LOWQ?14000:36000,pos=new Float32Array(N*3),col=new Float32Array(N*3),sz=new Float32Array(N),R=4300,n=0,tries=0;
+  var CL=[[.72,.82,1],[.9,.94,1],[1,1,1],[1,.95,.84],[1,.86,.7],[1,.74,.56]],CP=[.08,.22,.5,.75,.92,1];
+  while(n<N&&tries<N*30){tries++;
+    var z=Math.random()*2-1,ph=Math.random()*TAU,sq=Math.sqrt(1-z*z),x=sq*Math.cos(ph),y=z,zz=sq*Math.sin(ph),dens=.25;
+    if(D){var u=Math.atan2(zz,-x)/TAU;if(u<0)u+=1;var px=Math.min(W-1,u*W|0),py=Math.min(H-1,Math.acos(clamp(y,-1,1))/Math.PI*H|0);dens=.07+Math.min(.93,D[(py*W+px)*4+1]/255*7);}
+    if(Math.random()>dens)continue;
+    var q=Math.random(),k=0;while(CP[k]<q)k++;var cc=CL[k],br=.16+.62*Math.pow(Math.random(),3.2);
+    pos[n*3]=x*R;pos[n*3+1]=y*R;pos[n*3+2]=zz*R;col[n*3]=cc[0]*br;col[n*3+1]=cc[1]*br;col[n*3+2]=cc[2]*br;sz[n]=.9+Math.pow(Math.random(),5)*1.1;n++;}
+  var gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.BufferAttribute(pos.subarray(0,n*3),3));gg.setAttribute('color',new THREE.BufferAttribute(col.subarray(0,n*3),3));gg.setAttribute('sz',new THREE.BufferAttribute(sz.subarray(0,n),1));
+  var m=new THREE.ShaderMaterial({uniforms:{dpr:{value:Math.min(devicePixelRatio||1,2)},op:{value:1}},vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:'attribute float sz;uniform float dpr;varying vec3 vC;void main(){vC=color;gl_PointSize=sz*dpr;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader:'uniform float op;varying vec3 vC;void main(){vec2 p=gl_PointCoord-.5;float a=exp(-dot(p,p)*14.0);gl_FragColor=vec4(vC*a*op,1.0);}'});
+  var pts=new THREE.Points(gg,m);pts.frustumCulled=false;pts.renderOrder=-9;SKYG.add(pts);SKYG.faint=pts;
+}
 function loadRealSky(){
   var L=new THREE.TextureLoader(),an=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   L.load('tex/sun.jpg',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=an;REALSUN=t;BODIES.forEach(function(b){if(b.sunU&&b.sunU.sT){b.sunU.sT.value=t;b.sunU.sK.value=.55;}});},undefined,function(){});
-  if(SKYG&&SKYG.mw)L.load('tex/milkyway.jpg',function(t){t.encoding=THREE.sRGBEncoding;var m=SKYG.mw.material;if(m.map)m.map.dispose();m.map=t;m.opacity=1;m.needsUpdate=true;},undefined,function(){});
+  if(SKYG&&SKYG.mw)L.load('tex/milkyway.jpg',function(t){t.encoding=THREE.sRGBEncoding;t.anisotropy=an;var m=SKYG.mw.material;if(m.map)m.map.dispose();m.map=t;m.opacity=1;m.needsUpdate=true;buildFaintStars(t.image);},undefined,function(){});
   L.load('tex/earth-clouds.jpg',function(t){t.wrapS=THREE.RepeatWrapping;t.anisotropy=an;
     try{var c=document.createElement('canvas');c.width=512;c.height=256;var g=c.getContext('2d');g.drawImage(t.image,0,0,512,256);var d=g.getImageData(0,0,512,256).data,a=new Uint8Array(512*256);for(var i=0;i<a.length;i++)a[i]=d[i*4];WX.R=a;}catch(e){WX.R=null;}
     WX.RK=WX.R?.62:0;if(WX.u){WX.u.rT.value=t;WX.u.rK.value=.62;}},undefined,function(){});
@@ -3484,7 +3503,7 @@ function resolveDart(a,t){
       after(9,function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===fy)setStar(fy);}else if(t.pend===fy)setStarOn(t,fy);});
       msg='Nötron yıldızı diğer yıldızın içine gömüldü: dışarıdan şişkin bir kırmızı süperdev gibi görünen bir Thorne-Żytkow nesnesi oluştu (ilk kez 1977\'de öngörüldü, adayları var ama kesin gözlenmedi). Nötron yıldızı içeriden gazı yutar; '+(fy===6?'yaklaşık 2,3 Güneş kütlesini aşınca kara deliğe çöker.':'gaz tükenince geriye yine bir nötron yıldızı kalır.')+' Burada binlerce yıl birkaç saniyeye kısaltıldı.';}
     else{var ny=M>=8?2:(Math.max(ta,tt)===3?3:(M<.45?1:0));
-      var shell=nebPoints('lrn');shell.scale.setScalar(Math.max(effVr(t),effVr(a))*3);t.pivot.add(shell);PNEB.push({ts:simDays,sp:shell,t:0,R:Math.max(effVr(t),effVr(a))*1.2});
+      var shell=nebPoints('lrn');shell.scale.setScalar(Math.max(effVr(t),effVr(a))*3);t.pivot.add(shell);PNEB.push({ts:simDays,k:'lrn',sp:shell,t:0,R:Math.max(effVr(t),effVr(a))*1.2});
       starInto(t,3);if(t===sunBody)SUN_PEND=ny;else t.pend=ny;
       after(9,function(){if(isGone(t))return;if(t===sunBody){if(SUN_PEND===ny)setStar(ny);}else if(t.pend===ny)setStarOn(t,ny);});
       addStarMass(t,mA*.9);if(t!==sunBody){t.mod.size*=Math.pow(M/Math.max(mT,.1),.35);applySize(t);}
@@ -3618,7 +3637,7 @@ function updateSurfaceCam(){
   camera.position.copy(p);camera.up.copy(up);camera.lookAt(p.clone().add(fw));
   if(b.def.id==='earth'&&SURF.city!=null){var sdv=new THREE.Vector3().copy(sunBody.pos).sub(p).normalize(),dark=1-ss(-.18,.02,sdv.dot(up));if(sunType>=5)dark=1;
     updateMeteors(Math.min(.05,FRAME_DT),up.clone(),dark);cityDraw(p,up.clone(),north.clone(),east.clone(),dark);
-    var lpk=SURF.lp?(SURF.sky&&SURF.sky.kind==='mega'?1:.75):0;if(SKYG.starMat){SKYG.starMat.uniforms.lim.value=lpk*.62*dark;SKYG.starMat.uniforms.vis.value=Math.pow(dark,1.5);}if(SKYG.mw)SKYG.mw.material.opacity=(1-lpk*.9)*dark;SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
+    var lpk=SURF.lp?(SURF.sky&&SURF.sky.kind==='mega'?1:.75):0;if(SKYG.starMat){SKYG.starMat.uniforms.lim.value=lpk*.62*dark;SKYG.starMat.uniforms.vis.value=Math.pow(dark,1.5);}if(SKYG.mw)SKYG.mw.material.opacity=(1-lpk*.9)*dark;if(SKYG.faint)SKYG.faint.material.uniforms.op.value=(1-lpk)*Math.pow(dark,1.5);SURF.lblT=(SURF.lblT||0)-1;if(SURF.lblT<=0){SURF.lblT=20;surfCityLabel(dark);}}
   // gökyüzü rengi
   var sc=SKYCOL[b.def.id],h=b.hab,dens=h?({none:0,thin:.45,earth:1,thick:1,co2:1,h2:.8})[h.atm]:(sc?1:0);
   if((h&&h.atm==='none')||isEngulfed(b))dens=0;
@@ -3706,7 +3725,7 @@ function cityDraw(p,up,north,east,dark){
       if(b.top&&b.h>4){proj((b.a0+b.a1)/2,b.h*D2R,q2);if(q2.z<1&&Math.sin(performance.now()*.004+b.a0*50)>0){g.fillStyle='rgba(255,60,50,.95)';g.fillRect(q2.x-wpx,q2.y-wpx*2,wpx*2,wpx*2);}}});
     g.globalAlpha=1;}
 }
-function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;}
+function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;if(SKYG&&SKYG.faint)SKYG.faint.material.uniforms.op.value=1;}
 $('surfLP').addEventListener('click',function(){if(!SURF)return;SURF.lp=!SURF.lp;lpBtn();toast(SURF.lp?'Işık kirliliği açık: şehrin ışıkları gökyüzünü aydınlatıyor, yalnızca en parlak yıldızlar ve gezegenler görünüyor.':'Işık kirliliği kapalı: şehir karanlıkta. Samanyolu ve binlerce sönük yıldız ortaya çıktı; şehirlerin çoğunda insanlar bu manzarayı hiç görmüyor.',6000);});
 function clearMeteors(){MET.list.forEach(function(m){SKYG.remove(m.ln);SKYG.remove(m.hd);});MET.list=[];MET.acc=0;}
 function surfCityLabel(dark){
@@ -4016,8 +4035,11 @@ function planetaryNebula(){
   toast((t===sunBody?'Güneş\'in gerçek sonu: yaklaşık 7,5 milyar yıl sonra kırmızı dev':t.def.name+': kırmızı dev')+' dış katmanlarını yavaşça uzaya savurdu; geriye sıcak çekirdek, yani beyaz cüce kaldı. Çekirdeğin morötesi ışığı bu kabuğu parlatıyor: gezegenimsi bulutsu (adı yanıltıcı, gezegenle ilgisi yok). Yaklaşık 10.000 yıl görünür kalır.',9000);
   if(typeof audWhoosh==='function')audWhoosh();
 }
-function pnStep(dt){if(PNEB.length)nebPxUpdate();for(var i=PNEB.length-1;i>=0;i--){var P=PNEB[i];P.t+=dt;P.sp.scale.setScalar(P.R*(2+58*(1-Math.exp(-P.t/14))));P.sp.rotation.y+=dt*.003;
-  P.sp.material.opacity=clamp(P.t/4,0,1)*.9*(P.t>180?Math.max(0,1-(P.t-180)/40):1);if(P.t>220){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();PNEB.splice(i,1);}}}
+/* birleşme/başarısız süpernova kabuğu (kırmızı nova) az kütlelidir: genişledikçe incelir, soğuyup toza dönüşür ve sönükleşir.
+   Gezegenimsi bulutsu ise beyaz cücenin morötesi ışığıyla on binlerce yıl parlar. */
+function pnStep(dt){if(PNEB.length)nebPxUpdate();for(var i=PNEB.length-1;i>=0;i--){var P=PNEB[i];P.t+=dt;var lrn=P.k==='lrn';
+  P.sp.scale.setScalar(P.R*(lrn?2+20*(1-Math.exp(-P.t/9)):2+58*(1-Math.exp(-P.t/14))));P.sp.rotation.y+=dt*.003;
+  P.sp.material.opacity=lrn?clamp(P.t/1.5,0,1)*.8*Math.exp(-P.t/16):clamp(P.t/4,0,1)*.9*(P.t>180?Math.max(0,1-(P.t-180)/40):1);if(P.t>(lrn?75:220)){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();PNEB.splice(i,1);}}}
 function audPulse(vol){
   if(!AUD.on||!AUD.ctx||document.hidden)return;var ctx=AUD.ctx,t=ctx.currentTime+.005;
   var b=ctx.createBufferSource();b.buffer=AUD.nb||(AUD.nb=audNoise(ctx));var bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1700;bp.Q.value=.9;b.connect(bp);audEnv(bp,t,.0015,.42*vol,.035);b.start(t,Math.random()*3);b.stop(t+.08);
@@ -4114,7 +4136,7 @@ function colStep(b,C,dt){
     flashAt(host,new THREE.Vector3(),R*(C.mode==='ns'?10:18),0xd8ecff);burstRing(host,R*40,0xcfe6ff,2.6);
     if(C.mode==='ns')gwRipple(host,R*30);
     if(C.mode==='fallback'||C.mode==='grb'){if(!EXO.sn){snStart(b,false);EXO.sn.bh=true;}}
-    if(C.mode==='failed'){var sp=nebPoints('lrn');sp.scale.setScalar(R*2.2);host.add(sp);PNEB.push({ts:simDays,sp:sp,t:0,R:R*.7});}
+    if(C.mode==='failed'){var sp=nebPoints('lrn');sp.scale.setScalar(R*2.2);host.add(sp);PNEB.push({ts:simDays,k:'lrn',sp:sp,t:0,R:R*.7});}
     if(C.mode==='grb'){var J=makeJets();J.quaternion.copy(b.tilt.quaternion);host.add(J);C.jets=J;C.objs.push(J);}
     toast(colMsg(b,C),13000);toastLock=performance.now()+11000;if(typeof audWhoosh==='function')audWhoosh();
   }

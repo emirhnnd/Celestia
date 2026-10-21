@@ -4184,7 +4184,11 @@ function vn3(x,y,z,sd){var ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx
   return L(L(L(vh3(ix,iy,iz,sd),vh3(ix+1,iy,iz,sd),fx),L(vh3(ix,iy+1,iz,sd),vh3(ix+1,iy+1,iz,sd),fx),fy),L(L(vh3(ix,iy,iz+1,sd),vh3(ix+1,iy,iz+1,sd),fx),L(vh3(ix,iy+1,iz+1,sd),vh3(ix+1,iy+1,iz+1,sd),fx),fy),fz);}
 /* bulutsu: noktalardan değil, yumuşak ve filamentli bir gaz kabuğundan oluşur (sınırda parlayan, gürültüyle yırtılmış ince bir zar).
    kind: 'snr' süpernova kalıntısı, 'pn' gezegenimsi bulutsu, 'lrn' kırmızı nova. Birim yarıçap tür başına eski nokta bulutuyla aynı. */
-var NEB_VS='uniform float ey;uniform float bip;varying vec3 vN;varying vec3 vV;varying vec3 vL;void main(){vec3 p=position;float c=abs(normalize(position).y);p.xz*=1.0;p.y*=ey*(1.0+bip*pow(c,3.0)*1.1);vL=normalize(position);vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(p,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}';
+var NEB_VS='uniform float ey;uniform float ex;uniform float ez;uniform float lump;uniform float sd;uniform float bip;varying vec3 vN;varying vec3 vV;varying vec3 vL;'
+ +'float hs(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}'
+ +'float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(hs(i),hs(i+vec3(1,0,0)),f.x),mix(hs(i+vec3(0,1,0)),hs(i+vec3(1,1,0)),f.x),f.y),mix(mix(hs(i+vec3(0,0,1)),hs(i+vec3(1,0,1)),f.x),mix(hs(i+vec3(0,1,1)),hs(i+vec3(1,1,1)),f.x),f.y),f.z);}'
+ +'void main(){vec3 d=normalize(position);float c=abs(d.y);float r=1.0+lump*(nz(d*1.3+sd)*1.6-.8)+lump*.5*(nz(d*3.1+sd*2.0)-.5);'
+ +'vec3 p=position*max(.25,r);p*=vec3(ex,ey*(1.0+bip*pow(c,3.0)*1.1),ez);vL=d;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(p,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}';
 var NEB_FS='uniform float op;uniform float sd;uniform float kind;uniform vec3 cA;uniform vec3 cB;uniform vec3 cC;varying vec3 vN;varying vec3 vV;varying vec3 vL;'
  +'float hs(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}'
  +'float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(hs(i),hs(i+vec3(1,0,0)),f.x),mix(hs(i+vec3(0,1,0)),hs(i+vec3(1,1,0)),f.x),f.y),mix(mix(hs(i+vec3(0,0,1)),hs(i+vec3(1,0,1)),f.x),mix(hs(i+vec3(0,1,1)),hs(i+vec3(1,1,1)),f.x),f.y),f.z);}'
@@ -4198,7 +4202,7 @@ var NEB_FS='uniform float op;uniform float sd;uniform float kind;uniform vec3 cA
 function nebPoints(kind){
   var Rn=Math.random,rad=kind==='pn'?.34:kind==='lrn'?.24:.43,
       cols=kind==='lrn'?[[1,.34,.1],[1,.62,.28],[1,.85,.55]]:kind==='pn'?[[.3,.72,.78],[.95,.45,.38],[.85,.8,.95]]:[[.45,.62,1],[1,.42,.38],[.9,.92,1]];
-  var m=new THREE.ShaderMaterial({uniforms:{op:{value:0},sd:{value:Rn()*80},kind:{value:kind==='lrn'?2:kind==='pn'?1:0},ey:{value:.7+Rn()*.25},bip:{value:kind==='pn'&&Rn()<.65?.5+Rn()*.7:0},
+  var m=new THREE.ShaderMaterial({uniforms:{op:{value:0},sd:{value:Rn()*80},kind:{value:kind==='lrn'?2:kind==='pn'?1:0},ey:{value:.55+Rn()*.6},ex:{value:.7+Rn()*.5},ez:{value:.7+Rn()*.5},lump:{value:.45+Rn()*.5},bip:{value:kind==='pn'&&Rn()<.65?.5+Rn()*.7:0},
     cA:{value:new THREE.Color().setRGB(cols[0][0],cols[0][1],cols[0][2])},cB:{value:new THREE.Color().setRGB(cols[1][0],cols[1][1],cols[1][2])},cC:{value:new THREE.Color().setRGB(cols[2][0],cols[2][1],cols[2][2])}},
     transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,vertexShader:NEB_VS,fragmentShader:NEB_FS});
   var pts=new THREE.Mesh(new THREE.SphereGeometry(rad,LOWQ?40:64,LOWQ?28:44),m);pts.frustumCulled=false;pts.renderOrder=1;

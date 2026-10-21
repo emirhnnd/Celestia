@@ -2032,7 +2032,7 @@ function pushTrail(b){
   b.trailLine.geometry.setDrawRange(0,b.trailN);b.trailLine.geometry.attributes.position.needsUpdate=true;
 }
 /* Güneş'e/kara deliğe yutulma eşiği tek yerde: kara delik varken gelgit yarıçapı, yoksa Güneş yüzeyi */
-function swallowR(b){return sunType===6?rtOf(b):effVr(sunBody)*.95;}
+function swallowR(b){return sunType===6?rtOf(b):effVr(sunBody)+effVr(b)*.5;}
 function stepGravity(dDays){
   var gb=BODIES.filter(function(b){return b.grav&&b.trailLine&&!b.sysHide&&!b.dart;});
   if(!gb.length||!sunBody)return;
@@ -2080,6 +2080,8 @@ function stepGravity(dDays){
     if(sunType===6&&(b.tdeNow||rr<swallowR(b))){b.tdeNow=false;b.fallNow=false;b.homing=null;startTDE(b);return;}
     b.tdeNow=false;
     if(b.fallNow||rr<swallowR(b)){b.fallNow=false;b.homing=null;eatMass(b);toast(fallText(b.def.name,sunType,'Güneş'),7000);flashAt(scene,new THREE.Vector3(b.gx,b.gy,b.gz),effVr(b)*6,0xffe0a0);var ft=FIRET||(FIRET=glowTex([[0,'rgba(255,255,255,1)'],[.3,'rgba(255,255,255,.75)'],[.65,'rgba(255,255,255,.25)'],[1,'rgba(255,255,255,0)']]));var fs=new THREE.Sprite(new THREE.SpriteMaterial({map:ft,color:0xffd090,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));fs.position.set(b.gx,b.gy,b.gz);scene.add(fs);FXL.push({o:fs,t:0,T:3,k:'fire',s:effVr(b)*5});destroyBody(b);return;}
+    var hitS=null;for(var si=0;si<stars.length;si++){var sx=stars[si];if(sx===sunBody||sx.destroyed||isGone(sx)||sx.sysHide)continue;var ddx=sx.pos.x-b.gx,ddy=sx.pos.y-b.gy,ddz=sx.pos.z-b.gz;if(Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz)<effVr(sx)*.95+effVr(b)*.5){hitS=sx;break;}}
+    if(hitS){b.homing=null;var hT=stType(hitS);if(hT===6&&hitS.exo)hitS.exo.fuel=Math.min(6,(hitS.exo.fuel||0)+1.5);addStarMass(hitS,bodyMass(b)/333000);toast(fallText(b.def.name,hT,'yıldız'),7000);flashAt(scene,new THREE.Vector3(b.gx,b.gy,b.gz),effVr(b)*6,0xffe0a0);destroyBody(b);return;}
     if(rr>3000*DS&&!b.rogue){b.rogue=true;toast(b.def.name+' sistemden fırlatıldı: artık yıldızı olmayan başıboş bir gezegen, uzaklaştıkça donacak',6000);}
     b.pivot.position.set(b.gx,b.gy,b.gz);b.ang=Math.atan2(-b.gz,b.gx);if(dDays===0)return;pushTrail(b);
   });
@@ -3464,6 +3466,7 @@ function stepDarts(dt){
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
     if(a.def.star&&(t.def.star||t===sunBody)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(t.pos,DV).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
     if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd&&fwd){var Dsv=D;a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a,Dsv);}return;}
+    if(t===sunBody&&!a.def.star&&sunType!==6)touch=swallowR(a);
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;resolveDart(a,t);}
   });

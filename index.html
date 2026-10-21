@@ -2942,6 +2942,7 @@ function audChirp(kind){
     b.connect(bp);audEnv(bp,t,kind==='whoosh'?.8:.02,kind==='whoosh'?.5:kind==='crackle'?.25:kind==='radio'?.18:.05,kind==='whoosh'?1.8:kind==='crackle'?.08:.45);
     b.start(t,Math.random()*3);b.stop(t+3);
   }
+  else if(kind==='gw'){o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(35,t);o.frequency.exponentialRampToValueAtTime(280,t+1.2);o.frequency.exponentialRampToValueAtTime(55,t+1.6);audEnv(o,t,.5,.22,1.8);o.start(t);o.stop(t+2.2);}
   else if(kind==='thump'){o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(70,t);o.frequency.exponentialRampToValueAtTime(30,t+.8);audEnv(o,t,.05,.18,1);o.start(t);o.stop(t+1.3);}
 }
 function audTick(){
@@ -3448,25 +3449,44 @@ function startDart(a,t,replay,Ts,t0){
   if(a.dart)return;a.homing=null;var p0=a.pivot.position.clone(),d=p0.distanceTo(t.pos);
   var minD=(effVr(a)+effVr(t))*(isBH(t)?3.5:2.2);if(d<minD){p0=t.pos.clone().add(new THREE.Vector3().subVectors(p0,t.pos).normalize().multiplyScalar(minD));d=minD;a.pivot.position.copy(p0);}
   var up=new THREE.Vector3(0,1,0),side=new THREE.Vector3().subVectors(t.pos,p0).cross(up).normalize().multiplyScalar(d*.18);
-  a.dart={t:t,p0:p0,side:side,k:0,T:clamp(d/(OVD()*.18),3.5,8)};
+  a.dart={t:t,p0:p0,side:side,k:0,T:(isBH(a)&&isBH(t))?10:clamp(d/(OVD()*.18),3.5,8)};
   if(!replay){if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
-  focusBody(t.def.id,{dist:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});}
+  focusBody(t.def.id,{dist:(isBH(a)&&isBH(t))?(bhR(a)+bhR(t))*36:Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});}
   var D=a.dart;D.t0=t0!=null?t0:simDays;D.Ts=Ts||D.T*Math.max(SPEEDS[speedIdx].d,1e-6);D.lk=Math.max(0,(simDays-D.t0)/D.Ts);
   toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı'+(replay?' (tekrar oynatılıyor)':''),3500);
   return D.Ts;
 }
 var DV=new THREE.Vector3();
+/* iki kara delik: önce birbirlerinin etrafında dönerek yaklaşır (sarmal), dönüş hızlanır ve ayrılık azalır ("chirp").
+   Kütleçekim dalgası yayıldıkça ayrılık (tc−t)^(1/4) ile küçülür, açı ise (tc−t)^(5/8) ile ilerler; kalan zaman τ = 1−k. */
+function bhR(b){return effVr(b)*bhK(b);}
+function inspiralPos(D,a,t,k,out){
+  var touch=bhR(a)+bhR(t);
+  if(!D.ins){var r0=new THREE.Vector3().subVectors(D.p0,t.pos),s0=r0.length()||1,u0=r0.clone().multiplyScalar(1/s0),v0=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0),u0);if(v0.lengthSq()<1e-6)v0.set(0,0,1);v0.normalize();D.ins={s0:s0,u0:u0,v0:v0,si:Math.min(s0,touch*14),ph:0,np:0};}
+  var I=D.ins,kA=I.s0>I.si*1.02?.3:0,sEnd=touch*.85;
+  if(k<kA){var q=k/kA;q=q*q*(3-2*q);out.copy(D.p0).lerp(new THREE.Vector3().copy(t.pos).addScaledVector(I.u0,I.si),q);I.ph=0;return;}
+  var tau=Math.max(0,(1-k)/(1-kA)),s=sEnd+(I.si-sEnd)*Math.pow(tau,.25),ph=TAU*6*(1-Math.pow(tau,.625));I.ph=ph;I.s=s;
+  out.copy(t.pos).addScaledVector(I.u0,s*Math.cos(ph)).addScaledVector(I.v0,s*Math.sin(ph));
+}
+/* her yarım turda ufak bir kütleçekim dalgası halkası: dönüş hızlandıkça halkalar sıklaşır */
+function gwChirpFx(D,t){
+  var I=D.ins;if(!I||I.np>16)return;var n=Math.floor(I.ph/Math.PI);if(n<=I.np||I.ph<TAU)return;I.np=n;
+  var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,128),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.5,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+  rg.rotation.x=-Math.PI/2;t.pivot.add(rg);FXL.push({o:rg,t:0,T:2.6,k:'ring',s:Math.max(I.s||0,I.si*.4)*3});
+}
 function stepDarts(dt){
   BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;unstretch(a);unstretch(t);return;}
     /* fırlatma simülasyon saatine bağlı: zaman durunca durur, geri sarınca yıldız geldiği yola geri döner */
     var kk=(simDays-D.t0)/D.Ts;if(kk<0){a.dart=null;a.pivot.position.copy(D.p0);if(a.grav){a.gx=D.p0.x;a.gy=D.p0.y;a.gz=D.p0.z;}unstretch(a);unstretch(t);return;}
     var fwd=kk>D.lk+1e-12;D.lk=kk;D.k=kk;var e=Math.pow(Math.min(1,D.k),1.7);
-    DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
+    if(isBH(a)&&isBH(t)){inspiralPos(D,a,t,Math.min(1,kk),DV);if(fwd)gwChirpFx(D,t);}
+    else DV.copy(D.p0).lerp(t.pos,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=DV.distanceTo(t.pos),touch=effVr(a)+effVr(t);
     if(a.def.star&&(t.def.star||t===sunBody)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(t.pos,DV).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
-    if(t===sunBody&&sunType===6){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd&&fwd){var Dsv=D;a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a,Dsv);}return;}
+    if(t===sunBody&&sunType===6&&!isBH(a)){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd&&fwd){var Dsv=D;a.dart=null;var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a,Dsv);}return;}
     if(t===sunBody&&!a.def.star&&sunType!==6)touch=swallowR(a);
+    if(isBH(t)&&isBH(a))touch=bhR(a)+bhR(t);
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
     if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;resolveDart(a,t);}
   });
@@ -3502,8 +3522,13 @@ function resolveDart(a,t){
     if(typeof audWhoosh==='function')audWhoosh();
   }else{ // yıldız → yıldız
     var mA=stMass(a),mT=stMass(t),M=mA+mT,kill=true;
-    flashAt(host,new THREE.Vector3(),Math.max(effVr(t),effVr(a))*14,0xffffff);
-    if(ta===6&&tt===6){gwRipple(host,OVD()*.22);addStarMass(t,mA*.95);msg='İki kara delik birleşti! Kütlelerinin yaklaşık %5\'i bir anda kütleçekim dalgası olarak uzay-zamanı dalgalandırdı (LIGO 2015\'ten beri bunları ölçüyor). Birleşen kara delik geri tepmeyle yerinden de fırlayabilir.';}
+    if(!(ta===6&&tt===6))flashAt(host,new THREE.Vector3(),Math.max(effVr(t),effVr(a))*14,0xffffff);
+    if(ta===6&&tt===6){
+      /* ışık yok: etrafta gaz olmadığı için kara delik çifti karanlık birleşir; tek iz kütleçekim dalgasıdır. Kütlenin ~%5'i enerji olarak yayılır */
+      var rad=M*.05,ex=(t===sunBody?EXO:t.exo);gwRipple(host,OVD()*.22);after(.7,function(){if(!isGone(t))gwRipple(host,OVD()*.16);});
+      addStarMass(t,mA-rad);if(ex)ex.rd=0;if(typeof audChirp==='function'&&AUD.on&&AUD.ctx)audChirp('gw');
+      var f1=function(x){return x<10?x.toFixed(1).replace('.',','):Math.round(x);};
+      msg='İki kara delik birleşti. Birbirinin etrafında dönerek yaklaştılar, dönüş hızlandı ve olay ufukları tek bir ufukta birleşti. Etrafta gaz olmadığı için ışık çıkmadı; birleşme yalnızca kütleçekim dalgası olarak görünür. Toplam kütlenin yaklaşık %5\'i ('+f1(rad)+' Güneş kütlesi) enerjiye dönüşüp uzay-zamanı dalgalandırdı. Geriye '+f1(M-rad)+' Güneş kütleli, daha büyük tek bir kara delik kaldı (LIGO 2015\'te GW150914 ile bunu ilk kez ölçtü: 62 Güneş kütlesi, ~3 Güneş kütlesi dalga olarak yayıldı).';}
     else if(tt===6||ta===6){var bh=tt===6?t:a,oth=bh===t?a:t,to=stType(oth);
       if(bh===a)starInto(t,6);
       if(t===sunBody){var fin=(to===5?mA+mT:(bh===t?mT+mA*.5:mA+mT*.5));addStarMass(t,fin-mT);}
@@ -4096,8 +4121,12 @@ function starBH(t){
 var _v1=new THREE.Vector3(),_v2=new THREE.Vector3(),_v3=new THREE.Vector3(),_q1=new THREE.Quaternion();
 /* gerçekte olay ufku kütleyle doğru orantılı (1000 Güneş kütlesi = 2950 km, yine de Güneş'ten 240 kat küçük). Ekranda görünsün diye büyütülmüş ama kütleyle yavaşça büyür: 1000 kat kütle yıldızdan büyük bir delik demek değildir */
 function bhMassK(){var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M,.16);}
+/* ufuk yarıçapı kütleyle büyür: Güneş'te yavaşça (bhMassK), diğer kara deliklerde oluştuğu andaki kütleye göre */
+function bhK(b){if(b===sunBody)return bhMassK();var o=b.exo;if(!o)return 1;var m=Math.max(.2,stMass(b));if(!o.m0)o.m0=m;return Math.pow(m/o.m0,.16);}
 function bhStep(o,body,dt){
-  var kM=body===sunBody?bhMassK():1,sh=effVr(body)*kM;
+  var kM=bhK(body),sh=effVr(body)*kM;
+  /* birleşme sonrası "ringdown": yeni olay ufku şekil değiştirip birkaç salınımda sönerek küresel hale gelir */
+  if(o.rd!=null){o.rd+=Math.abs(dt);sh*=1+.2*Math.exp(-o.rd/.9)*Math.sin(o.rd*TAU*3.2);if(o.rd>6)o.rd=null;}
   o.disk.scale.setScalar(sh*2.3);
   if(body!==sunBody){o.disk.material.uniforms.t.value+=dt;o.fuel=(o.fuel||0)*Math.exp(-Math.abs(dt)*.15);o.disk.material.uniforms.b.value=o.fuel;}
   /* yeni oluşan kara deliğin diski yoktur: yalnızca olay ufku gölgesi ve ışığı bükülmüş zayıf bir foton halkası görünür; disk madde yutulunca parlar */

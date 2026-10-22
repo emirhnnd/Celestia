@@ -1496,7 +1496,7 @@ cv.addEventListener('pointerdown',function(e){
 });
 cv.addEventListener('pointermove',function(e){
   var p=pointers.get(e.pointerId);if(!p)return;
-  var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+  var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);if(moved>8&&WX.follow&&mode==='orbit'){WX.follow=null;toast('Fırtına takibi bırakıldı',1800);}
   if(pointers.size===1){
     if(mode==='surface'&&SURF){SURF.yaw-=dx*.004;SURF.pitch=clamp(SURF.pitch+dy*.004,-.35,1.55);}
     else if(mode==='orbit'){theta-=dx*.006;phi=clamp(phi-dy*.006,.04,Math.PI-.04);}
@@ -2724,19 +2724,41 @@ function updateWeather(){
   var e=byId.earth;if(e&&e.shU){e.shU.seas.value=st.s;e.shU.dTg.value=e.cl?clamp(e.cl.Ts-288,-60,60):0;}
   var list=activeStorms();WX.storms=list;
   for(var i=0;i<4;i++){var v=U.cyc.value[i],s=list[i];if(s){var la=s.lat*D2R,a=(s.lon+180)/360*TAU,cl=Math.cos(la);v.set(-Math.cos(a)*cl,Math.sin(la),Math.sin(a)*cl,s.k);}else v.w=0;}
-  U.cyT.value=wxT*1.2;
+  U.cyT.value=wxT*1.2;stormFollow();
   var key=list.map(function(s){return s.id;}).join(',');
   
   WX.key=key;
 }
+/* Fırtına havzaları. g: doğum bölgeleri [enlem min, enlem max, boylam min, boylam max, ağırlık]; h: ilk yön (derece, doğudan saat yönü tersine:
+   180 batı, 90 kuzey, 270 güney); v: ilerleme hızı (derece/gün, gerçekte 15-25 km/sa ≈ 3-5°/gün); pr: kıvrılma (recurvature) olasılığı;
+   lr: kıvrılmanın başladığı enlem; he: kıvrılınca yöneldiği yön (kuzeyde kuzeydoğu, güneyde güneydoğu). Kıvrılmayan fırtınalar
+   yavaşça kutba doğru sapar (beta kayması) ve çoğu karaya vurup söner. Değerler NOAA/JTWC iz istatistiklerinin kabaca özetidir. */
 var BASINS=[
-  {n:'Kasırga · Atlas Okyanusu',s0:155,s1:330,slots:3,p:.55,la0:13,lo0:-35,dla:22,dlo:-45,cur:28},
-  {n:'Kasırga · Doğu Pasifik',s0:140,s1:310,slots:3,p:.45,la0:13,lo0:-100,dla:7,dlo:-35,cur:0},
-  {n:'Tayfun · Batı Pasifik',s0:120,s1:340,slots:4,p:.55,la0:12,lo0:150,dla:22,dlo:-28,cur:30},
-  {n:'Siklon · Bengal Körfezi',s0:270,s1:345,slots:1,p:.5,la0:12,lo0:89,dla:9,dlo:-4,cur:0},
-  {n:'Siklon · Güney Hint Okyanusu',s0:320,s1:470,slots:2,p:.5,la0:-12,lo0:75,dla:-16,dlo:-25,cur:-18},
-  {n:'Siklon · Avustralya',s0:330,s1:460,slots:2,p:.45,la0:-13,lo0:125,dla:-12,dlo:-15,cur:0}
+  {n:'Kasırga · Atlas Okyanusu',s0:155,s1:330,slots:4,p:.5,g:[[9,17,-45,-18,.55],[13,27,-96,-62,.45]],h:[150,172],v:[2.6,4],pr:.62,lr:[20,30],he:45},
+  {n:'Kasırga · Doğu Pasifik',s0:140,s1:310,slots:3,p:.45,g:[[9,18,-115,-90,1]],h:[155,180],v:[2.4,3.8],pr:.2,lr:[16,22],he:70},
+  {n:'Tayfun · Batı Pasifik',s0:120,s1:340,slots:4,p:.55,g:[[6,20,124,168,1]],h:[145,172],v:[2.6,4],pr:.55,lr:[18,28],he:50},
+  {n:'Siklon · Bengal Körfezi',s0:270,s1:345,slots:1,p:.5,g:[[8,16,84,93,1]],h:[95,130],v:[2.5,4],pr:.45,lr:[15,19],he:55},
+  {n:'Siklon · Arap Denizi',s0:280,s1:330,slots:1,p:.3,g:[[10,18,62,72,1]],h:[110,165],v:[2.5,4],pr:.3,lr:[18,22],he:60},
+  {n:'Siklon · Güney Hint Okyanusu',s0:320,s1:470,slots:2,p:.5,g:[[-16,-7,52,98,1]],h:[190,220],v:[2.4,3.8],pr:.5,lr:[17,24],he:315},
+  {n:'Siklon · Avustralya',s0:330,s1:460,slots:2,p:.45,g:[[-18,-10,108,162,1]],h:[195,250],v:[2.2,3.6],pr:.45,lr:[17,24],he:310}
 ];
+function landAt(lat,lon){if(!EMASK)initEarthMask();return emSample((((lon+180)/360)%1+1)%1,clamp(.5-lat/180,0,1))>.5;}
+/* fırtınanın t (0-1) anındaki konumu ve gücü: yol, doğduğu andan küçük adımlarla ilerletilir; karada ve soğuk suda hızla zayıflar */
+function stormAt(B,yy,bi,k,t,dur){
+  function r(n){return h3(yy,bi*7+n,k*13+5);}
+  var gi=0,w=r(1),acc=0;for(var q=0;q<B.g.length;q++){acc+=B.g[q][4];if(w<=acc){gi=q;break;}gi=q;}
+  var G=B.g[gi],lat=G[0]+(G[1]-G[0])*r(2),lon=G[2]+(G[3]-G[2])*r(3),sgn=lat>=0?1:-1;
+  var h0=(B.h[0]+(B.h[1]-B.h[0])*r(4))*D2R,v=B.v[0]+(B.v[1]-B.v[0])*r(5),rec=r(6)<B.pr,lr=B.lr[0]+(B.lr[1]-B.lr[0])*r(7),he=B.he*D2R,wob=r(8)*TAU;
+  var days=t*dur,n=Math.max(1,Math.ceil(days/.25)),dt=days/n,tr=0,land=0,cold=0,head=h0;
+  for(var i=0;i<n;i++){var d=i*dt;
+    if(rec&&(Math.abs(lat)>=lr||d>dur*.6))tr=Math.min(1,tr+dt/2.2);
+    head=h0+sgn*.035*d+(he-h0)*tr*tr*(3-2*tr)+.12*Math.sin(wob+d*1.3);
+    var sp=v*(1+tr*.9);lat+=Math.sin(head)*sp*dt;lon+=Math.cos(head)*sp*dt/Math.max(.25,Math.cos(lat*D2R));
+    if(landAt(lat,lon))land+=dt;else land=Math.max(0,land-dt*.3);
+    if(Math.abs(lat)>28)cold+=dt*(Math.abs(lat)-28)/8;}
+  lon=((lon+540)%360)-180;
+  return {lat:lat,lon:lon,decay:Math.exp(-land/.45)*Math.exp(-cold*.5),land:land>.2,rec:rec&&tr>.5};
+}
 function activeStorms(any){
   var e=byId.earth,out=[];
   if(!e||!e.hab||isEngulfed(e)||e.hab.water<.3||(e.hab.melt||0)>.1||e.hab.atm==='none'||!e.cl||e.cl.Ts<275||e.cl.Ts>340)return out;
@@ -2748,14 +2770,26 @@ function activeStorms(any){
         if(h3(yy,bi*7+3,k*13+1)>B.p*Math.min(1.3,warm))continue;
         var dur=6+h3(yy,bi,k+50)*7,st=B.s0+h3(yy+3,bi,k)*(B.s1-B.s0-dur);
         if(dd<st||dd>st+dur)continue;
-        var t=(dd-st)/dur,cur=t*t;
-        var lat=B.la0+B.dla*cur+(h3(yy,bi,k+9)-.5)*6,lon=B.lo0+B.dlo*t+B.cur*Math.max(0,t-.55)*1.6+(h3(yy,bi,k+21)-.5)*14;
-        var k0=Math.sin(Math.PI*Math.min(1,t*1.1)),cat=Math.max(1,Math.min(5,Math.round(1+4*h3(yy,bi,k+33)*k0)));
-        out.push({id:yy+'-'+bi+'-'+k,name:B.n,lat:lat,lon:lon,k:clamp(k0*(.55+cat*.09),0,1),cat:cat,t:t});
+        var t=(dd-st)/dur,S=stormAt(B,yy,bi,k,t,dur);
+        var k0=Math.sin(Math.PI*Math.min(1,t*1.1))*S.decay;if(k0<.06)continue;
+        var cat=Math.max(1,Math.min(5,Math.round(1+4*h3(yy,bi,k+33)*k0)));
+        out.push({id:yy+'-'+bi+'-'+k,name:B.n,lat:S.lat,lon:S.lon,k:clamp(k0*(.55+cat*.09),0,1),cat:cat,t:t,land:S.land,rec:S.rec});
       }
     }
   });
   out.sort(function(a,b){return b.k-a.k;});return out.slice(0,4);
+}
+/* kamera fırtınayı izler: Dünya döndükçe ve fırtına ilerledikçe görüş fırtınanın üstünde kalır; sürükleyince bırakılır */
+var _sv=new THREE.Vector3();
+function stormFollow(){
+  var id=WX.follow;if(!id)return;var e=byId.earth;
+  if(mode!=='orbit'||focus!==e||!e||!e.clouds){WX.follow=null;return;}
+  var s=(WX.storms||[]).filter(function(x){return x.id===id;})[0];
+  if(!s){WX.follow=null;toast('Fırtına dağıldı',2500);return;}
+  var la=s.lat*D2R,a=(s.lon+180)/360*TAU,cl=Math.cos(la);_sv.set(-Math.cos(a)*cl,Math.sin(la),Math.sin(a)*cl).transformDirection(e.clouds.matrixWorld);
+  var th=Math.atan2(_sv.z,_sv.x),ph=Math.acos(clamp(_sv.y,-1,1)),d=Math.atan2(Math.sin(th-theta),Math.cos(th-theta)),k=trans?0:1-Math.exp(-Math.min(.1,FRAME_DT)*10);
+  theta+=d*k;phi+=(ph-phi)*k;
+  if(s.land!==WX.fLand){WX.fLand=s.land;if(s.land)toast(s.name.split(' · ')[0]+' karaya vurdu: sıcak okyanus suyundan kopunca hızla zayıflıyor',4500);}
 }
 var WXCITIES=[
   ['Samsun',41.29,36.33,[7,7,8,11,16,20,23,23,20,16,12,9]],
@@ -3550,8 +3584,10 @@ function gotoStorm(){
     updateBodies(found);simDays+=found;wxT=simDays;resyncReal();speedIdx=1;speed.value=1;setSpeed();updateBodies(0);
     updateWeather();L=WX.storms||[];if(!L.length)L=activeStorms(true);
   }
-  if(!L.length){toast('Fırtına bulunamadı');return;}var s=L[0];speedIdx=1;speed.value=1;setSpeed();updateBodies(0);
-  lookAtEarthLatLon(s.lat,s.lon);toast(s.name+(s.k>.45?' · kategori '+s.cat:' · tropikal fırtına')+' · hız 1 dakika/sn',5000);
+  if(!L.length){toast('Fırtına bulunamadı');return;}var s=L[0];
+  /* 1 saat/sn: fırtınanın 6-13 günlük ömrü 2,5-5 dakikada geçer; hem dönüşü hem ilerleyişi gözle görülür */
+  speedIdx=2;speed.value=2;setSpeed();playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');updateBodies(0);
+  lookAtEarthLatLon(s.lat,s.lon);WX.follow=s.id;WX.fLand=s.land;toast(s.name+(s.k>.45?' · kategori '+s.cat:' · tropikal fırtına')+' · kamera izliyor, hız 1 saat/sn',5000);
 }
 function clearTimeline(){SNAPS=[];EVENTS=[];lastSnapT=-1e18;BELTCOPIES=[];BELTCOPY=null;BELTDIRTY=true;}
 

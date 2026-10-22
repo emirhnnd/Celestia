@@ -399,6 +399,8 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <div id="wx" hidden style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:8px">
           <div class="tag">Hava durumu · simülasyon tarihi</div>
           <div id="wxRows" style="display:grid;gap:6px"></div>
+          <div class="btnrow" style="margin-top:4px"><button class="btn" id="wxGo">Sonraki fırtınaya git</button></div>
+          <p class="note" id="wxNote"></p>
           <p class="note">Bulutlar ve yağış, simülasyon zamanıyla birlikte hareket eder: rüzgâr kuşakları, mevsimler, muson ve bölgesel iklim (ör. Karadeniz kıyısı ve Japonya daha yağışlı, Sahra kurak) hesaba katılır. Zamanı hızlandırırsan hava sistemleri de hızlanır.</p>
         </div>
         <div id="pwx" hidden>
@@ -2735,10 +2737,10 @@ var BASINS=[
   {n:'Siklon · Güney Hint Okyanusu',s0:320,s1:470,slots:2,p:.5,la0:-12,lo0:75,dla:-16,dlo:-25,cur:-18},
   {n:'Siklon · Avustralya',s0:330,s1:460,slots:2,p:.45,la0:-13,lo0:125,dla:-12,dlo:-15,cur:0}
 ];
-function activeStorms(){
+function activeStorms(any){
   var e=byId.earth,out=[];
   if(!e||!e.hab||isEngulfed(e)||e.hab.water<.3||(e.hab.melt||0)>.1||e.hab.atm==='none'||!e.cl||e.cl.Ts<275||e.cl.Ts>340)return out;
-  if(SPEEDS[speedIdx].d>400)return out;
+  if(!any&&SPEEDS[speedIdx].d>400)return out;
   var dt=new Date(J2000+simDays*86400000),Y=dt.getUTCFullYear(),doy=(dt-Date.UTC(Y,0,1))/86400000,warm=clamp((e.cl.Ts-275)/13,0,1.6);
   BASINS.forEach(function(B,bi){
     for(var yo=-1;yo<=0;yo++){var yy=Y+yo,dd=doy-yo*365.25;
@@ -2781,19 +2783,19 @@ function renderWeather(b){
   var ok=b&&b.def.id==='earth'&&WX.u&&!isEngulfed(b)&&b.hab&&b.hab.atm!=='none';
   box.hidden=!ok;if(!ok)return;
   var st=wxState(),m=st.doy/365.25*12-.5,m0=Math.floor(m),fm=m-m0,dT=b.cl?(b.cl.Ts-288):0;
-  $('wxRows').innerHTML=WXCITIES.map(function(c){
+  var html=WXCITIES.map(function(c){
     var r=wxAt(c[1],c[2],st),a=c[3][((m0%12)+12)%12],z=c[3][((m0+1)%12+12)%12],T=a+(z-a)*fm+r.d*14-Math.max(0,r.x-.5)*6+dT;
     var L=wxLabel(r.x,T);
     return '<div class="hrow"><i class="q '+L[1]+'"></i><span>'+esc(c[0])+'</span><b>'+esc(L[0])+' · '+Math.round(T)+' °C</b></div>';
-  }).join('')+stormRows(st);
+  }).join('')+stormRows(st);var wr=$('wxRows');if(wr.__h!==html){wr.__h=html;wr.innerHTML=html;}
+  /* düğme ve not sabit: satırlar her 0,3 sn'de yeniden yazıldığından düğme içerideyken tıklama/dokunma arada kayboluyordu */
+  var g=$('wxGo'),gt=(WX.storms&&WX.storms.length)?'Fırtınayı göster':'Sonraki fırtınaya git';if(g&&g.textContent!==gt)g.textContent=gt;var nt=$('wxNote');if(nt&&!nt.textContent)nt.textContent='Kasırga, tayfun ve siklonlar ılık okyanuslarda, kendi mevsimlerinde oluşur ve bir haftayı biraz aşkın sürer. Yeri ve zamanı gerçek fırtınaları göstermez, modelin rastgele üretimidir. Kuzey yarım kürede saat yönünün tersine, güneyde saat yönünde dönerler. Hortumlar (tornado) birkaç yüz metre genişliğinde oldukları için uzaydan görülmez; en sık ilkbaharda ABD\'nin orta ovalarında, "Hortum Koridoru"nda olurlar.';
 }
 function stormRows(st){
   var L=(WX.storms||[]).map(function(s){return '<div class="hrow"><i class="q bad"></i><span>'+esc(s.name)+'</span><b>'+(s.k>.45?'Kategori '+s.cat:'Tropikal fırtına')+'</b></div>';});
   var m=new Date(J2000+simDays*86400000).getUTCMonth(),torn=m>=3&&m<=5;
   return (L.length?'<div class="tag" style="margin-top:6px">Tropikal fırtınalar</div>'+L.join(''):'')+
-    (torn?'<div class="hrow"><i class="q warn"></i><span>Hortum mevsimi</span><b>ABD\'nin orta ovaları</b></div>':'')+
-    '<div class="btnrow" style="margin-top:4px"><button class="btn" id="wxGo">'+((WX.storms&&WX.storms.length)?'Fırtınayı göster':'Sonraki fırtınaya git')+'</button></div>'+
-    '<p class="note">Kasırga, tayfun ve siklonlar ılık okyanuslarda, kendi mevsimlerinde oluşur ve bir haftayı biraz aşkın sürer. Yeri ve zamanı gerçek fırtınaları göstermez, modelin rastgele üretimidir. Kuzey yarım kürede saat yönünün tersine, güneyde saat yönünde dönerler. Hortumlar (tornado) birkaç yüz metre genişliğinde oldukları için uzaydan görülmez; en sık ilkbaharda ABD\'nin orta ovalarında, "Hortum Koridoru"nda olurlar.</p>';
+    (torn?'<div class="hrow"><i class="q warn"></i><span>Hortum mevsimi</span><b>ABD\'nin orta ovaları</b></div>':'');
 }
 
 /* ---------- diğer gezegenlerde hava olayları ---------- */
@@ -3533,7 +3535,7 @@ function timeline(d){
     lastSnapT=SNAPS.length?SNAPS[SNAPS.length-1].t:-1e18;
   }
 }
-document.addEventListener('click',function(e){if(e.target&&e.target.id==='wxGo')gotoStorm();});
+$('wxGo').addEventListener('click',gotoStorm);
 function lookAtEarthLatLon(lat,lon){
   var e=byId.earth;if(!e||!e.clouds)return;var la=lat*D2R,a=(lon+180)/360*TAU,cl=Math.cos(la),v=new THREE.Vector3(-Math.cos(a)*cl,Math.sin(la),Math.sin(a)*cl);
   scene.updateMatrixWorld(true);v.transformDirection(e.clouds.matrixWorld);
@@ -3543,12 +3545,12 @@ function gotoStorm(){
   var L=WX.storms||[];
   if(!L.length){
     if(gravityOn){toast('Yerçekimi modunda zaman atlaması yapılamıyor');return;}
-    var o=simDays,found=null;for(var d=.5;d<400;d+=.5){simDays=o+d;var l=activeStorms();if(l.length&&l[0].k>.5){found=d;break;}}simDays=o;
+    var o=simDays,found=null;for(var d=.5;d<400;d+=.5){simDays=o+d;var l=activeStorms(true);if(l.length&&l[0].k>.5){found=d;break;}}simDays=o;
     if(found==null){toast('Yakın zamanda fırtına bulunamadı (okyanuslar fırtına için uygun değil olabilir)');return;}
-    updateBodies(found);simDays+=found;wxT=simDays;resyncReal();updateBodies(0);
-    updateWeather();L=WX.storms||[];
+    updateBodies(found);simDays+=found;wxT=simDays;resyncReal();speedIdx=1;speed.value=1;setSpeed();updateBodies(0);
+    updateWeather();L=WX.storms||[];if(!L.length)L=activeStorms(true);
   }
-  if(!L.length)return;var s=L[0];speedIdx=1;speed.value=1;setSpeed();updateBodies(0);
+  if(!L.length){toast('Fırtına bulunamadı');return;}var s=L[0];speedIdx=1;speed.value=1;setSpeed();updateBodies(0);
   lookAtEarthLatLon(s.lat,s.lon);toast(s.name+(s.k>.45?' · kategori '+s.cat:' · tropikal fırtına')+' · hız 1 dakika/sn',5000);
 }
 function clearTimeline(){SNAPS=[];EVENTS=[];lastSnapT=-1e18;BELTCOPIES=[];BELTCOPY=null;BELTDIRTY=true;}

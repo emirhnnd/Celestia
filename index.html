@@ -4322,7 +4322,7 @@ function renderFrame(){
   var n0=camera.near,f0=camera.far,split=zB>n0*1.5&&zB<f0*.9;
   renderer.getDrawingBufferSize(_lsz);
   if(LENS.w!==_lsz.x||LENS.h!==_lsz.y){LENS.w=_lsz.x;LENS.h=_lsz.y;LENS.rt.setSize(_lsz.x,_lsz.y);if(LENS.rt.depthTexture){LENS.rt.depthTexture.image.width=_lsz.x;LENS.rt.depthTexture.image.height=_lsz.y;}}
-  var hid=[o.disk,o.ringS,b.mesh],vis=hid.map(function(x){return x?x.visible:false;});hid.forEach(function(x){if(x)x.visible=false;});
+  var hid=[o.disk,o.ringS,b.tilt||b.mesh],vis=hid.map(function(x){return x?x.visible:false;});hid.forEach(function(x){if(x)x.visible=false;});
   try{
     /* 1) kara deliğin arkası */
     if(split){camera.near=zB;camera.updateProjectionMatrix();}

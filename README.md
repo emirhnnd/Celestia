@@ -70,8 +70,9 @@
 - **İklim modeli.** Yörüngeyi, boyutu ya da atmosferi değiştir; sıcaklık, buzullar, okyanuslar ve yaşanabilirlik puanı canlı olarak güncellenir.
 - **Kütleçekim simülasyonu.** Gezegenler birbirini çeker. İki gezegeni çarpıştırabilirsin; Roche sınırını aşan uydular parçalanır.
 - **Yıldızın ölümü.** Güneş'i kırmızı deve, beyaz cüceye, süpernovaya ya da kara deliğe dönüştürebilirsin. Kara deliğe fazla yaklaşan gezegen spagetti gibi uzayıp parçalanarak yutulur.
+- **Işığı büken kara delik.** Kara deliğe yaklaşınca her piksel için ışığın yolu Schwarzschild uzay-zamanında hesaplanır. Diskin arka tarafı gölgenin üstüne ve altına sarılır, arkadaki gezegenler ve yıldızlar uzaklıklarına göre bükülür, Einstein halkası oluşur.
 - **Zamanı geri sar.** Çarpışmaları ve felaketleri geri alabilirsin; ileri oynatınca aynen yeniden yaşanırlar.
-- **Kendi gezegenini yarat.** Türünü, rengini, halkasını ve uydularını seç. Sistemi bir kodla arkadaşına gönderebilirsin.
+- **Kendi gezegenini yarat.** Ekle kataloğundan gezegen, yıldız, nötron yıldızı ya da kara delik seç; yalnızca o cismin ayarları çıkar. Sistemi bir kodla arkadaşına gönderebilirsin.
 - **Gelgit kilidi, yüzey görünümü, ölçek yolculuğu.** Bir gezegenin yüzeyinden gökyüzüne bakabilir ya da Güneş'ten en yakın yıldızlara kadar uçabilirsin.
 
 ## 🎧 Ekstralar
@@ -114,7 +115,7 @@ Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm ins
 
 - **three.js r128:** 3D sahne
 - **astronomy-engine 2.1.19:** gök mekaniği hesapları
-- **Elle yazılmış GLSL gölgelendiriciler:** Güneş granülasyonu, hareketli bulutlar ve kasırgalar, lav, analitik kraterler, halka ve tutulma gölgeleri, Doppler etkili yığılma diski, kütleçekimsel mercek halkası
+- **Elle yazılmış GLSL gölgelendiriciler:** Güneş granülasyonu, hareketli bulutlar ve kasırgalar, lav, analitik kraterler, halka ve tutulma gölgeleri, ışın izlemeli kara delik (kütleçekimsel mercek, Doppler ve kütleçekimsel kırmızıya kayma)
 - **Leapfrog integratörü:** gezegenler arası kütleçekim ve çarpışma fiziği
 
 ## 📜 Kaynaklar ve lisanslar

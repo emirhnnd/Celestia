@@ -1398,6 +1398,8 @@ function focusBody(id,opts){
   if(mode==='free')setMode('orbit');
   focus=b;
   desired=opts.dist||(b.def.craft?(b.def.parent?1.4:1.6):b.def.comet?(b.def.asteroid?3:(b.def.minor?16:34)):effVr(b)*(b.parent?7:5.2))*(W<760?1.7:1);
+  /* kara delik: kamera diskin içinde kalmasın; nötron yıldızı: 20 km'lik küre ekranı kaplamasın, hüzmeler görünsün */
+  if(!opts.dist){var ex=b===sunBody?(sunType===6?EXO:null):b.exo;if(ex&&ex.disk&&ex.sh)desired=Math.max(desired,ex.sh*14);else if(ex&&ex.disk)desired=Math.max(desired,solidR(b)*6);else if(ex&&ex.beams)desired=Math.max(desired,effVr(b)*30);}
   trans={t:0,s:target.clone(),d0:dist,d1:desired};
   updateInfo();syncLab();setActiveUI();
 }
@@ -1960,7 +1962,7 @@ function labCtx(){
   var notes=$('lsStar').querySelectorAll(':scope > .note:not(#starBack)');if(notes[0])notes[0].hidden=!(sun&&lt<4);if(notes[1])notes[1].hidden=!(lt<4);
   var bx=$('bhBox');bx.hidden=lt!==6;
   if(lt===6){$('bhLens').textContent=LENS.on?'Açık':'Kapalı';$('bhLens').classList.toggle('on',LENS.on);$('bhLens').setAttribute('aria-pressed',String(LENS.on));
-    var sel=$('bhPrey'),v=sel.value;sel.innerHTML='';BODIES.forEach(function(x){if(x.grav&&!x.parent&&!x.def.star&&!isGone(x)&&!x.sysHide){var o=document.createElement('option');o.value=x.def.id;o.textContent=x.def.name;sel.appendChild(o);}});if(v)sel.value=v;
+    var sel=$('bhPrey'),v=sel.value;sel.innerHTML='';BODIES.forEach(function(x){if(x.grav&&!x.parent&&!x.def.star&&!isGone(x)&&!x.sysHide){var o=document.createElement('option');o.value=x.def.id;o.textContent=x.def.name;sel.appendChild(o);}});if(v)sel.value=v;if(!sel.value&&sel.options.length)sel.selectedIndex=0;
     $('bhThrow').disabled=!sel.options.length;}
   if(typeof addSync==='function')addSync();
 }
@@ -2052,6 +2054,8 @@ var ADDNOTE={
   5:'Süpernovadan kalan 20 km\'lik çekirdek: bir çay kaşığı milyarlarca ton. Dönen ışınları deniz feneri gibi süpürür.',
   6:'Kütlesi kaydırıcıdan. Yaklaşınca arkasındaki gezegenlerin ve yıldızların ışığı bükülür; disk gölgenin üstüne ve altına sarılır.'};
 var ADDSEL='p:ocean';
+/* aynı adlı iki cisim olmasın: "Nötron yıldızı B" varsa yenisi "Nötron yıldızı C" */
+function uniqName(nm){var used={};BODIES.forEach(function(b){if(!isGone(b))used[b.def.name]=1;});if(!used[nm])return nm;var m=nm.match(/^(.*) ([A-Z])$/),base=m?m[1]:nm;for(var c=66;c<91;c++){var n=base+' '+String.fromCharCode(c);if(!used[n])return n;}for(var i=2;i<99;i++){if(!used[nm+' '+i])return nm+' '+i;}return nm;}
 function addKind(k){if(k.charAt(0)==='p')return 'planet';var t=+k.slice(2);return t===5?'ns':t===6?'bh':'star';}
 function addMassVal(){var v=+$('aMass').value;return Math.round(3*Math.pow(100/3,v)*10)/10;}
 function bhSizeFor(m){return clamp(.8*Math.pow((m||10)/10,.25),.4,1.6);}
@@ -2090,7 +2094,7 @@ function setStar(i,keepAge){
   SUN_PEND=null;if(i!==6&&EXO.col){colAbort(EXO.col);EXO.col=null;}
   if(i!==0&&sunBody.sunU&&sunBody.sunU.ha.value>0){sunBody.sunU.ha.value=0;$('vHa').setAttribute('aria-checked','false');}
   sunType=i;var t=SUN_TYPES[i];morphClear(sunBody);
-  sunBody.starType=i;sunBody.sunU.lo.value.setHex(t.lo);sunBody.sunU.hi.value.setHex(t.hi);sunBody.sunU.spots.value=i>=4?0:1;
+  sunBody.starType=i;sunBody.sunU.lo.value.setHex(t.lo);sunBody.sunU.hi.value.setHex(t.hi);sunBody.sunU.spots.value=(i>=4||i===2)?0:1;
   sunLight.color.setHex(t.light);sunLight.intensity=t.I;
   sunBody.glow1.material.color.setHex(t.glow);sunBody.glow2.material.color.setHex(t.glow);
   if(!keepAge){starAge=i===0?4.57:(i===3?11.2:(i===4?13:starAge));$('sAge').value=starAge;}
@@ -2244,14 +2248,14 @@ function addStar(o,silent){
   var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:9*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
     desc:'Güneş\'in çevresinde dönen ikinci bir yıldız. Işığı tüm gezegenleri aydınlatır; Yerçekimi simülasyonu açıkken yörüngeleri de bozar.',
     stats:[['Tür',T.name],['Çap',Math.round(1392700*o.size).toLocaleString('tr-TR')+' km'],['Güneş\'e uzaklık',Math.round(o.a)+' birim']]};
-  buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;}},0);
+  buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
   customs.push({kind:'star',id:id,name:def.name,type:o.type,size:o.size,a:o.a,L0:L0,m:o.m||null});
   if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi');}
   return id;
 }
 $('xAdd').addEventListener('click',function(){
   if(BODIES.filter(function(b){return b.def.star&&b!==sunBody&&!isGone(b)&&!b.sysHide;}).length>=2){toast('En fazla 2 ek yıldız ekleyebilirsin');return;}
-  var t=+$('xType').value,nm=($('nName').value||'').trim()||(SUN_TYPES[t].name+' B'),m=t===6?addMassVal():t===5?1.4:null;
+  var t=+$('xType').value,nm=uniqName(($('nName').value||'').trim()||(SUN_TYPES[t].name+' B')),m=t===6?addMassVal():t===5?1.4:null;
   addStar({type:t,size:t===6?bhSizeFor(m):t===5?.8:+$('xSize').value,a:+$('xDist').value,name:nm.slice(0,18),m:m});
 });
 
@@ -3338,7 +3342,7 @@ function destroyBody(b){
 function flashAt(parent,pos,size,color){
   var gt=FLASHT||(FLASHT=glowTex([[0,'rgba(255,255,255,1)'],[.25,'rgba(255,220,170,.7)'],[1,'rgba(255,140,60,0)']]));
   var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:color||0xffffff,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
-  sp.position.copy(pos);sp.scale.setScalar(size);parent.add(sp);FXL.push({o:sp,t:0,T:2.4,k:'flash',s:size});
+  sp.position.copy(pos);sp.scale.setScalar(size);sp.userData.post=true;parent.add(sp);FXL.push({o:sp,t:0,T:2.4,k:'flash',s:size});
 }
 var FLASHT=null,FXL=[];
 function debrisCloud(host,n,R,col,spread){
@@ -3401,7 +3405,7 @@ var FIRET=null;
 function updateImpactFx(f,dt){
   var a=f.t/f.T;if(f.t<0){f.o.visible=false;return;}f.o.visible=true;
   if(f.k==='fire'){var c=f.o.material.color,e=Math.min(1,a*2.2);c.setRGB(1,1-.62*e,.85-.8*Math.min(1,a*3));f.o.material.opacity=(a<.06?a/.06:1)*Math.pow(1-a,1.6)*.95;f.o.scale.setScalar(f.s*(.35+1.9*Math.pow(a,.45)));}
-  else if(f.k==='ring'){f.o.scale.setScalar(f.s*(.2+2.4*Math.pow(a,.6)));f.o.material.opacity=.6*Math.pow(1-a,2.2);}
+  else if(f.k==='ring'){f.o.scale.setScalar(f.s*(.2+2.4*Math.pow(a,.6)));f.o.material.opacity=(f.o.userData.gw?.2:.6)*Math.pow(1-a,2.2);}
   else if(f.k==='ejecta'){
     var p=f.o.geometry.attributes.position.array,c2=f.o.geometry.attributes.color.array,R=f.R,G=R*R*1.6;
     for(var i=0;i<f.N;i++){var x=p[i*3],y=p[i*3+1],z=p[i*3+2],r=Math.sqrt(x*x+y*y+z*z);
@@ -3765,7 +3769,7 @@ function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id==
 function stretchTo(b,dir,k){if(k<=0.001){b.pivot.quaternion.identity();b.pivot.scale.set(1,1,1);return;}b.pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);b.pivot.scale.set(1+k,1-k*.35,1-k*.35);}
 function unstretch(b){if(b&&b.pivot){b.pivot.quaternion.identity();b.pivot.scale.set(1,1,1);}}
 function removeStar(b){BODIES.filter(function(x){return x.parent===b;}).forEach(disposeBody);disposeBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
-function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
+function gwRipple(host,R){for(var q=0;q<4;q++){var rg=new THREE.Mesh(new THREE.RingGeometry(.97,1,160),new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));rg.rotation.x=-Math.PI/2;rg.userData.post=true;rg.userData.gw=true;host.add(rg);FXL.push({o:rg,t:-q*.45,T:5.5,k:'ring',s:R});}}
 function starInto(t,ty){if(t===sunBody)setStar(ty);else setStarOn(t,ty);}
 function addStarMass(t,m){if(t===sunBody){sunMass=Math.max(.05,sunMass+m);$('sMass').value=sliderFromMass(Math.max(.1,sunMass-EATEN/333000));$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();}else{t.massAbs=Math.max(.05,stMass(t)+m);}}
 function gen(n){var v=(n.toLocaleLowerCase('tr-TR').match(/[aeıioöuü](?=[^aeıioöuü]*$)/)||['e'])[0],end=/[aeıioöuü]$/i.test(n),m={a:'ın',ı:'ın',e:'in',i:'in',o:'un',u:'un',ö:'ün',ü:'ün'}[v];return n+'\''+(end?'n':'')+m;}
@@ -3958,7 +3962,7 @@ function fillTargets(){
   var s=$('lTarget');if(!s)return;var v=s.value;s.innerHTML='';var sun=focus===sunBody;
   /* Güneş yalnızca başka bir yıldıza fırlatılabilir: listede yalnızca yıldızlar */
   BODIES.forEach(function(b){if((b.grav||b.def.star||(b===sunBody&&sunType!==7))&&!isGone(b)&&!b.sysHide&&b!==focus&&(!sun||b.def.star)){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
-  if(v)s.value=v;
+  if(v)s.value=v;if(!s.value&&s.options.length)s.selectedIndex=0;
   var nt=$('lNote');if(!nt){nt=document.createElement('p');nt.className='note';nt.id='lNote';$('lGo').closest('.btnrow').after(nt);}
   var empty=!s.options.length;s.closest('.frow').hidden=empty;$('lGo').closest('.btnrow').hidden=empty;
   nt.textContent=empty?(sun?'Güneş sistemin merkezi; yalnızca başka bir yıldıza fırlatılabilir. Önce Ekle sekmesinden bir yıldız ekle.':'Fırlatılacak hedef yok.'):'';nt.hidden=!empty;
@@ -4428,8 +4432,8 @@ function nebTex(){
 }
 /* ışın: kameraya dönük, kenarları yumuşak, uzaklaştıkça incelip sönen ışık huzmesi (sert koniler yerine) */
 function beamMat(k,wd){return new THREE.ShaderMaterial({uniforms:{k:{value:k},wd:{value:wd},f:{value:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
-  vertexShader:'uniform float wd;varying vec2 vU;void main(){vec4 o=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 e=modelViewMatrix*vec4(0.0,1.0,0.0,1.0);vec3 ax=e.xyz-o.xyz;vec3 pos=o.xyz+ax*position.y;vec3 sd=cross(ax,pos);float l=length(sd);sd=l>1e-6?sd/l:vec3(0.0);pos+=sd*position.x*wd*mix(1.0,2.6,position.y);vU=vec2(position.x,position.y);gl_Position=projectionMatrix*vec4(pos,1.0);}',
-  fragmentShader:'uniform float k;uniform float f;varying vec2 vU;void main(){float x2=vU.x*vU.x;float g=exp(-x2*5.0),c=exp(-x2*36.0);float al=exp(-vU.y*2.2)*(1.0-smoothstep(.8,1.0,vU.y));vec3 col=mix(vec3(.5,.68,1.0),vec3(.96,.98,1.0),c);float a=(g*.28+c*.85)*al*k*(1.0+f*2.2);gl_FragColor=vec4(col*a,1.0);}'});}
+  vertexShader:'uniform float wd;varying vec2 vU;varying float vAl;void main(){vec4 o=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 e=modelViewMatrix*vec4(0.0,1.0,0.0,1.0);vec3 ax=e.xyz-o.xyz;vAl=1.0-smoothstep(.75,.97,abs(dot(normalize(ax),normalize(-o.xyz))));vec3 pos=o.xyz+ax*position.y;vec3 sd=cross(ax,pos);float l=length(sd);sd=l>1e-6?sd/l:vec3(0.0);pos+=sd*position.x*wd*mix(1.0,2.6,position.y);vU=vec2(position.x,position.y);gl_Position=projectionMatrix*vec4(pos,1.0);}',
+  fragmentShader:'uniform float k;uniform float f;varying vec2 vU;varying float vAl;void main(){float x2=vU.x*vU.x;float g=exp(-x2*5.0),c=exp(-x2*36.0);float al=exp(-vU.y*2.2)*(1.0-smoothstep(.8,1.0,vU.y));vec3 col=mix(vec3(.5,.68,1.0),vec3(.96,.98,1.0),c);float a=(g*.28+c*.85)*al*k*(1.0+f*2.2)*vAl;gl_FragColor=vec4(col*a,1.0);}'});}
 var PULS_HZ=5,PULS_TILT=1.05;
 function removeExotic(){
   if(!sunBody)return;EXO.dimK=null;
@@ -4498,7 +4502,7 @@ function setStarOn(b,i){
   /* adı türden geliyorsa ("Nötron yıldızı B") tür değişince ad da değişir: "Kara delik B" */
   if(T0&&T0!==T&&b.def.name.indexOf(T0.name)===0){b.def.name=T.name+b.def.name.slice(T0.name.length);customs.forEach(function(c){if(c.id===b.id)c.name=b.def.name;});if(b.label&&b.label.firstChild)b.label.firstChild.textContent=b.def.name;b.renamed=true;}
   b.starType=i;
-  b.sunU.lo.value.setHex(T.lo);b.sunU.hi.value.setHex(T.hi);b.sunU.spots.value=i>=4?0:1;
+  b.sunU.lo.value.setHex(T.lo);b.sunU.hi.value.setHex(T.hi);b.sunU.spots.value=(i>=4||i===2)?0:1;
   b.glow1.material.color.setHex(T.glow);b.glow2.material.color.setHex(T.glow);
   if(b.light){b.light.color.setHex(T.light);b.light.intensity=T.I*.7;}
   b.typeScale=T.sc;b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
@@ -4554,7 +4558,7 @@ function bhStep(o,body,dt){
   o.sh=sh;o.disk.scale.setScalar(sh*2);
   /* disk her zaman sıcak gazla parlar (yıldızın çöküşünden geri düşen madde); bir şey yutunca daha da parlar */
   if(body!==sunBody){o.disk.material.uniforms.t.value+=dt;o.fuel=(o.fuel||0)*Math.exp(-Math.abs(dt)*.15);o.disk.material.uniforms.b.value=(o.dimK!=null?o.dimK+(1-o.dimK)*Math.min(1,o.fuel):1)+Math.log(1+o.fuel)*.8;}
-  var hl=o.ringS;if(!hl)return;var U=hl.material.uniforms;U.t.value+=dt;var db=o.disk.material.uniforms.b.value;U.dk.value=Math.min(1,db);U.b.value=.75+.25*Math.min(1,db)+Math.max(0,db-1);
+  var hl=o.ringS;if(!hl)return;var U=hl.material.uniforms;U.t.value+=dt;var db=o.disk.material.uniforms.b.value;U.dk.value=Math.min(1,db);U.b.value=.75+.25*Math.min(1,db)+Math.max(0,db-1)*.35;
   hl.quaternion.copy(camera.quaternion);hl.scale.setScalar(sh);
   var n=o.disk.getWorldDirection(_v1).normalize(),v=_v2.copy(camera.position).sub(body.pos).normalize(),dn=n.dot(v);
   U.edge.value=.25+.75*(1-Math.abs(dn));U.rD.value=2.3;
@@ -4663,6 +4667,9 @@ function renderFrame(){
   /* yörünge çizgileri gerçek cisim değil, yön bulma yardımı: bükülmüş halleri gölgenin üstüne sarılıp cam küre gibi görünüyordu.
      Merceğe girmezler; en sonda bükülmeden çizilir, gölgenin arkasında kalan kısımları gizlenir */
   var LN=[];BODIES.forEach(function(x){if(x.line&&x.line.visible){LN.push(x.line);x.line.visible=false;}});
+  /* parlamalar ve kütleçekim dalgası halkaları da merceğe girmez: kara deliğin merkezindeki parlama bükülünce halka gibi görünüyordu */
+  FXL.forEach(function(f){if(f.o&&f.o.userData.post&&f.o.visible){LN.push(f.o);f.o.visible=false;}});
+  if(EXO.sn&&EXO.sn.kn){[EXO.sn.flash,EXO.sn.jets].forEach(function(o){if(o&&o.visible){LN.push(o);o.visible=false;}});}
   try{
     /* 1) kara deliğin arkası */
     if(split){camera.near=zB;camera.updateProjectionMatrix();}
@@ -4706,7 +4713,10 @@ function pulsarStep(o,body,dt){
   if(body===sunBody)sunLight.intensity=SUN_TYPES[5].I*(1+o.fl*1.6);else if(body.light)body.light.intensity=SUN_TYPES[5].I*.7*(1+o.fl*1.6);
   nebStep(o,body,dt);
 }
-function nebStep(o,body,dt){if(o.neb){nebPxUpdate();o.nebT+=dt;o.neb.material.opacity=clamp(o.nebT/8,0,1)*(o.nebK||.5);o.neb.rotation.y+=dt*.004;o.neb.scale.setScalar(body.def.vr*(36+Math.min(o.nebT,120)*.12));}}
+function nebStep(o,body,dt){if(o.neb){nebPxUpdate();o.nebT+=dt;
+  /* kamera bulutsunun içindeyken tüm ekran pembe sise boğuluyordu: içeriden bakınca bulutsu söner (gerçekte de içinden bakınca seçilmez) */
+  var nr=o.neb.scale.x,cdn=camera.position.distanceTo(body.pos),inK=ss(nr*.35,nr*1.1,cdn);
+  o.neb.material.opacity=clamp(o.nebT/8,0,1)*(o.nebK||.5)*inK;o.neb.rotation.y+=dt*.004;o.neb.scale.setScalar(body.def.vr*(36+Math.min(o.nebT,120)*.12));}}
 /* gezegenimsi bulutsu */
 var PNEB=[];
 function pnTex(){
@@ -4804,11 +4814,11 @@ function supernova(){
 function kilonova(t,ej){
   snStart(t,false);var S=EXO.sn;S.kn=true;S.ej=ej;S.flash.material.color.setHex(0xcfe0ff);S.flash.scale.setScalar(.01);
   /* parlama ve jetler kalıntıya bağlı: yörüngede ilerlese de üstünde kalır */
-  t.pivot.add(S.flash);S.flash.position.set(0,0,0);
+  t.pivot.add(S.flash);S.flash.position.set(0,0,0);S.flash.userData.post=true;
   var R=effVr(t),L=R*32,jets=new THREE.Group(),ax=new THREE.Vector3(Math.random()-.5,1,Math.random()-.5).normalize();
   var jm=beamMat(1.6,R*.5),pg=new THREE.PlaneGeometry(2,1,1,1);pg.translate(0,.5,0);
   [1,-1].forEach(function(sg){var st=new THREE.Mesh(pg,jm);st.scale.y=L;if(sg<0)st.rotation.z=Math.PI;st.renderOrder=3;st.frustumCulled=false;jets.add(st);});
-  jets.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),ax);t.pivot.add(jets);S.jets=jets;S.jm=jm;
+  jets.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),ax);jets.userData.post=true;t.pivot.add(jets);S.jets=jets;S.jm=jm;
 }
 var _knC1=new THREE.Color(0xd8e6ff),_knC2=new THREE.Color(0xffb070),_knC3=new THREE.Color(0xc0381a);
 function knStep(S,dt){
@@ -4819,7 +4829,7 @@ function knStep(S,dt){
   /* parlama ~2 sn'de tepe yapar, 14 sn'de söner; renk mavi-beyaz → turuncu → koyu kızıl */
   var rise=ss(.2,2,t),fall=1-ss(3,15,t),a=rise*fall*k,q=clamp((t-1.5)/9,0,1),c=S.flash.material.color;
   if(q<.5)c.copy(_knC1).lerp(_knC2,q*2);else c.copy(_knC2).lerp(_knC3,(q-.5)*2);
-  S.flash.scale.setScalar(R*(14+t*7));S.flash.material.opacity=Math.min(1,a*1.3);
+  S.flash.scale.setScalar(Math.min(R*(14+t*7),camera.position.distanceTo(S.cb.pos)*.55));S.flash.material.opacity=Math.min(1,a*1.3);
 }
 function snStart(cb,ia){
   var sg=new THREE.SphereGeometry(1,48,32),sm=new THREE.MeshBasicMaterial({color:0xbfd8ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,wireframe:false});

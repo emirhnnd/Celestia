@@ -111,6 +111,16 @@ Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm ins
 | `main` | Gerçek fotoğraf dokuları |
 | `eski-modeller` | Kodla üretilen (prosedürel) gezegen dokuları. Daha hafiftir; Dünya dışındaki gezegenlerde gerçek doku kullanmaz. |
 
+## 🧪 Test
+
+`test/` klasöründe, uygulamayı başsız bir tarayıcıda açıp birleşmeleri, çarpışmaları, geri sarmayı, sıfırlamayı, paylaşma kodunu, meteor yağmurunu ve fırtına takibini gerçek zamanlı deneyen senaryolar var. Değişiklikten sonra çalıştır:
+
+```bash
+cd test && npm install && npm test
+```
+
+Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
+
 ## 🛠️ İçinde neler var
 
 - **three.js r128:** 3D sahne

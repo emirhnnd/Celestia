@@ -819,7 +819,7 @@ var SUN_TYPES=[
   {name:'Mavi dev',lo:0x2a6bff,hi:0xd8eaff,light:0xbcd6ff,I:2.2,glow:0x5fa0ff,gm:.95,L:600,sc:2.4,uv:10,life:.05,uvName:'Çok yüksek UV',stage:'Ana kol (kısa ömürlü)'},
   {name:'Kırmızı dev',lo:0x8a1400,hi:0xff8a30,light:0xff8a50,I:2,glow:0xff5a20,gm:1.15,L:2000,sc:6,uv:.3,life:.1,uvName:'Düşük UV',stage:'Kırmızı dev evresi'},
   {name:'Beyaz cüce',lo:0xaabbdd,hi:0xffffff,light:0xe0e8ff,I:1.6,glow:0xcfe0ff,gm:1.3,L:.02,sc:.16,uv:.6,life:.02,uvName:'Düşük',stage:'Beyaz cüce (ölü yıldız)'},
-  {name:'Nötron yıldızı',lo:0x8fb0ff,hi:0xffffff,light:0xcfe0ff,I:.9,glow:0x9fc0ff,gm:1.4,L:.0005,sc:.07,uv:50,life:.01,uvName:'Ölümcül X-ışını',stage:'Süpernova sonrası pulsar'},
+  {name:'Nötron yıldızı',lo:0x8fb0ff,hi:0xffffff,light:0xcfe0ff,I:.9,glow:0x9fc0ff,gm:.55,L:.0005,sc:.07,uv:50,life:.01,uvName:'Ölümcül X-ışını',stage:'Süpernova sonrası pulsar'},
   {name:'Kara delik',lo:0x000000,hi:0x000000,light:0xffb070,I:.22,glow:0x000000,gm:0,L:.0003,sc:.12,uv:5,life:0,uvName:'Diskten X-ışını',stage:'Kara delik'},
   {name:'Yok (patladı)',lo:0x000000,hi:0x000000,light:0x9fb0ff,I:.03,glow:0x000000,gm:0,L:.00001,sc:.05,uv:0,life:0,uvName:'Yok',stage:'Tip Ia süpernova kalıntısı'}
 ];
@@ -1489,7 +1489,11 @@ var pointers=new Map(),moved=0,lastPinch=0,keys={};
 function pinchD(){var a=Array.from(pointers.values());return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1;}
 function solidR(b){var r=effVr(b);if(b===sunBody&&sunType===6&&!SYS)r*=bhMassK()*2.6;else if(b.exo&&b.exo.disk)r*=2.6;if(b.wob)r*=1.25;if(b.atmoMesh)r*=1.04;return r;}
 function minDist(){return solidR(focus)*(focus.parent?2.2:1.7);}
-function zoomBy(k){
+var DCAM=true;
+function dartCam(){if(!DCAM||!focus)return null;var A=null;for(var i=0;i<BODIES.length;i++){var b=BODIES[i];if(b.dart&&b.dart.cam&&(b.dart.t===focus||b===focus)&&!isGone(b)&&!isGone(b.dart.t)){A=b;break;}}if(!A)return null;
+  var t=A.dart.t,c=_dcC.copy(A.pos).add(t.pos).multiplyScalar(.5),r=A.pos.distanceTo(t.pos)*.5+Math.max(solidR(A),solidR(t));return {c:c,r:r};}
+var _dcC=new THREE.Vector3();
+function zoomBy(k){DCAM=false;
   if(mode==='surface'){camera.fov=clamp(camera.fov*k,12,75);camera.updateProjectionMatrix();return;}
   if(mode==='orbit'){dist=clamp(dist*k,minDist(),5000*DS);trans=null;}
   else{camera.translateZ((k-1)*nearestSurface()*1.2);}
@@ -1500,7 +1504,7 @@ cv.addEventListener('pointerdown',function(e){
 });
 cv.addEventListener('pointermove',function(e){
   var p=pointers.get(e.pointerId);if(!p)return;
-  var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);if(moved>8&&WX.follow&&mode==='orbit'){WX.follow=null;toast('Fırtına takibi bırakıldı',1800);}
+  var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);if(moved>8)DCAM=false;if(moved>8&&WX.follow&&mode==='orbit'){WX.follow=null;toast('Fırtına takibi bırakıldı',1800);}
   if(pointers.size===1){
     if(mode==='surface'&&SURF){SURF.yaw-=dx*.004;SURF.pitch=clamp(SURF.pitch+dy*.004,-.35,1.55);}
     else if(mode==='orbit'){theta-=dx*.006;phi=clamp(phi-dy*.006,.04,Math.PI-.04);}
@@ -1618,7 +1622,10 @@ function updateCamera(dt){
     focus.pivot.getWorldPosition(tmpV);
     /* genel görünümde (Güneş'e uzaktan bakarken) kamera ortak kütle merkezine bakar: ağır bir kara delik eklenince Güneş'in onun
        etrafında dolandığı görülür. Yakından bakınca Güneş ortada kalır. */
-    if(focus===sunBody&&!SYS){sysCOM(_com);var cl=_com.length(),kc=cl>1e-3?ss(Math.max(cl*.8,effVr(sunBody)*6),cl*3,dist):0;if(kc>0)tmpV.lerp(_com,kc);}
+    /* fırlatma/birleşme sürerken kamera iki cismi birlikte çerçeveler: ortalarına bakar, aradaki mesafeye göre uzaklaşıp yakınlaşır.
+       Önceden kamera hedefe sabitlenip diğer cisim çoğu zaman ekran dışında kalıyordu. Sürükleyince/yakınlaştırınca kullanıcıya bırakılır. */
+    var DC=dartCam();if(DC){tmpV.copy(DC.c);var dd=Math.max(DC.r*2.4,minDist()*1.2);if(!trans){dist+=(dd-dist)*Math.min(1,dt*2.5);}}
+    else if(focus===sunBody&&!SYS){sysCOM(_com);var cl=_com.length(),kc=cl>1e-3?ss(Math.max(cl*.8,effVr(sunBody)*6),cl*3,dist):0;if(kc>0)tmpV.lerp(_com,kc);}
     if(trans){
       trans.t=Math.min(1,trans.t+dt/1.5);var e=trans.t<.5?4*trans.t*trans.t*trans.t:1-Math.pow(-2*trans.t+2,3)/2;
       target.copy(trans.s).lerp(tmpV,e);dist=trans.d0+(trans.d1-trans.d0)*e;if(trans.t>=1)trans=null;
@@ -2132,6 +2139,7 @@ function resetSystem(e){
   setGravity(false);if(SYS)unloadSystem();
   /* süren her şeyi durdur: patlama kabuğu, çöküş, gaz akıntıları, bulutsular, fırlatmalar, bekleyen dönüşümler */
   TIMERS=[];SLOWMO=0;EXO.fuel=0;clearTDES();
+  ENVS.forEach(function(e){scene.remove(e.m);e.m.geometry.dispose();e.m.material.dispose();});ENVS=[];TDL.forEach(tdlKill);TDL=[];MORPH=[];SETTLE=[];
   PNEB.forEach(function(P){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();});PNEB=[];
   if(EXO.sn){scene.remove(EXO.sn.shell);if(EXO.sn.flash.parent)EXO.sn.flash.parent.remove(EXO.sn.flash);if(EXO.sn.jets&&EXO.sn.jets.parent)EXO.sn.jets.parent.remove(EXO.sn.jets);EXO.sn=null;}
   if(EXO.col){colAbort(EXO.col);EXO.col=null;}
@@ -3353,6 +3361,7 @@ function destroyBody(b){
   BODIES.forEach(function(x){if(x.parent===b){x.destroyed=true;if(x.line)x.line.visible=false;if(x.treeBtn)x.treeBtn.hidden=true;}});
   if(focus===b||focus.parent===b){var t=b.parent&&!b.parent.destroyed?b.parent:null;focusBody(t?t.def.id:'sun',t?{}:{dist:OVD()*.45});}
 }
+var _fxw=new THREE.Vector3(),_fxs=new THREE.Vector3();
 function flashAt(parent,pos,size,color){
   var gt=FLASHT||(FLASHT=glowTex([[0,'rgba(255,255,255,1)'],[.25,'rgba(255,220,170,.7)'],[1,'rgba(255,140,60,0)']]));
   var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:color||0xffffff,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
@@ -3379,7 +3388,8 @@ function updateFxList(dt){
       f.o.geometry.attributes.position.needsUpdate=true;f.o.geometry.attributes.color.needsUpdate=true;f.o.material.opacity=a>.9?(1-a)/.1:1;
       if(a>=.92&&!f.born){f.born=true;if(!isGone(f.big))for(var mi=0;mi<f.nm;mi++)birthMoon(f.big);}
       if(a>=1){f.o.parent&&f.o.parent.remove(f.o);f.o.geometry.dispose();f.o.material.dispose();FXL.splice(i,1);}continue;}
-    else if(f.k==='flash'){f.o.material.opacity=Math.max(0,1-a)*(a<.08?a/.08:1);f.o.scale.setScalar(f.s*(1+a*1.5));}
+    /* parlama kameraya yakınsa ekranın tamamını kaplamasın: görünen boyutu en fazla görüş alanının ~yarısı */
+    else if(f.k==='flash'){f.o.material.opacity=Math.max(0,1-a)*(a<.08?a/.08:1);f.o.getWorldPosition(_fxw);var cd=camera.position.distanceTo(_fxw),ps=f.o.parent?f.o.parent.getWorldScale(_fxs).x:1;f.o.scale.setScalar(Math.min(f.s*(1+a*1.5),cd*.45/Math.max(ps,1e-6)));}
     else{var arr=f.o.geometry.attributes.position.array,e=1-Math.exp(-f.t*.9);for(var j=0;j<arr.length;j++)arr[j]=f.vel[j]*e*2.2;f.o.geometry.attributes.position.needsUpdate=true;f.o.material.opacity=Math.max(0,1-a*a);}
     if(a>=1){f.o.parent&&f.o.parent.remove(f.o);f.o.geometry&&f.o.geometry.dispose();f.o.material.dispose();FXL.splice(i,1);}
   }
@@ -3637,8 +3647,8 @@ function startDart(a,t,replay,Ts,t0){
   var up=new THREE.Vector3(0,1,0),side=new THREE.Vector3().subVectors(t.pos,p0).cross(up).normalize().multiplyScalar(d*.18);
   a.dart={t:t,p0:p0,side:side,k:0,T:inspKind(a,t)?10:clamp(d/(OVD()*.18),3.5,8)};
   if(!replay){if(SPEEDS[speedIdx].d>7){speedIdx=4;speed.value=4;setSpeed();}playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
-  focusBody(t.def.id,{dist:inspKind(a,t)?(mergeR(a)+mergeR(t))*(inspKind(a,t)===1?36:12):Math.max(effVr(t),effVr(a))*16+(t===sunBody&&sunType===6?rtOf(a)*3:0)});}
-  var D=a.dart;D.t0=t0!=null?t0:simDays;D.Ts=Ts||D.T*Math.max(SPEEDS[speedIdx].d,1e-6);D.lk=Math.max(0,(simDays-D.t0)/D.Ts);
+  focusBody(t.def.id,{dist:Math.max((d*.5+Math.max(solidR(a),solidR(t)))*2.4,solidR(t)*4)});}
+  var D=a.dart;D.cam=!replay;if(!replay)DCAM=true;D.t0=t0!=null?t0:simDays;D.Ts=Ts||D.T*Math.max(SPEEDS[speedIdx].d,1e-6);D.lk=Math.max(0,(simDays-D.t0)/D.Ts);
   toast(a.def.name+', '+t.def.name+' hedefine fırlatıldı'+(replay?' (tekrar oynatılıyor)':''),3500);
   return D.Ts;
 }
@@ -4661,8 +4671,8 @@ function bhStep(o,body,dt){
    Gölge yarıçapı ≈ 2,6 r_s, iç disk kenarı ISCO = 3 r_s, foton halkası ≈ 1,5 r_s'deki kararsız yörüngeden gelir. */
 var LENS_GLSL_NOISE='float lh(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}'+
   'float ln3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(lh(i),lh(i+vec3(1,0,0)),f.x),mix(lh(i+vec3(0,1,0)),lh(i+vec3(1,1,0)),f.x),f.y),mix(mix(lh(i+vec3(0,0,1)),lh(i+vec3(1,0,1)),f.x),mix(lh(i+vec3(0,1,1)),lh(i+vec3(1,1,1)),f.x),f.y),f.z);}';
-function lensMat(){
-  return new THREE.ShaderMaterial({defines:{STEPS:LOWQ?90:170},depthTest:false,depthWrite:false,
+function lensMat(st){
+  return new THREE.ShaderMaterial({defines:{STEPS:st||(LOWQ?90:170)},depthTest:false,depthWrite:false,
     uniforms:{tCol:{value:null},tDep:{value:null},tSky:{value:null},hasDep:{value:0},skyOp:{value:.9},invProj:{value:new THREE.Matrix4()},camW:{value:new THREE.Matrix4()},vp:{value:new THREE.Matrix4()},
       camPos:{value:new THREE.Vector3()},bh:{value:new THREE.Vector3()},dN:{value:new THREE.Vector3(0,1,0)},rs:{value:1},rIn:{value:3},rOut:{value:14},rInt:{value:23},tm:{value:0},dB:{value:1},n1:{value:1},f1:{value:1000}},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
@@ -4720,6 +4730,8 @@ function lensInit(){
     LENS.rt.texture.encoding=THREE.sRGBEncoding;
     if(LENS.hasDep){LENS.rt.depthTexture=new THREE.DepthTexture(4,4);LENS.rt.depthTexture.type=THREE.UnsignedIntType;}
     var m=lensMat();m.uniforms.hasDep.value=LENS.hasDep?1:0;if(SKYG&&SKYG.mw)m.uniforms.tSky.value=SKYG.mw.material.map;
+    /* yavaş cihazlar için daha az adımlı ikinci gölgelendirici: kare süresi uzarsa ona geçilir */
+    LENS.hi=m;LENS.lo=lensMat(LOWQ?50:80);LENS.lo.uniforms=m.uniforms;LENS.lo.uniforms.hasDep.value=m.uniforms.hasDep.value;
     LENS.quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),m);LENS.quad.frustumCulled=false;
     LENS.qs=new THREE.Scene();LENS.qs.add(LENS.quad);LENS.qc=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
     return true;
@@ -4742,6 +4754,7 @@ function lensPick(){
 function renderFrame(){
   var L=lensPick();
   if(!L||!lensInit()){renderer.render(scene,camera);return;}
+  if(LENS.hi){var slow=perfEma>(LENS.quad.material===LENS.lo?.022:.03);LENS.quad.material=slow?LENS.lo:LENS.hi;}
   var b=L.b,o=L.o,rs=o.sh/2.6;b.pivot.getWorldPosition(_lv);
   camera.updateMatrixWorld();_lw.copy(_lv).applyMatrix4(camera.matrixWorldInverse);var zB=-_lw.z;
   var n0=camera.near,f0=camera.far,split=zB>n0*1.5&&zB<f0*.9;

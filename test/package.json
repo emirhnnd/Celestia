@@ -1,0 +1,6 @@
+{
+  "name": "celestia-test",
+  "private": true,
+  "scripts": { "test": "node run.js senaryolar.js" },
+  "dependencies": { "three": "0.128.0", "astronomy-engine": "2.1.19", "playwright": "^1.48.0" }
+}

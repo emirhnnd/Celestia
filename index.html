@@ -1547,6 +1547,11 @@ function nearestSurface(){
   return clamp(best,.4,1500*DS);
 }
 var tp={x:0,z:0};
+/* ek yıldızın Güneş'e göre yörünge dönemi Kepler'e göre toplam kütleden: P = 2π√(r³ / G(M☉+m)). Ölçek, Dünya'nın 365 günlük yılından.
+   (Önceden kütleden bağımsız 2500 gündü: 100 Güneş kütleli kara delik de Güneş benzeri bir yıldız gibi yavaşça dönüyordu.) */
+function starP(b){var rE=orbitR(1),r=b.def.r||rE;return 365.25*Math.pow(r/rE,1.5)/Math.sqrt(Math.max(.05,sunMass)+Math.max(.01,stMass(b)));}
+function sysCOM(out){var M=Math.max(.05,sunMass);out.set(0,0,0);BODIES.forEach(function(b){if(!b.def.star||b===sunBody||isGone(b)||b.sysHide||b.dart)return;var m=stMass(b);out.addScaledVector(b.pos,m);M+=m;});return out.multiplyScalar(1/M);}
+var _com=new THREE.Vector3();
 function updateBodies(dDays){
   BODIES.forEach(function(b){
     var d=b.def;
@@ -1559,7 +1564,7 @@ function updateBodies(dDays){
       else if(realOk(b)&&b.mod.orbit===1&&!b.destroyed&&(b.tday=(b.tday==null?simDays:b.tday)+dDays,placeReal(b))){}
       else{
         if(realOk(b))b.tday=(b.tday==null?simDays:b.tday)+dDays*b.mod.orbit;
-        var isM=b.parent&&d.orbit;b.ang+=dDays*TAU/(d.P*(isM?moonPScale(b):1))*b.mod.orbit;
+        var isM=b.parent&&d.orbit;b.ang+=dDays*TAU/((d.star?starP(b):d.P)*(isM?moonPScale(b):1))*b.mod.orbit;
         var r=isM?moonVisR(b):(d.r||d.orbit),inc=(d.incl||0)*D2R,sa=Math.sin(b.ang);
         b.pivot.position.set(Math.cos(b.ang)*r,sa*r*Math.sin(inc),-sa*r*Math.cos(inc));
       }
@@ -1611,6 +1616,9 @@ function updateCamera(dt){
   if(mode==='surface'&&SURF){updateSurfaceCam();return;}
   if(mode==='orbit'){
     focus.pivot.getWorldPosition(tmpV);
+    /* genel görünümde (Güneş'e uzaktan bakarken) kamera ortak kütle merkezine bakar: ağır bir kara delik eklenince Güneş'in onun
+       etrafında dolandığı görülür. Yakından bakınca Güneş ortada kalır. */
+    if(focus===sunBody&&!SYS){sysCOM(_com);var cl=_com.length(),kc=cl>1e-3?ss(Math.max(cl*.8,effVr(sunBody)*6),cl*3,dist):0;if(kc>0)tmpV.lerp(_com,kc);}
     if(trans){
       trans.t=Math.min(1,trans.t+dt/1.5);var e=trans.t<.5?4*trans.t*trans.t*trans.t:1-Math.pow(-2*trans.t+2,3)/2;
       target.copy(trans.s).lerp(tmpV,e);dist=trans.d0+(trans.d1-trans.d0)*e;if(trans.t>=1)trans=null;
@@ -1747,7 +1755,9 @@ playBtn.addEventListener('click',togglePlay);
 $('rev').addEventListener('click',function(){reverse=!reverse;this.setAttribute('aria-pressed',reverse);toast(reverse?'Zaman geri akıyor':'Zaman ileri akıyor');});
 var speed=$('speed'),speedLbl=$('speedLbl');
 SPEEDS.forEach(function(sp,i){var o=document.createElement('option');o.value=i;o.textContent=sp.t;speed.appendChild(o);});speed.value=speedIdx;
-function setSpeed(){speedIdx=+speed.value;speedLbl.textContent='Hız';if(gravityOn&&SPEEDS[speedIdx].d>400)toast('Yer çekimi modunda hız en fazla yaklaşık 1 yıl/sn olarak uygulanır');}
+function setSpeed(){var sp0=SPEEDS[speedIdx]?SPEEDS[speedIdx].d:1;speedIdx=+speed.value;
+  /* süren bir fırlatma/birleşme hız değişince yavaşlayıp dakikalarca sürmesin: kalan kısmı yeni hızda aynı gerçek sürede oynar */
+  var sp1=SPEEDS[speedIdx].d;if(sp1!==sp0)BODIES.forEach(function(b){var D=b.dart;if(!D||!D.Ts)return;var k=clamp((simDays-D.t0)/D.Ts,0,1);D.Ts=D.Ts*sp1/sp0;D.t0=simDays-k*D.Ts;D.lk=k;if(D.ev){D.ev.Ts=D.Ts;}});speedLbl.textContent='Hız';if(gravityOn&&SPEEDS[speedIdx].d>400)toast('Yer çekimi modunda hız en fazla yaklaşık 1 yıl/sn olarak uygulanır');}
 speed.addEventListener('change',setSpeed);
 $('now').addEventListener('click',function(){
   simDays=(Date.now()-J2000)/86400000;
@@ -2177,9 +2187,13 @@ function stepGravity(dDays){
     var x=b.gx,y=b.gy,z=b.gz,r2=x*x+y*y+z*z+1,k=-b.GM*sunMass/(r2*Math.sqrt(r2));
     a[0]=k*x;a[1]=k*y;a[2]=k*z;
     for(var q=0;q<gb.length;q++){var o=gb[q];if(o===b||o.destroyed)continue;var ex=o.gx-x,ey=o.gy-y,ez=o.gz-z,rq=ex*ex+ey*ey+ez*ez+.5,m=GMref*bodyMass(o)/333000,kq=m/(rq*Math.sqrt(rq));a[0]+=kq*ex;a[1]+=kq*ey;a[2]+=kq*ez;}
-    stars.forEach(function(s){
-      var dx=s.pos.x-x,dy=s.pos.y-y,dz=s.pos.z-z,q=dx*dx+dy*dy+dz*dz+9,m=Math.pow(s.mod.size*s.def.vr/9,3),kk=b.GM*m/(q*Math.sqrt(q));
+    /* ek yıldızın çekimi gerçek kütlesiyle (önceden boyutundan hesaplanıyordu: 100 Güneş kütleli kara delik 1 Güneş gibi çekiyordu).
+       Güneş merkezli çerçeve ivmeli bir çerçevedir: yıldız Güneş'i de çeker, bu yüzden her gezegene Güneş'in ivmesinin tersi eklenir
+       (dolaylı terim). Böylece ağır bir kara delik eklenince Güneş ve gezegenleri birlikte ona doğru savrulur, gezegenler tek tek değil. */
+    stars.forEach(function(s){if(s===sunBody||isGone(s)||s.sysHide)return;
+      var m=stMass(s),dx=s.pos.x-x,dy=s.pos.y-y,dz=s.pos.z-z,q=dx*dx+dy*dy+dz*dz+9,kk=b.GM*m/(q*Math.sqrt(q));
       a[0]+=kk*dx;a[1]+=kk*dy;a[2]+=kk*dz;
+      var sx=s.pos.x,sy=s.pos.y,sz=s.pos.z,q2=sx*sx+sy*sy+sz*sz+9,k2=b.GM*m/(q2*Math.sqrt(q2));a[0]-=k2*sx;a[1]-=k2*sy;a[2]-=k2*sz;
     });
   }
   if(dDays!==0){
@@ -3641,6 +3655,56 @@ function inspKind(a,t){
   var ta=stType(a),tt=stType(t),ca=ta>=4&&ta<=6,ct=tt>=4&&tt<=6;
   if(ca&&ct)return 1;if(ta===6||tt===6)return 0;return 2;
 }
+/* ---- fırlatma yolu: iki cisim problemi ----
+   Önceden yol düz bir çizgiyle yana kavisin karışımıydı, sarmal ise elle çizilmiş bir spiraldi: cisimler sabit hızla kayıyor,
+   bazen geri dönüp kırık çizgiler çiziyordu. Artık göreli yol r'' = -GM r/|r|³ denkleminin sayısal çözümü (Kepler):
+   cisim parabolik bir yörüngeyle düşer, yaklaştıkça hızlanır ve kütle merkezi etrafında kıvrılır.
+   - düz dalış (gezegen → yıldız, yıldız → kara delik): enberi temas mesafesinin içinde, ilk geçişte çarpar
+   - iki normal yıldız: ilk geçişte sıyırır, ortak zarfın sürtünmesi yörüngeyi yakalayıp birkaç turda içeri sarar
+   - kompakt çift (beyaz cüce / nötron yıldızı / kara delik): kütleçekim dalgası yörüngeyi daraltır; turlar hızlanır (chirp)
+   Ekranda görülebilsin diye zaman yaklaştıkça yavaşlatılır (dτ = dt·(s0/r)^1,5: her tur ekranda yaklaşık eşit süre alır); gerçekte son turlar saniyeden kısa sürer.
+   Her iki cisim de ortak kütle merkezine göre hareket eder: hafif olan çok, ağır olan az (w = kütle payı). */
+function dartTouch(a,t){
+  var touch=effVr(a)+effVr(t);
+  if(t===sunBody&&!a.def.star&&sunType!==6)touch=swallowR(a);
+  if(isStarB(a)&&isStarB(t))touch=mergeR(a)+mergeR(t);
+  if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
+  return touch;
+}
+function dartTraj(D,a,t,H,ik){
+  var r0v=new THREE.Vector3().subVectors(D.p0,H),s0=r0v.length()||1,u=r0v.clone().multiplyScalar(1/s0);
+  var v=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0),u);if(v.lengthSq()<1e-6)v.set(0,0,1);v.normalize();
+  /* yörünge düzlemi biraz eğik: hepsi aynı düzlemde olmasın */
+  v.applyAxisAngle(u,(D.tilt!=null?D.tilt:(D.tilt=(Math.random()-.5)*.8)));
+  var Tn=Math.min(.6,dartTouch(a,t)/s0),q=ik===1?7:ik===2?1.6:.35,R=Math.min(.45,q*Tn);
+  var x=1,y=0,vt=Math.sqrt(2*R),vx=-Math.sqrt(Math.max(0,2-vt*vt)),vy=vt*(D.spin||1),tau=0,ph=0,pa=0;
+  var TT=[0],XX=[1],YY=[0],PP=[0],i,r;
+  for(i=0;i<300000;i++){
+    r=Math.sqrt(x*x+y*y);if(r<=Tn)break;
+    var dt=Math.min(.004,.0015*Math.pow(r,1.5)),r3=r*r*r,ax=-x/r3,ay=-y/r3,om=1/Math.sqrt(r3);
+    if(ik===2&&r<2.6*Tn){var g=.035*om*Math.pow(2.6*Tn/r,1.5);ax-=g*vx;ay-=g*vy;}
+    if(ik===1&&r<12*Tn){var g1=.06*om*Math.pow(Tn/r,.5)*ss(12*Tn,7*Tn,r)+.012*om*Math.pow(7*Tn/r,3);ax-=g1*vx;ay-=g1*vy;}
+    vx+=ax*dt;vy+=ay*dt;x+=vx*dt;y+=vy*dt;
+    /* düşüş: gerçek zamana yakın (cisim yaklaştıkça hızlanır); sarmal bölgede her tur eşit süre */
+    var Rb=ik===0?Tn:(ik===1?12:2.6)*Tn,wt=Math.pow(Math.max(r,Rb),-.35)*(r<Rb?Math.pow(Rb/Math.max(r,Tn*.5),1.5):1);tau+=dt*wt;
+    var an=Math.atan2(y,x),da=an-pa;if(da>Math.PI)da-=TAU;if(da<-Math.PI)da+=TAU;ph+=da;pa=an;
+    if(i%6===0){TT.push(tau);XX.push(x);YY.push(y);PP.push(ph);}
+  }
+  r=Math.sqrt(x*x+y*y);
+  /* olmadıysa (çok uzun sarmal) son kısmı düz bir yaklaşmayla tamamla */
+  if(r>Tn){var n2=40;for(var j=1;j<=n2;j++){var f=j/n2,k2=(r-(r-Tn)*f)/r;tau+=.02;TT.push(tau);XX.push(x*k2);YY.push(y*k2);PP.push(ph);}}
+  TT.push(tau);XX.push(x*Tn/Math.max(r,1e-9));YY.push(y*Tn/Math.max(r,1e-9));PP.push(ph);
+  var N=720,X=new Float32Array(N),Y=new Float32Array(N),PH=new Float32Array(N),T=TT[TT.length-1]||1,j0=0;
+  for(var k=0;k<N;k++){var tt=k/(N-1)*T;while(j0<TT.length-2&&TT[j0+1]<tt)j0++;var t0=TT[j0],t1=TT[j0+1],w=t1>t0?clamp((tt-t0)/(t1-t0),0,1):0;
+    X[k]=XX[j0]+(XX[j0+1]-XX[j0])*w;Y[k]=YY[j0]+(YY[j0+1]-YY[j0])*w;PH[k]=PP[j0]+(PP[j0+1]-PP[j0])*w;}
+  D.trj={u:u,v:v,s0:s0,X:X,Y:Y,PH:PH,N:N};D.ins={np:0,si:s0*R,ph:0,s:s0};
+}
+function trjAt(D,k,H,out){
+  var J=D.trj,f=clamp(k,0,1)*(J.N-1),i=Math.min(J.N-2,Math.floor(f)),w=f-i;
+  var x=(J.X[i]+(J.X[i+1]-J.X[i])*w)*J.s0,y=(J.Y[i]+(J.Y[i+1]-J.Y[i])*w)*J.s0;
+  out.copy(H).addScaledVector(J.u,x).addScaledVector(J.v,y);
+  D.ins.ph=Math.abs(J.PH[i]+(J.PH[i+1]-J.PH[i])*w);D.ins.s=Math.sqrt(x*x+y*y);
+}
 function inspiralPos(D,a,t,k,out,kind){
   var touch=mergeR(a)+mergeR(t);
   if(!D.ins){var cn=D.cen||t.pos,r0=new THREE.Vector3().subVectors(D.p0,cn),s0=r0.length()||1,u0=r0.clone().multiplyScalar(1/s0),v0=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0),u0);if(v0.lengthSq()<1e-6)v0.set(0,0,1);v0.normalize();
@@ -3738,6 +3802,16 @@ function envFade(dt){for(var i=ENVS.length-1;i>=0;i--){var e=ENVS[i];e.t+=Math.a
   if(e.b&&!isGone(e.b)){e.b.pivot.getWorldPosition(_eb);e.m.position.lerp(_eb,Math.min(1,dt*3));var r=effVr(e.b)*1.1,sc=e.m.scale;sc.x+=(r-sc.x)*Math.min(1,dt*1.5);sc.y+=(r-sc.y)*Math.min(1,dt*1.5);sc.z+=(r-sc.z)*Math.min(1,dt*1.5);}
   e.m.material.uniforms.a.value=e.a0*(1-q*q);e.m.material.uniforms.t.value+=dt;
   if(q>=1){scene.remove(e.m);e.m.geometry.dispose();e.m.material.dispose();ENVS.splice(i,1);}}}
+/* Güneş fırlatılınca (ya da ağır bir yıldız onu çekince) gezegenleri, yörünge çizgileri ve asteroit kuşakları onunla birlikte gider:
+   hepsi Güneş'e kütleçekimle bağlı. Önceden Güneş yerinden oynayınca gezegenler boş merkezin etrafında dönmeye devam ediyordu. */
+var _so=new THREE.Vector3(),SUNOFF=false;
+function carrySun(){
+  if(!sunBody)return;_so.copy(sunBody.pivot.position);var on=_so.lengthSq()>1e-8;if(!on&&!SUNOFF)return;SUNOFF=on;
+  BODIES.forEach(function(b){if(b===sunBody||b.parent||b.def.star||isGone(b))return;
+    if(on&&!b.dart&&!b.homing&&!b.tdeNow){b.pivot.position.add(_so);b.pivot.updateMatrixWorld(true);b.pivot.getWorldPosition(b.pos);}
+    if(b.line&&b.line.parent===scene)b.line.position.copy(_so);});
+  BELTS.forEach(function(o){if(o.pts.parent===scene)o.pts.position.copy(_so);});
+}
 function stepDarts(dt){
   settleStep(dt);morphStep(dt);envFade(dt);
   BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;envKill(D);unstretch(a);unstretch(t);return;}
@@ -3748,8 +3822,7 @@ function stepDarts(dt){
     var tP=t.pivot.position;if(!D.th)D.th=new THREE.Vector3();if(!(D.tp&&tP.distanceToSquared(D.tp)<1e-10))D.th.copy(tP);
     var H=D.th;D.cen=H;
     if(D.w==null)D.w=(isStarB(a)&&isStarB(t))?stMass(a)/Math.max(1e-6,stMass(a)+stMass(t)):0;
-    var ik=inspKind(a,t);if(ik){inspiralPos(D,a,t,Math.min(1,kk),DV,ik);if(fwd&&ik===1)gwChirpFx(D,t);}
-    else DV.copy(D.p0).lerp(H,e).addScaledVector(D.side,Math.sin(Math.PI*e)*(1-e));
+    var ik=inspKind(a,t);if(!D.trj)dartTraj(D,a,t,H,ik);trjAt(D,Math.min(1,kk),H,DV);if(fwd&&ik===1)gwChirpFx(D,t);
     var P=DV.clone(),w=D.w;
     if(w>0){DV.copy(P).multiplyScalar(1-w).addScaledVector(D.p0,w);
       var tn=new THREE.Vector3().subVectors(D.p0,P).multiplyScalar(w).add(H);tP.copy(tn);if(!D.tp)D.tp=new THREE.Vector3();D.tp.copy(tP);}
@@ -3762,8 +3835,9 @@ function stepDarts(dt){
     if(t===sunBody&&!a.def.star&&sunType!==6)touch=swallowR(a);
     if(isStarB(a)&&isStarB(t))touch=mergeR(a)+mergeR(t);
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
-    if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;var aP=a===sunBody?DV.clone():null;envRelease(D,t);resolveDart(a,t);dartRelease(D,t,a,aP);}
+    if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;var aP=a===sunBody?DV.clone():null;envRelease(D,t);unstretch(a);unstretch(t);resolveDart(a,t);dartRelease(D,t,a,aP);}
   });
+  carrySun();
 }
 function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id===b.id;})[0]||b.cust;destroyBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}
 function stretchTo(b,dir,k){if(k<=0.001){b.pivot.quaternion.identity();b.pivot.scale.set(1,1,1);return;}b.pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);b.pivot.scale.set(1+k,1-k*.35,1-k*.35);}
@@ -3933,11 +4007,12 @@ function resolveDart(a,t){
 function launchAt(){launchPair(focus,byId[$('lTarget').value]);}
 function launchPair(b,t){
   if(!b||!t||t===b)return;
-  if(b===sunBody&&!t.def.star){toast('Güneş\'i yalnızca başka bir yıldıza fırlatabilirsin; gezegenler Güneş\'in etrafında döner.',6000);return;}
+  /* Güneş'i bir gezegene fırlatmak = gezegeni Güneş'e düşürmek: Güneş en az 1000 kat ağır olduğu için ortak kütle merkezi Güneş'in içinde kalır, hareket eden gezegendir */
+  if(b===sunBody&&!t.def.star){if(t.parent||!t.grav){toast('Uydular ve uzay araçları hedef olamaz');return;}launchPair(t,sunBody);toast('Güneş → '+t.def.name+': Güneş '+(t.def.id==='jupiter'?'Jüpiter\'den 1000':'gezegenden binlerce')+' kat ağır olduğu için ortak kütle merkezi Güneş\'in içinde; asıl hareket eden '+t.def.name+'.',7000);return;}
   if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
   if(isGone(t)){toast('Hedef artık yok');return;}
   if(t===sunBody&&sunType===7){toast('Merkezde artık bir yıldız yok; önce yıldız türünü seç.',5000);return;}
-  if(isStarB(b)||isStarB(t)){var de={type:'dart',a:b.id,tg:t.id};addEvent(de);de.Ts=startDart(b,t);return;}
+  if(isStarB(b)||isStarB(t)){var de={type:'dart',a:b.id,tg:t.id};addEvent(de);de.Ts=startDart(b,t);if(b.dart)b.dart.ev=de;return;}
   if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
   if(isGone(t)){toast('Hedef artık yok');return;}
@@ -3961,7 +4036,7 @@ function doLaunch(b,t,replay){
 function fillTargets(){
   var s=$('lTarget');if(!s)return;var v=s.value;s.innerHTML='';var sun=focus===sunBody;
   /* Güneş yalnızca başka bir yıldıza fırlatılabilir: listede yalnızca yıldızlar */
-  BODIES.forEach(function(b){if((b.grav||b.def.star||(b===sunBody&&sunType!==7))&&!isGone(b)&&!b.sysHide&&b!==focus&&(!sun||b.def.star)){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
+  BODIES.forEach(function(b){if((b.grav||b.def.star||(b===sunBody&&sunType!==7))&&!isGone(b)&&!b.sysHide&&b!==focus&&(!sun||b.def.star||(b.grav&&!b.parent))){var o=document.createElement('option');o.value=b.def.id;o.textContent=b.def.name;s.appendChild(o);}});
   if(v)s.value=v;if(!s.value&&s.options.length)s.selectedIndex=0;
   var nt=$('lNote');if(!nt){nt=document.createElement('p');nt.className='note';nt.id='lNote';$('lGo').closest('.btnrow').after(nt);}
   var empty=!s.options.length;s.closest('.frow').hidden=empty;$('lGo').closest('.btnrow').hidden=empty;

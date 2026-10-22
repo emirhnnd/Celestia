@@ -1756,13 +1756,24 @@ function trn(x){return String(x).toLocaleLowerCase('tr-TR').replace(/[çÇ]/g,'c
 function clk(id){var e=$(id);if(e&&!e.disabled)e.click();}
 function openSide(){var sd=$('side');if(sd)sd.classList.remove('collapsed');}
 function onStar(fn){return function(){if(!focus||!focus.def.star)focusBody('sun');setTimeout(function(){openSide();showTab('lab');fn();},80);};}
+/* zirve gecesi: yerel 18:00 ile ertesi 07:00 arasında, Güneş astronomik alacakaranlığın altındayken çıkış noktasının en yüksek olduğu an */
+function showerBestTime(sh,c,t0){
+  try{var d=new Date(t0),obs=new AE.Observer(c[1],c[2],0),base=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),18,0)-c[3]*36e5,best=null;
+    for(var m=0;m<=13*60;m+=10){var t=base+m*6e4,dt=new Date(t),se=AE.Equator('Sun',dt,obs,true,true),sa=AE.Horizon(dt,obs,se.ra,se.dec,'normal').altitude;if(sa>-12)continue;
+      var h=AE.Horizon(dt,obs,sh[4]/15,sh[5],'normal');if(!best||h.altitude>best.alt+.01)best={t:t,alt:h.altitude,az:h.azimuth};}
+    return best;}catch(e){return null;}
+}
 function nextShowerJump(){
   var c=CITIES[cityIdx],now=new Date(J2000+simDays*864e5),best=null;
   SHOWERS.forEach(function(sh){if(sh[3]<15)return;for(var y=now.getUTCFullYear();y<=now.getUTCFullYear()+1;y++){var t=Date.UTC(y,0,1)+(sh[1]-1)*864e5;var d=new Date(t);var night=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),23-c[3],30);if(night>now.getTime()+864e5&&(!best||night<best.t)){best={t:night,s:sh};}}});
   if(!best)return;
+  /* eskiden her yağmur için saat 23:30'a gidiliyordu; Leonidler, Orionidler, Eta Akuaridler ve Kadrantidlerin çıkış noktası o saatte
+     daha ufkun altında, bu yüzden neredeyse hiç meteor görünmüyordu. Gece boyunca (Güneş -12°'nin altındayken) çıkış noktasının
+     en yüksek olduğu anı buluyoruz: gerçek gözlemciler de yağmuru o saatte izler. */
+  var bn=showerBestTime(best.s,c,best.t);if(bn)best.t=bn.t;
   if(gravityOn)setGravity(false);
   var jump=(best.t-J2000)/864e5-simDays;updateBodies(jump);simDays+=jump;speedIdx=0;speed.value=0;setSpeed();playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
-  focusBody('earth');setTimeout(function(){enterSurface(byId.earth);toast(best.s[0]+' meteor yağmuru: '+c[0].replace(/ \(.*\)/,'')+' gecesi. Kayan yıldızlar gökyüzünde tek bir noktadan (çıkış noktası) dağılıyormuş gibi görünür. Kaynağı: '+best.s[6]+'.',8000);},400);
+  focusBody('earth');setTimeout(function(){enterSurface(byId.earth);if(SURF){SURF.aim=skyDir(best.s[4],best.s[5]);SURF.init=true;}toast(best.s[0]+' · '+c[0].replace(/ \(.*\)/,'')+', yerel saat '+('0'+new Date(best.t+c[3]*36e5).getUTCHours()).slice(-2)+':'+('0'+new Date(best.t+c[3]*36e5).getUTCMinutes()).slice(-2)+'. Çıkış noktası en yüksekte; izler oradan dağılıyor gibi görünür.',6000);},400);
 }
 var ACTIONS=[
  ['🕳️','Güneş\'i kara deliğe dönüştür','Işık kesilir, disk parlar; yaklaşan gezegenler spagettileşir','kara delik karadelik black hole cokme',onStar(function(){clk('sBH');})],
@@ -3651,8 +3662,9 @@ function updateSurfaceCam(){
   var nAx=new THREE.Vector3(0,1,0).transformDirection(b.mesh.matrixWorld);
   var east=sV3.crossVectors(nAx,up);if(east.lengthSq()<1e-6)east.set(1,0,0);east.normalize();
   var north=sV4.crossVectors(up,east).normalize();
-  if(SURF.init){var tb=surfTargetBody(b),tw=new THREE.Vector3();tb.pivot.getWorldPosition(tw);var td=tw.sub(p).normalize();
-    SURF.yaw=Math.atan2(td.dot(east),td.dot(north));SURF.pitch=clamp(Math.asin(clamp(td.dot(up),-1,1)),.05,1.2);SURF.init=false;}
+  if(SURF.init){var tb=surfTargetBody(b),tw=new THREE.Vector3();tb.pivot.getWorldPosition(tw);var td=SURF.aim?SURF.aim.clone():tw.sub(p).normalize();
+    /* meteor yağmurunda kamera çıkış noktasına döner; çıkış noktası ekranın üst kısmında kalır ki ondan dağılan izler görünsün */
+    SURF.yaw=Math.atan2(td.dot(east),td.dot(north));SURF.pitch=SURF.aim?clamp(Math.asin(clamp(td.dot(up),-1,1))-.22,.42,1.1):clamp(Math.asin(clamp(td.dot(up),-1,1)),.05,1.2);SURF.init=false;SURF.aim=null;}
   var cp=Math.cos(SURF.pitch),fw=north.clone().multiplyScalar(cp*Math.cos(SURF.yaw)).addScaledVector(east,cp*Math.sin(SURF.yaw)).addScaledVector(up,Math.sin(SURF.pitch));
   /* tepeye bakarken bakış yönü 'yukarı' ile çakışıp kamera dönüyordu: kameranın üst yönünü bakış yönüne dik hesaplıyoruz */
   var rgt=east.clone().multiplyScalar(Math.cos(SURF.yaw)).addScaledVector(north,-Math.sin(SURF.yaw)),cu=new THREE.Vector3().crossVectors(rgt,fw).normalize();
@@ -3685,7 +3697,8 @@ var CITIES=[['Samsun',41.29,36.33,3,'city'],['Zonguldak',41.45,31.79,3,'city'],[
 var cityIdx=0;try{var ci0=+localStorage.getItem('se_city');if(ci0>=0&&ci0<CITIES.length)cityIdx=ci0;}catch(e){}
 (function(){var sel=$('surfCity');CITIES.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c[0];sel.appendChild(o);});sel.value=cityIdx;
   sel.addEventListener('change',function(){cityIdx=+this.value;try{localStorage.setItem('se_city',cityIdx);}catch(e){}if(SURF&&SURF.b.def.id==='earth')setCity(cityIdx);});})();
-function setCity(i){var c0=CITIES[i];SURF.lp=c0[4]!=='dark'&&c0[4]!=='ice';SURF.sky=genSkyline(i);lpBtn();var c=CITIES[i],la=c[1]*D2R,ph=(c[2]+180)/360*TAU;SURF.u=new THREE.Vector3(-Math.cos(ph)*Math.cos(la),Math.sin(la),Math.sin(ph)*Math.cos(la)).normalize();SURF.city=i;SURF.init=false;SURF.yaw=c[1]>=0?Math.PI:0;SURF.pitch=.13;SURF.lblT=0;}
+function setCity(i){var c0=CITIES[i];SURF.lp=c0[4]!=='dark'&&c0[4]!=='ice';SURF.sky=genSkyline(i);lpBtn();var c=CITIES[i],la=c[1]*D2R,ph=(c[2]+180)/360*TAU;SURF.u=new THREE.Vector3(-Math.cos(ph)*Math.cos(la),Math.sin(la),Math.sin(ph)*Math.cos(la)).normalize();SURF.city=i;SURF.init=false;SURF.yaw=c[1]>=0?Math.PI:0;SURF.pitch=.13;SURF.lblT=0;
+  var sh=showerNow();if(sh&&sh.g>.3){SURF.aim=skyDir(sh.s[4],sh.s[5]);SURF.init=true;}}
 var SHOWERS=[['Kadrantidler',3.5,.6,110,230,49,'2003 EH1 asteroidi'],['Liridler',112,1.2,18,271,34,'Thatcher kuyruklu yıldızı'],['Eta Akuaridler',126,4,50,338,-1,'Halley kuyruklu yıldızı'],['Perseidler',224.5,3,100,48,58,'Swift-Tuttle kuyruklu yıldızı'],['Orionidler',294,4,20,95,16,'Halley kuyruklu yıldızı'],['Leonidler',321,1.2,15,152,22,'Tempel-Tuttle kuyruklu yıldızı'],['Geminidler',348,1.5,150,112,33,'Phaethon asteroidi']];
 var MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function showerNow(){var dt=new Date(J2000+simDays*864e5),Y=dt.getUTCFullYear(),doy=(dt-Date.UTC(Y,0,1))/864e5,best=null;
@@ -3699,25 +3712,40 @@ function metSpawn(up,sh){
     else{var r=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();if(r.dot(up)<.15)continue;var ax2=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).cross(r).normalize(),e2=r.clone().applyAxisAngle(ax2,rnd(.06,.18));if(e2.dot(up)>.03){s=r;e=e2;}}
   }
   if(!s)return;
-  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(6),3));
-  var ln=new THREE.Line(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));ln.frustumCulled=false;ln.renderOrder=2;
-  var hd=new THREE.Sprite(new THREE.SpriteMaterial({map:dotTex(),color:0xfff4e0,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
-  var br=rnd(.5,1.2),tint=Math.random()<.3?[.7,1,.8]:[1,.95,.85];
-  SKYG.add(ln);SKYG.add(hd);MET.list.push({ln:ln,hd:hd,s:s,e:e,t:0,T:rnd(.35,.9),br:br,c:tint});
+  /* parlaklık dağılımı: çoğu meteor sönük, azı parlak; ~%3'ü ateş topu */
+  var br=Math.random()<.03?rnd(1.6,2.2):.35+Math.pow(Math.random(),2.2)*1.05,fast=sh&&(sh.s[0]==='Perseidler'||sh.s[0]==='Leonidler'||sh.s[0]==='Orionidler'||sh.s[0]==='Eta Akuaridler');
+  var tint=fast&&Math.random()<.45?[.75,1,.82]:Math.random()<.25?[1,.86,.62]:[1,.96,.9];
+  var ln=new THREE.Mesh(metGeo(),metMat());ln.frustumCulled=false;ln.renderOrder=2;
+  var hd=new THREE.Sprite(new THREE.SpriteMaterial({map:dotTex(),color:new THREE.Color(tint[0],tint[1],tint[2]),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+  SKYG.add(ln);SKYG.add(hd);MET.list.push({ln:ln,hd:hd,s:s,e:e,t:0,T:rnd(.35,.9)*(fast?.75:1),br:br,c:tint});
 }
+/* meteor izi: kameraya dönük ince bir şerit. Baş tarafı parlak, kuyruğa doğru söner; çekirdek beyaz, kenarlar renkli parıltı.
+   Önceden 1 piksellik çizgiydi ve özellikle yüksek çözünürlüklü ekranlarda neredeyse görünmüyordu. */
+var MET_MAT=null;
+function metMat(){if(!MET_MAT)MET_MAT=new THREE.ShaderMaterial({uniforms:{k:{value:0},c:{value:new THREE.Color()}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  vertexShader:'varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform float k;uniform vec3 c;varying vec2 vU;void main(){float a=pow(vU.x,2.2);float y=vU.y*2.0-1.0;float core=exp(-y*y*14.0),glow=exp(-y*y*2.6);vec3 col=mix(c,vec3(1.0),core*.7)*(core*1.2+glow*.45)*a*k;gl_FragColor=vec4(col,1.0);}'});
+  var m=MET_MAT.clone();m.uniforms.c.value=new THREE.Color();return m;}
+function metGeo(){var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(12),3));g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array([0,0,0,1,1,0,1,1]),2));g.setIndex([0,2,1,1,2,3]);return g;}
+var metS=new THREE.Vector3();
 function updateMeteors(dt,up,dark){
-  var R=3000;
+  var R=3000,pxW=camera.fov*D2R/Math.max(300,H)*R,lp=SURF&&SURF.lp?1:0;
   for(var i=MET.list.length-1;i>=0;i--){var m=MET.list[i];m.t+=dt;var f=m.t/m.T;
     if(f>=1){SKYG.remove(m.ln);SKYG.remove(m.hd);m.ln.geometry.dispose();m.ln.material.dispose();m.hd.material.dispose();MET.list.splice(i,1);continue;}
-    var hdv=metA.copy(m.s).lerp(m.e,f).normalize().multiplyScalar(R),tl=metB.copy(m.s).lerp(m.e,Math.max(0,f-.4)).normalize().multiplyScalar(R);
-    var P=m.ln.geometry.attributes.position.array,C=m.ln.geometry.attributes.color.array,k=m.br*(1-Math.pow(f,4))*Math.min(1,f*6)*dark;
-    P[0]=tl.x;P[1]=tl.y;P[2]=tl.z;P[3]=hdv.x;P[4]=hdv.y;P[5]=hdv.z;C[0]=C[1]=C[2]=0;C[3]=m.c[0]*k;C[4]=m.c[1]*k;C[5]=m.c[2]*k;
-    m.ln.geometry.attributes.position.needsUpdate=true;m.ln.geometry.attributes.color.needsUpdate=true;
-    m.hd.position.copy(hdv);m.hd.scale.setScalar(R*.006*(.6+m.br*.5));m.hd.material.opacity=k;}
+    var hdv=metA.copy(m.s).lerp(m.e,f).normalize().multiplyScalar(R),tl=metB.copy(m.s).lerp(m.e,Math.max(0,f-.45)).normalize().multiplyScalar(R);
+    /* ışık kirliliği sönük meteorları siler, parlaklar yine görünür */
+    var vis=lp?.3+.7*ss(.35,.95,m.br):1,k=m.br*(1-Math.pow(f,4))*Math.min(1,f*6)*dark*vis;
+    var wd=pxW*(1.2+m.br*1.6);metS.crossVectors(metC.copy(hdv).sub(tl),hdv).normalize().multiplyScalar(wd);
+    var P=m.ln.geometry.attributes.position.array;
+    P[0]=tl.x-metS.x;P[1]=tl.y-metS.y;P[2]=tl.z-metS.z;P[3]=tl.x+metS.x;P[4]=tl.y+metS.y;P[5]=tl.z+metS.z;
+    P[6]=hdv.x-metS.x;P[7]=hdv.y-metS.y;P[8]=hdv.z-metS.z;P[9]=hdv.x+metS.x;P[10]=hdv.y+metS.y;P[11]=hdv.z+metS.z;
+    m.ln.geometry.attributes.position.needsUpdate=true;m.ln.material.uniforms.k.value=k*1.3;m.ln.material.uniforms.c.value.setRGB(m.c[0],m.c[1],m.c[2]);
+    m.hd.position.copy(hdv);m.hd.scale.setScalar(pxW*(3+m.br*4.5));m.hd.material.opacity=Math.min(1,k);}
   if(dark<.2||!playing)return;
   var sh=showerNow(),act=sh&&sh.g>.03?sh:null,rate=.06+(act?act.k/100*1.4:0);
   MET.acc+=dt*rate*dark;while(MET.acc>1){MET.acc-=1;metSpawn(up,act&&Math.random()<.85?act:null);}
 }
+var metC=new THREE.Vector3();
 /* şehir silüeti ve ışık kirliliği: üç derinlik katmanı (uzak tepeler + ev ışıkları, orta, yakın), kıyı şehirlerinde deniz,
    Türk şehirlerinde cami kubbe ve minareleri. Pencereler yerel saate göre yanıp söner. */
 var CITYPROF={'Samsun':{sea:[0,1.2],mosque:.1,hills:3.4},'Zonguldak':{sea:[.05,1],mosque:.08,hills:5},'İstanbul':{sea:[3.4,.7],mosque:.14,hills:1.6},
@@ -3837,7 +3865,7 @@ function cityDraw(p,up,north,east,dark){
 }
 function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;if(SKYG&&SKYG.faint)SKYG.faint.material.uniforms.op.value=1;}
 $('surfLP').addEventListener('click',function(){if(!SURF)return;SURF.lp=!SURF.lp;lpBtn();toast(SURF.lp?'Işık kirliliği açık: şehrin ışıkları gökyüzünü aydınlatıyor, yalnızca en parlak yıldızlar ve gezegenler görünüyor.':'Işık kirliliği kapalı: şehir karanlıkta. Samanyolu ve binlerce sönük yıldız ortaya çıktı; şehirlerin çoğunda insanlar bu manzarayı hiç görmüyor.',6000);});
-function clearMeteors(){MET.list.forEach(function(m){SKYG.remove(m.ln);SKYG.remove(m.hd);});MET.list=[];MET.acc=0;}
+function clearMeteors(){MET.list.forEach(function(m){SKYG.remove(m.ln);SKYG.remove(m.hd);m.ln.geometry.dispose();m.ln.material.dispose();m.hd.material.dispose();});MET.list=[];MET.acc=0;}
 function surfCityLabel(dark){
   var c=CITIES[SURF.city],dt=new Date(J2000+simDays*864e5+c[3]*36e5),hh=('0'+dt.getUTCHours()).slice(-2),mm=('0'+dt.getUTCMinutes()).slice(-2);
   var sh=showerNow(),t=c[0].replace(/ \(.*\)/,'')+' · yerel saat '+hh+':'+mm+(dark>.5?' · gece':dark>.1?' · alacakaranlık':' · gündüz');

@@ -335,6 +335,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <button role="menuitemcheckbox" aria-checked="false" id="vCons">Takımyıldızlar ve gök adları<span class="sw"></span></button>
         <button role="menuitemcheckbox" aria-checked="false" id="vPart">Güneş rüzgârı ve parçacıklar<span class="sw"></span></button>
         <button role="menuitemcheckbox" aria-checked="true" id="vMini">Mini harita<span class="sw"></span></button>
+        <button role="menuitemcheckbox" aria-checked="true" id="vLens">Kara delik: ışık bükülmesi<span class="sw"></span></button>
         <button role="menuitemcheckbox" aria-checked="false" id="vNote">Olay bildirimleri<span class="sw"></span></button>
         <button role="menuitem" id="vFs">Tam ekran</button>
         <button role="menuitem" id="vSys">Yıldız sistemleri</button>
@@ -784,6 +785,8 @@ function dotTex(){
 var AU_LM=8.317;
 function vr(R){return 1.6*Math.pow(R/6371,.5);}
 var LOWQ=(innerWidth<760)||(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
+var LENS={on:true,rt:null,quad:null,qs:null,qc:null,fail:false,hasDep:false,w:0,h:0,cur:null};
+try{if(localStorage.getItem('gsg-lens')==='0')LENS.on=false;}catch(e){}
 var PS=1;
 var DS=(function(){try{var v=+localStorage.getItem('se_ds');return v>0&&v<10?v:2.5;}catch(e){return 2.5;}})();
 PS=DS>=6?.4:1;
@@ -1688,7 +1691,7 @@ function frame(now){
   liveT-=dt;if(liveT<=0){updateLive();liveT=.3;}
   dateT-=dt;if(dateT<=0){updateDate();dateT=.08;}
   miniT-=dt;if(miniT<=0){drawMini();miniT=.1;}
-  renderer.render(scene,camera);
+  renderFrame();
   requestAnimationFrame(frame);
 }
 
@@ -1729,6 +1732,7 @@ sw('vCons',function(on){showSkyNames=on;if(SKYG&&SKYG.cons)SKYG.cons.visible=on;
 var SMALLV=matchMedia('(max-width:1000px),(max-height:640px)');
 $('vNote').setAttribute('aria-checked',String(notifyOn));sw('vNote',function(on){notifyOn=on;try{localStorage.setItem('se_notif',on?'1':'0');}catch(e){}toast(on?'Tutulma, güneş fırtınası gibi olaylar bildirilecek':'Olay bildirimleri kapalı',1800);});
 if(SMALLV.matches){showMini=false;$('vMini').setAttribute('aria-checked','false');}
+$('vLens').setAttribute('aria-checked',String(LENS.on));sw('vLens',function(on){LENS.on=on;try{localStorage.setItem('gsg-lens',on?'1':'0');}catch(e){}toast(on?'Kara deliğin çevresinde ışık bükülüyor':'Işık bükülmesi kapalı (daha hafif çizim)',1800);});
 sw('vMini',function(on){showMini=on;var m=$('mini');m.style.display=on?'':'none';m.classList.toggle('force',on&&SMALLV.matches);resize();});
 $('vFs').addEventListener('click',function(){
   vm.hidden=true;
@@ -4119,7 +4123,7 @@ var _v1=new THREE.Vector3(),_v2=new THREE.Vector3(),_v3=new THREE.Vector3(),_q1=
 /* gerçekte olay ufku kütleyle doğru orantılı (1000 Güneş kütlesi = 2950 km, yine de Güneş'ten 240 kat küçük). Ekranda görünsün diye büyütülmüş ama kütleyle yavaşça büyür: 1000 kat kütle yıldızdan büyük bir delik demek değildir */
 function bhMassK(){var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M,.16);}
 function bhStep(o,body,dt){
-  var kM=body===sunBody?bhMassK():1,sh=effVr(body)*kM;
+  var kM=body===sunBody?bhMassK():1,sh=effVr(body)*kM;o.sh=sh;
   o.disk.scale.setScalar(sh*2.3);if(body!==sunBody)o.disk.material.uniforms.t.value+=dt;
   var hl=o.ringS;if(!hl)return;var U=hl.material.uniforms;U.t.value+=dt;U.b.value=o.disk.material.uniforms.b.value;
   hl.quaternion.copy(camera.quaternion);hl.scale.setScalar(sh);
@@ -4127,6 +4131,124 @@ function bhStep(o,body,dt){
   U.edge.value=.25+.75*(1-Math.abs(dn));U.rD.value=2.3;
   var nn=_v3.copy(n).multiplyScalar(dn>=0?1:-1).sub(v.clone().multiplyScalar(Math.abs(dn))),qi=_q1.copy(camera.quaternion).invert();nn.applyQuaternion(qi);U.nP.value.set(nn.x,nn.y).normalize();
   var pa=new THREE.Vector3().crossVectors(v,n).applyQuaternion(qi);U.dop.value.set(pa.x,pa.y);if(U.dop.value.lengthSq()>1e-6)U.dop.value.normalize();
+}
+/* ================= KÜTLEÇEKİMSEL MERCEK (kara delik) =================
+   Kara delik ekrandayken sahne iki parçada çizilir:
+   1) kara deliğin arkasında kalan her şey bir dokuya (renk + derinlik),
+   2) tam ekran bir ışın izleme geçişi: her piksel için ışığın Schwarzschild uzay-zamanındaki yolu hesaplanır
+      (foton yörünge denklemi x'' = -3/2 h² x / r⁵, birim: Schwarzschild yarıçapı r_s). Işın olay ufkuna düşerse siyah,
+      yığılma diskini keserse diskin o noktadaki ışığı (Doppler + kütleçekimsel kırmızıya kayma), kaçarsa arkadaki sahneden
+      bükülmüş yönde örnek alınır. Arkadaki cismin uzaklığı derinlik dokusundan okunur: yakın cisim az, uzak cisim çok bükülür.
+   3) kara deliğin önünde kalanlar normal şekilde üstüne çizilir.
+   Uzak ışınlar için zayıf alan yaklaşımı (α = 2 r_s / b) kullanılır; ikisi entegrasyon küresinin sınırında süreksizlik olmadan birleşir.
+   Gölge yarıçapı ≈ 2,6 r_s, iç disk kenarı ISCO = 3 r_s, foton halkası ≈ 1,5 r_s'deki kararsız yörüngeden gelir. */
+var LENS_GLSL_NOISE='float lh(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}'+
+  'float ln3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(lh(i),lh(i+vec3(1,0,0)),f.x),mix(lh(i+vec3(0,1,0)),lh(i+vec3(1,1,0)),f.x),f.y),mix(mix(lh(i+vec3(0,0,1)),lh(i+vec3(1,0,1)),f.x),mix(lh(i+vec3(0,1,1)),lh(i+vec3(1,1,1)),f.x),f.y),f.z);}';
+function lensMat(){
+  return new THREE.ShaderMaterial({defines:{STEPS:LOWQ?90:170},depthTest:false,depthWrite:false,
+    uniforms:{tCol:{value:null},tDep:{value:null},tSky:{value:null},hasDep:{value:0},skyOp:{value:.9},invProj:{value:new THREE.Matrix4()},camW:{value:new THREE.Matrix4()},vp:{value:new THREE.Matrix4()},
+      camPos:{value:new THREE.Vector3()},bh:{value:new THREE.Vector3()},dN:{value:new THREE.Vector3(0,1,0)},rs:{value:1},rIn:{value:3},rOut:{value:20},rInt:{value:23},tm:{value:0},dB:{value:1},n1:{value:1},f1:{value:1000}},
+    vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
+    fragmentShader:'precision highp float;uniform sampler2D tCol;uniform sampler2D tDep;uniform sampler2D tSky;uniform float hasDep;uniform float skyOp;uniform mat4 invProj;uniform mat4 camW;uniform mat4 vp;'+
+    'uniform vec3 camPos;uniform vec3 bh;uniform vec3 dN;uniform float rs;uniform float rIn;uniform float rOut;uniform float rInt;uniform float tm;uniform float dB;uniform float n1;uniform float f1;varying vec2 vUv;'+
+    LENS_GLSL_NOISE+
+    'vec3 rayDir(vec2 uv){vec4 c=invProj*vec4(uv*2.0-1.0,1.0,1.0);return normalize((camW*vec4(normalize(c.xyz/c.w),0.0)).xyz);}'+
+    'vec3 sky(vec3 d){float u=fract(atan(d.z,-d.x)/6.2831853);float v=1.0-acos(clamp(d.y,-1.0,1.0))/3.1415927;return texture2D(tSky,vec2(u,v)).rgb*skyOp;}'+
+    'float linD(float d){float z=d*2.0-1.0;return 2.0*n1*f1/(f1+n1-z*(f1-n1));}'+
+    /* bükülmüş ışının sahnede neye çarptığını bul: önce sonsuzdaki yönü ekrana yansıt, oradaki derinlikten cismin konumunu al,
+       ışının o uzaklıktaki noktasını yeniden yansıt (2-3 adımda yakınsar). Ekran dışına düşerse Samanyolu dokusundan örnekle. */
+    'vec3 bg(vec3 X,vec3 V){vec4 c=vp*vec4(V,0.0);float ok=step(1e-5,c.w);vec2 uv=c.xy/max(c.w,1e-5)*.5+.5;'+
+      'if(hasDep>.5&&ok>.5){vec3 fw=normalize((camW*vec4(0.0,0.0,-1.0,0.0)).xyz);for(int i=0;i<3;i++){if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0)break;float d=texture2D(tDep,uv).x;if(d>.99999)break;'+
+        'vec3 rd=rayDir(uv);vec3 P=camPos+rd*(linD(d)/max(dot(rd,fw),.05));float t=max(dot(P-X,V),0.0);vec4 c2=vp*vec4(X+V*t,1.0);if(c2.w<=0.0)break;uv=c2.xy/c2.w*.5+.5;}}'+
+      'vec2 e=min(uv,1.0-uv);float k=ok*smoothstep(0.0,.015,min(e.x,e.y));vec3 s=k<1.0?sky(V):vec3(0.0);vec3 sc=k>0.0?texture2D(tCol,clamp(uv,0.0,1.0)).rgb:vec3(0.0);return mix(s,sc,k);}'+
+    'vec3 temp(float t){vec3 c=mix(vec3(.38,.035,.008),vec3(1.0,.32,.05),smoothstep(.12,.5,t));c=mix(c,vec3(1.0,.72,.36),smoothstep(.45,.8,t));c=mix(c,vec3(1.0,.94,.84),smoothstep(.75,1.05,t));return mix(c,vec3(.78,.86,1.0),smoothstep(1.05,1.45,t));}'+
+    /* ince disk: Novikov-Thorne akı profili F ∝ r⁻³(1-√(r_in/r)), sıcaklık T ∝ F^¼. Gaz Kepler hızıyla döner (β = √(0.5/(r-1)));
+       gözlenen frekans oranı g = √(1-1/r) / (γ(1-β cosψ)). Bize gelen taraf mavimsi ve parlak, uzaklaşan taraf kızıl ve sönük. */
+    'vec4 disk(vec3 p,vec3 v,float r){vec3 e1=normalize(cross(dN,abs(dN.y)<.9?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0)));vec3 e2=cross(dN,e1);float ph=atan(dot(p,e2),dot(p,e1));'+
+      'float om=1.6/pow(r,1.5),T=7.0,t1=mod(tm,T),t2=mod(tm+T*.5,T),w=abs(t1/T*2.0-1.0);'+
+      'float a1=ph-om*t1,a2=ph-om*t2,lr=log(r)*9.0;'+
+      'float q1=ln3(vec3(cos(a1)*2.2,sin(a1)*2.2,lr))*.6+ln3(vec3(cos(a1)*5.0,sin(a1)*5.0,lr*2.7))*.4;'+
+      'float q2=ln3(vec3(cos(a2)*2.2,sin(a2)*2.2,lr+7.0))*.6+ln3(vec3(cos(a2)*5.0,sin(a2)*5.0,lr*2.7+3.0))*.4;float n=mix(q1,q2,w);'+
+      'float x=rIn/r,F=x*x*x*max(0.0,1.0-sqrt(x))/.0567;'+
+      'vec3 u=normalize(cross(dN,p));float be=min(sqrt(.5/max(r-1.0,.05)),.97),ga=1.0/sqrt(1.0-be*be),cs=dot(u,-normalize(v));'+
+      'float g=sqrt(max(1.0-1.0/r,0.0))/(ga*(1.0-be*cs));float Tn=pow(max(F,0.0),.25)*g;'+
+      'float fade=smoothstep(rIn,rIn*1.08,r)*smoothstep(rOut,rOut*.7,r);float lanes=.9+.1*sin(lr*5.0+n*8.0);'+
+      'float I=dB*1.1*g*g*g*F*(.4+1.2*n)*lanes;vec3 c=1.0-exp(-temp(Tn*.82)*I*1.6);'+
+      'float a=clamp((.35+.9*sqrt(F))*(.55+.7*n)*fade,0.0,.97);return vec4(c*fade,a);}'+
+    'void main(){vec3 base=texture2D(tCol,vUv).rgb;vec3 d=rayDir(vUv);vec3 o=(camPos-bh)/rs;float ro=length(o);float tca=-dot(o,d);vec3 pc=o+d*tca;float b=length(pc);'+
+      'if(tca<0.0&&ro>rInt){gl_FragColor=vec4(base,1.0);return;}'+
+      'vec3 pn=b>1e-5?pc/b:normalize(cross(d,abs(d.y)<.9?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0)));'+
+      'vec3 col=vec3(0.0);float acc=0.0;vec3 X;vec3 V;bool cap=false;'+
+      'if(b>rInt){float al=(1.0/b)*(1.0+sqrt(max(0.0,1.0-b*b/(ro*ro))));if(al<2e-4){gl_FragColor=vec4(base,1.0);return;}V=normalize(d*cos(al)-pn*sin(al));X=pc;}'+
+      'else{vec3 x=o;vec3 v=d;'+
+        'if(ro>rInt){float th=sqrt(rInt*rInt-b*b);x=o+d*(tca-th);float ai=(1.0/max(b,1e-3))*(sqrt(max(0.0,1.0-b*b/(ro*ro)))-sqrt(max(0.0,1.0-b*b/(rInt*rInt))));v=normalize(d*cos(ai)-pn*sin(ai));}'+
+        'vec3 hv=cross(x,v);float h2=dot(hv,hv);'+
+        'for(int i=0;i<STEPS;i++){float r=length(x);if(r<1.0){cap=true;break;}if(r>rInt&&dot(x,v)>0.0)break;'+
+          'float dt=clamp(.075*r*(r<3.0?.55:1.0),.015,2.5);vec3 a1=-1.5*h2*x/pow(r,5.0);vec3 xm=x+v*dt*.5;vec3 vm=v+a1*dt*.5;float rm=length(xm);vec3 a2=-1.5*h2*xm/pow(rm,5.0);vec3 xn=x+vm*dt;v+=a2*dt;'+
+          'float s0=dot(x,dN),s1=dot(xn,dN);if(s0*s1<0.0){vec3 xp=mix(x,xn,s0/(s0-s1));float rr=length(xp);if(rr>rIn&&rr<rOut){vec4 dc=disk(xp,v,rr);col+=(1.0-acc)*dc.rgb;acc+=(1.0-acc)*dc.a;if(acc>.985)break;}}'+
+          'x=xn;}'+
+        'X=x;V=normalize(v);float r2=length(x);'+
+        'if(!cap&&r2>=rInt*.98){vec3 pv=x-V*dot(x,V);float b2=length(pv);if(b2>1e-3){float ao=(1.0/b2)*(1.0-sqrt(max(0.0,1.0-b2*b2/(r2*r2))));V=normalize(V*cos(ao)-(pv/b2)*sin(ao));}}'+
+        'else if(!cap&&acc<.985){cap=true;}}'+
+      'vec3 bc=cap?vec3(0.0):bg(bh+X*rs,V);gl_FragColor=vec4(col+(1.0-acc)*bc,1.0);}'
+  });
+}
+function lensInit(){
+  if(LENS.quad)return true;
+  try{
+    var gl2=renderer.capabilities.isWebGL2;LENS.hasDep=gl2||!!renderer.extensions.get('WEBGL_depth_texture');
+    var opt={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false};
+    LENS.rt=gl2&&THREE.WebGLMultisampleRenderTarget?new THREE.WebGLMultisampleRenderTarget(4,4,opt):new THREE.WebGLRenderTarget(4,4,opt);
+    if(LENS.rt.samples!=null)LENS.rt.samples=LOWQ?2:4;
+    LENS.rt.texture.encoding=THREE.sRGBEncoding;
+    if(LENS.hasDep){LENS.rt.depthTexture=new THREE.DepthTexture(4,4);LENS.rt.depthTexture.type=THREE.UnsignedIntType;}
+    var m=lensMat();m.uniforms.hasDep.value=LENS.hasDep?1:0;if(SKYG&&SKYG.mw)m.uniforms.tSky.value=SKYG.mw.material.map;
+    LENS.quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),m);LENS.quad.frustumCulled=false;
+    LENS.qs=new THREE.Scene();LENS.qs.add(LENS.quad);LENS.qc=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+    return true;
+  }catch(e){console.error(e);LENS.fail=true;return false;}
+}
+/* ekranda en büyük görünen kara delik merceklenir (aynı anda ikisini ışın izlemek telefonlarda ağır kaçar); diğerleri eski disk modeliyle çizilir */
+var _lv=new THREE.Vector3(),_lw=new THREE.Vector3(),_lsz=new THREE.Vector2();
+function lensPick(){
+  if(!LENS.on||LENS.fail||mode==='surface')return null;
+  var best=null,bk=0;
+  function cand(b,o){if(!o||!o.disk||!o.sh||!b.pivot.visible)return;b.pivot.getWorldPosition(_lv);var dd=camera.position.distanceTo(_lv);if(!(dd>0))return;
+    var k=o.sh/dd;if(k>bk){bk=k;best={b:b,o:o,d:dd};}}
+  if(sunBody&&sunType===6&&!SYS&&!EXO.col)cand(sunBody,EXO);
+  for(var i=0;i<BODIES.length;i++){var b=BODIES[i];if(b!==sunBody&&b.exo&&b.exo.disk&&!isGone(b)&&!b.sysHide)cand(b,b.exo);}
+  if(!best)return null;
+  /* gölge birkaç pikselden küçükse mercek görünmez: maliyete değmez */
+  var px=bk/Math.tan(camera.fov*D2R/2)*H*.5;if(px<1.5)return null;
+  return best;
+}
+function renderFrame(){
+  var L=lensPick();
+  if(!L||!lensInit()){renderer.render(scene,camera);return;}
+  var b=L.b,o=L.o,rs=o.sh/2.6;b.pivot.getWorldPosition(_lv);
+  camera.updateMatrixWorld();_lw.copy(_lv).applyMatrix4(camera.matrixWorldInverse);var zB=-_lw.z;
+  var n0=camera.near,f0=camera.far,split=zB>n0*1.5&&zB<f0*.9;
+  renderer.getDrawingBufferSize(_lsz);
+  if(LENS.w!==_lsz.x||LENS.h!==_lsz.y){LENS.w=_lsz.x;LENS.h=_lsz.y;LENS.rt.setSize(_lsz.x,_lsz.y);if(LENS.rt.depthTexture){LENS.rt.depthTexture.image.width=_lsz.x;LENS.rt.depthTexture.image.height=_lsz.y;}}
+  var hid=[o.disk,o.ringS,b.mesh],vis=hid.map(function(x){return x?x.visible:false;});hid.forEach(function(x){if(x)x.visible=false;});
+  try{
+    /* 1) kara deliğin arkası */
+    if(split){camera.near=zB;camera.updateProjectionMatrix();}
+    renderer.setRenderTarget(LENS.rt);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);
+    var U=LENS.quad.material.uniforms;
+    U.tCol.value=LENS.rt.texture;U.tDep.value=LENS.rt.depthTexture||null;U.n1.value=camera.near;U.f1.value=camera.far;
+    U.invProj.value.copy(camera.projectionMatrixInverse);U.camW.value.copy(camera.matrixWorld);U.vp.value.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+    U.camPos.value.copy(camera.position);U.bh.value.copy(_lv);U.rs.value=rs;o.disk.getWorldDirection(U.dN.value);U.dN.value.normalize();
+    U.tm.value=o.disk.material.uniforms.t.value;U.dB.value=o.disk.material.uniforms.b.value;
+    if(SKYG&&SKYG.mw){U.tSky.value=SKYG.mw.material.map;U.skyOp.value=SKYG.mw.material.opacity*(SKYG.mw.visible?1:0);}
+    /* 2) ışın izleme */
+    renderer.render(LENS.qs,LENS.qc);
+    /* 3) önde kalanlar */
+    if(split){camera.near=n0;camera.far=zB;camera.updateProjectionMatrix();var ac=renderer.autoClear;renderer.autoClear=false;renderer.clearDepth();renderer.render(scene,camera);renderer.autoClear=ac;}
+  }catch(e){console.error(e);LENS.fail=true;}
+  camera.near=n0;camera.far=f0;camera.updateProjectionMatrix();
+  hid.forEach(function(x,i){if(x)x.visible=vis[i];});
+  LENS.cur=L;
 }
 function pulsarStep(o,body,dt){
   var ph0=o.ph;o.ph+=Math.min(dt,.1)*TAU*PULS_HZ;o.beams.rotation.y=o.ph;

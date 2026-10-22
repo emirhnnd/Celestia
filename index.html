@@ -3663,11 +3663,42 @@ function settleStep(dt){
     P.copy(S.base).addScaledVector(S.off,1-q);S.last=P.clone();
     if(S.t>=1.8)SETTLE.splice(i,1);}
 }
+/* ---- ortak zarf ----
+   İki normal yıldız birbirine değecek kadar yaklaşınca dış katmanları birleşir ve ikisini de saran tek, şişkin, kızıl bir gaz zarfı oluşur
+   (common envelope). Çekirdekler bu zarfın içinde sarmal çizerek birleşir; dışarıdan iki ayrı damla değil, tek bir parlayan bulut görünür.
+   Birleşme bitince zarf birkaç saniyede kırmızı nova kabuğuna ve şişmiş yıldıza karışarak söner. */
+var ENVS=[],_ea=new THREE.Vector3(),_eb=new THREE.Vector3();
+function envMat(){return new THREE.ShaderMaterial({uniforms:{c1:{value:new THREE.Color()},c2:{value:new THREE.Color()},a:{value:0},t:{value:0}},transparent:true,depthWrite:false,
+  vertexShader:'varying vec3 vN;varying vec3 vV;varying vec3 vP;void main(){vP=position;vec4 mv=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+  fragmentShader:'uniform vec3 c1;uniform vec3 c2;uniform float a;uniform float t;varying vec3 vN;varying vec3 vV;varying vec3 vP;'+
+    'float h(vec3 p){p=fract(p*.3183+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}float n3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}'+
+    'void main(){float mu=clamp(dot(vN,vV),0.0,1.0);float n=n3(vP*3.0+vec3(0.0,t*.3,0.0))*.6+n3(vP*7.0-vec3(t*.5,0.0,0.0))*.4;'+
+    'vec3 col=mix(c2,c1,pow(mu,.7))*(.7+.6*n)*(.8+.5*mu);float al=a*(.35+.65*pow(mu,.3))*(.9+.2*n);gl_FragColor=vec4(col,clamp(al,0.0,1.0));}'});}
+function envStep(D,a,t,dt){
+  a.pivot.getWorldPosition(_ea);t.pivot.getWorldPosition(_eb);
+  var ra=effVr(a),rt=effVr(t),rm=Math.max(ra,rt),d=_ea.distanceTo(_eb),sr=ra+rt;
+  /* yüzeyler değmeden biraz önce başlar, değdiklerinde zarf tamamen örtücüdür; birleşme anına yaklaştıkça da tamamlanır */
+  var c=Math.max(clamp(1-(d-sr)/(sr*.9),0,1),ss(.88,.97,D.k||0));
+  if(c<=0){if(D.env)D.env.visible=false;return;}
+  if(!D.env){var m=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),envMat());m.renderOrder=3;scene.add(m);D.env=m;}
+  var E=D.env;E.visible=true;var dir=_eb.clone().sub(_ea);if(dir.lengthSq()<1e-9)dir.set(1,0,0);dir.normalize();
+  E.position.copy(_ea).add(_eb).multiplyScalar(.5);E.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);
+  E.scale.set(d*.5+rm*(1.04+.2*c),rm*(1.04+.3*c),rm*(1.04+.3*c));
+  var U=E.material.uniforms;U.t.value+=dt;U.a.value=Math.min(1,Math.pow(c,1.2)*1.05);
+  /* zarfın rengi: iki yıldızın renginden kızıla kayar (genişleyen gaz soğur) */
+  U.c1.value.copy(a.glow1.material.color).lerp(t.glow1.material.color,.5).lerp(_mc.setHex(0xffc890),.35+.25*c);U.c2.value.copy(U.c1.value).lerp(_mc.setHex(0xc0400f),.6);
+}
+function envRelease(D,t){if(!D||!D.env)return;ENVS.push({m:D.env,t:0,a0:D.env.material.uniforms.a.value,b:t});D.env=null;}
+function envKill(D){if(!D||!D.env)return;scene.remove(D.env);D.env.geometry.dispose();D.env.material.dispose();D.env=null;}
+function envFade(dt){for(var i=ENVS.length-1;i>=0;i--){var e=ENVS[i];e.t+=Math.abs(dt);var q=clamp(e.t/3.5,0,1);
+  if(e.b&&!isGone(e.b)){e.b.pivot.getWorldPosition(_eb);e.m.position.lerp(_eb,Math.min(1,dt*3));var r=effVr(e.b)*1.1,sc=e.m.scale;sc.x+=(r-sc.x)*Math.min(1,dt*1.5);sc.y+=(r-sc.y)*Math.min(1,dt*1.5);sc.z+=(r-sc.z)*Math.min(1,dt*1.5);}
+  e.m.material.uniforms.a.value=e.a0*(1-q*q);e.m.material.uniforms.t.value+=dt;
+  if(q>=1){scene.remove(e.m);e.m.geometry.dispose();e.m.material.dispose();ENVS.splice(i,1);}}}
 function stepDarts(dt){
-  settleStep(dt);morphStep(dt);
-  BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;unstretch(a);unstretch(t);return;}
+  settleStep(dt);morphStep(dt);envFade(dt);
+  BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;envKill(D);unstretch(a);unstretch(t);return;}
     /* fırlatma simülasyon saatine bağlı: zaman durunca durur, geri sarınca yıldız geldiği yola geri döner */
-    var kk=(simDays-D.t0)/D.Ts;if(kk<0){a.dart=null;a.pivot.position.copy(D.p0);if(a.grav){a.gx=D.p0.x;a.gy=D.p0.y;a.gz=D.p0.z;}dartSnap(D,t);unstretch(a);unstretch(t);return;}
+    var kk=(simDays-D.t0)/D.Ts;if(kk<0){a.dart=null;envKill(D);a.pivot.position.copy(D.p0);if(a.grav){a.gx=D.p0.x;a.gy=D.p0.y;a.gz=D.p0.z;}dartSnap(D,t);unstretch(a);unstretch(t);return;}
     var fwd=kk>D.lk+1e-12;D.lk=kk;D.k=kk;var e=Math.pow(Math.min(1,D.k),1.7);
     /* hedefin kendi (ofsetsiz) konumu: pivot bizim koyduğumuz yerdeyse saklı ev konumu, yoksa (zaman akışı sıfırladıysa) pivotun kendisi */
     var tP=t.pivot.position;if(!D.th)D.th=new THREE.Vector3();if(!(D.tp&&tP.distanceToSquared(D.tp)<1e-10))D.th.copy(tP);
@@ -3681,12 +3712,13 @@ function stepDarts(dt){
     a.pivot.position.copy(DV);
     if(a.grav){a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;}
     var dist=P.distanceTo(H),touch=effVr(a)+effVr(t);
-    if(isStarB(a)&&isStarB(t)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.55,dv=new THREE.Vector3().subVectors(H,P).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);}
+    /* gelgit uzaması hafif tutulur (iki damla görüntüsü olmasın); normal yıldızlar değince ortak zarf ikisini birden sarar */
+    if(isStarB(a)&&isStarB(t)&&!isBH(a)&&!isBH(t)){var sk=clamp(1-(dist-touch)/(touch*2.5),0,1)*.16,dv=new THREE.Vector3().subVectors(H,P).normalize();stretchTo(a,dv,sk);stretchTo(t,dv.clone().negate(),sk*.6);if(ik===2)envStep(D,a,t,dt);}
     if(t===sunBody&&sunType===6&&!isBH(a)){var rtd=a.def.star?Math.max(rtOf(a),effVr(a)*.9*Math.cbrt(sunMass/Math.max(.1,stMass(a)))+effVr(sunBody)*bhMassK()*3):rtOf(a);if(dist<rtd&&fwd){var Dsv=D;a.dart=null;dartRelease(D,t,a,null);var rv=new THREE.Vector3().subVectors(DV,t.pos),rl=rv.length(),tg=new THREE.Vector3(0,1,0).cross(rv).normalize(),vs=Math.sqrt(2*(a.GM||1)*sunMass/Math.max(rl,1e-3))*.97,v=tg.multiplyScalar(vs);a.gx=DV.x;a.gy=DV.y;a.gz=DV.z;a.gvx=v.x;a.gvy=v.y;a.gvz=v.z;startTDE(a,Dsv);}return;}
     if(t===sunBody&&!a.def.star&&sunType!==6)touch=swallowR(a);
     if(isStarB(a)&&isStarB(t))touch=mergeR(a)+mergeR(t);
     if(isBH(t)&&!isBH(a))touch=effVr(t)*(t===sunBody?bhMassK():1)*4+effVr(a)*.6;
-    if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;var aP=a===sunBody?DV.clone():null;resolveDart(a,t);dartRelease(D,t,a,aP);}
+    if(fwd&&(dist<=touch||D.k>=1)){a.dart=null;var aP=a===sunBody?DV.clone():null;envRelease(D,t);resolveDart(a,t);dartRelease(D,t,a,aP);}
   });
 }
 function hideStar(b){b.dart=null;b.cust=customs.filter(function(c){return c.id===b.id;})[0]||b.cust;destroyBody(b);customs=customs.filter(function(c){return c.id!==b.id;});saveCustom();rebuildLists();}

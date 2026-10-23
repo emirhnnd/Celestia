@@ -36,7 +36,7 @@ module.exports=async(page,E,shot)=>{
   await T('firtina',async()=>{await fresh(page);await E("focusBody('earth')");await page.waitForTimeout(1500);await E("gotoStorm()");await page.waitForTimeout(4000);
     return await E("[WX.follow, (WX.storms||[]).length, SPEEDS[speedIdx].t]");});
   await T('ekle-limit',async()=>{await fresh(page);await E("openSide();showTab('lab');showLabTab('ekle')");
-    for(let i=0;i<3;i++){await E("addPick('s:6');$('addGo').click()");await page.waitForTimeout(700);}
+    for(let i=0;i<3;i++){await E("addPick('s:6');$('xDist').value=500;$('addGo').click()");await page.waitForTimeout(700);}
     for(let i=0;i<11;i++){await E("addPick('p:rocky');$('addGo').click()");await page.waitForTimeout(400);}
     return await E("[addCounts(), $('addGo').disabled, $('addCount').textContent]");});
   await T('lab-baglam',async()=>{await fresh(page);const out=[];

@@ -119,7 +119,7 @@ Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm ins
 cd test && npm install && npm test
 ```
 
-Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
+`npm test` senaryoları üç mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js`. Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
 
 ## 🛠️ İçinde neler var
 

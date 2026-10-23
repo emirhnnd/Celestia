@@ -2,9 +2,12 @@
 // Hız için ışık bükülmesi ve pulsar hüzmeleri gizlenir (yazılımsal WebGL'de çok yavaşlar).
 // real-time scenario suite; each scenario on a fresh page state
 const R=[];
-async function fresh(page){await page.evaluate(()=>{try{localStorage.clear();localStorage.setItem('gsg-coach','1');}catch(e){}});await page.reload();await page.waitForFunction(()=>window.__E,null,{timeout:60000});await page.waitForTimeout(2500);}
+/* mesafe ölçeği: DS=1 (Kompakt), 2.5 (Geniş, varsayılan), 6 (Gerçekçiye yakın) */
+const DSV=process.env.DS||'2.5';
+async function fresh(page){await page.evaluate((ds)=>{try{localStorage.clear();localStorage.setItem('gsg-coach','1');localStorage.setItem('se_ds',ds);}catch(e){}},DSV);await page.reload();await page.waitForFunction(()=>window.__E,null,{timeout:60000});await page.waitForTimeout(2500);}
 async function waitFor(E,cond,sec){for(let i=0;i<sec*2;i++){const r=await E(cond);if(r===true)return true;await new Promise(r=>setTimeout(r,500));}return false;}
 module.exports=async(page,E,shot)=>{
+  console.log('Mesafe ölçeği:',DSV);
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
   const T=async(name,fn)=>{const e0=errs.length;let res;try{res=await fn();}catch(e){res='EXC '+e.message;}console.log('##',name,'=>',JSON.stringify(res),errs.length>e0?' ERRORS: '+errs.slice(e0).join(' | '):'');};
   const merge=async(name,setup,timeout=90)=>T(name,async()=>{await fresh(page);await E("$('side').classList.add('collapsed');LENS.on=false;setInterval(function(){BODIES.forEach(function(b){if(b.exo&&b.exo.beams)b.exo.beams.visible=false;if(b.exo&&b.exo.neb)b.exo.neb.visible=false;});},40)");await E(setup);

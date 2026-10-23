@@ -365,6 +365,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
         <button role="menuitemradio" class="dsb" data-ds="1">Kompakt</button>
         <button role="menuitemradio" class="dsb" data-ds="2.5">Geniş</button>
         <button role="menuitemradio" class="dsb" data-ds="6">Gerçekçiye yakın</button>
+        <button role="menuitemradio" class="dsb" data-ds="R">Gerçek ölçek</button>
       </div>
     </div>
   </div>
@@ -817,15 +818,20 @@ function dotTex(){
 
 /* ---------- veri ---------- */
 var AU_LM=8.317;
-function vr(R){return 1.6*Math.pow(R/6371,.5);}
+/* ---- GERÇEK ÖLÇEK ----
+   Mesafe menüsündeki "Gerçek ölçek" seçeneğinde boyutlar ve uzaklıklar gerçek oranlarında: 1 sahne birimi = 3.982 km (Dünya yarıçapı 1,6 birim),
+   1 AU = 37.570 birim. Diğer seçeneklerde boyutlar kökle, uzaklıklar üslü bir eğriyle sıkıştırılır ki her şey ekrana sığsın. */
+var REAL=(function(){try{return localStorage.getItem('se_ds')==='R';}catch(e){return false;}})();
+var KM_U=6371/1.6,AU_U=149597870.7/KM_U;
+function vr(R){return REAL?R/KM_U:1.6*Math.pow(R/6371,.5);}
 var LOWQ=(innerWidth<760)||(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var LENS={on:true,rt:null,quad:null,qs:null,qc:null,fail:false,hasDep:false,w:0,h:0,cur:null};
 try{if(localStorage.getItem('gsg-lens')==='0')LENS.on=false;}catch(e){}
 var PS=1;
-var DS=(function(){try{var v=+localStorage.getItem('se_ds');return v>0&&v<10?v:2.5;}catch(e){return 2.5;}})();
-PS=DS>=6?.4:1;
-function orbitR(a){return (40*Math.pow(a,.62)+10)*DS;}
-function invOrbit(r){return Math.pow(Math.max(r/DS-10,.5)/40,1/.62);}
+var DS=REAL?940:(function(){try{var v=+localStorage.getItem('se_ds');return v>0&&v<10?v:2.5;}catch(e){return 2.5;}})();
+PS=REAL?1:(DS>=6?.4:1);
+function orbitR(a){return REAL?a*AU_U:(40*Math.pow(a,.62)+10)*DS;}
+function invOrbit(r){return REAL?Math.max(r,1e-6)/AU_U:Math.pow(Math.max(r/DS-10,.5)/40,1/.62);}
 var SUN_TYPES=[
   {name:'Sarı cüce',lo:0xff6a08,hi:0xffe58a,light:0xfff0dc,I:1.85,glow:0xffb040,gm:1,L:1,sc:1,uv:1,life:1,uvName:'Normal',stage:'Ana kol'},
   {name:'Kırmızı cüce',lo:0x7a1200,hi:0xff6a2a,light:0xff7a50,I:1.7,glow:0xff3a10,gm:1.1,L:.004,sc:.5,uv:3,life:1,uvName:'Güçlü parlamalar',stage:'Ana kol (uzun ömürlü)'},
@@ -904,6 +910,9 @@ var DEFS=[
   desc:'NASA\'nın OSIRIS-REx aracının 2020\'de örnek alıp 2023\'te Dünya\'ya getirdiği asteroit. 2182 yılında Dünya\'ya çarpma olasılığı yaklaşık 2700\'de 1.',
   stats:[['Çap','~490 m'],['Yörünge','1,2 yıl'],['Örnek','2023\'te Dünya\'ya getirildi']]}
 ];
+/* gerçek ölçekte elle verilmiş yarıçaplar gerçek değerlerine çekilir (km) */
+if(REAL){var RKM={sun:696000,moon:1737.4,io:1821.6,europa:1560.8,ganymede:2634.1,callisto:2410.3,titan:2574.7,pluto:1188.3};DEFS.forEach(function(d){if(RKM[d.id])d.vr=vr(RKM[d.id]);});}
+var SUNVR=REAL?vr(696000):9;
 DEFS.forEach(function(d){ if(d.a) d.r=orbitR(d.a); });
 
 var SPEEDS=[{d:1/86400,t:'Gerçek zaman (1 sn/sn)'},{d:1/1440,t:'1 dakika/sn'},{d:1/24,t:'1 saat/sn'},{d:1,t:'1 gün/sn'},{d:7,t:'1 hafta/sn'},{d:30.44,t:'1 ay/sn'},{d:365.25,t:'1 yıl/sn'},{d:3652.5,t:'10 yıl/sn'},{d:36525,t:'100 yıl/sn'},{d:365250,t:'1000 yıl/sn'}];
@@ -1339,7 +1348,7 @@ function buildBody(def){
   if(def.comet&&!def.asteroid)buildCometFx(b);
   return b;
 }
-function disposeBody(b){
+function disposeBody(b){if(b.mark){scene.remove(b.mark);b.mark.material.dispose();b.mark=null;}
   b.pivot.parent.remove(b.pivot);if(b.line&&b.line.parent)b.line.parent.remove(b.line);
   b.pivot.traverse(function(o){if(o.geometry)o.geometry.dispose();if(o.material){var m=o.material;['map','bumpMap','emissiveMap'].forEach(function(k){if(m[k])m[k].dispose();});m.dispose();}});
   if(b.label.parentNode)b.label.parentNode.removeChild(b.label);
@@ -1523,7 +1532,7 @@ cv.addEventListener('pointermove',function(e){
     else if(mode==='orbit'){theta-=dx*.006;phi=clamp(phi-dy*.006,.04,Math.PI-.04);}
     else{yaw-=dx*.0042;pitch=clamp(pitch-dy*.0042,-1.55,1.55);}
   }else if(pointers.size===2){
-    var d=pinchD();zoomBy(lastPinch/d);lastPinch=d;moved+=10;
+    var d=pinchD();zoomBy(Math.pow(lastPinch/d,REAL&&mode==='orbit'?1.8:1));lastPinch=d;moved+=10;
   }
 });
 function endPtr(e){
@@ -1532,7 +1541,8 @@ function endPtr(e){
 }
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('wheel',function(e){e.preventDefault();
-  if(mode==='orbit'||mode==='surface')zoomBy(Math.exp(e.deltaY*.0012));
+  /* gerçek ölçekte yakınlaştırma aralığı milyon katı: tekerlek iki kat hızlı */
+  if(mode==='orbit'||mode==='surface')zoomBy(Math.exp(e.deltaY*(REAL&&mode==='orbit'?.0026:.0012)));
   else camera.translateZ(e.deltaY*.0012*nearestSurface()*1.6);
 },{passive:false});
 addEventListener('keydown',function(e){
@@ -1683,6 +1693,9 @@ function updateLabels(){
     v3.copy(b.pos).project(camera);
     var hide=!vis||isEngulfed(b)||b.inactive||(SURF&&b===SURF.b)||(SURF&&!NAKED[b.def.id]&&!(b.def.id==='uranus'&&!SURF.lp))||(b.def.minor&&b!==focus&&camera.position.distanceTo(b.pos)>45*DS)||v3.z>1||(pr>H*.45&&b===focus)||Math.abs(v3.x)>1.1||Math.abs(v3.y)>1.1;
     b.sx=(v3.x*.5+.5)*W;b.sy=(-v3.y*.5+.5)*H;b.pr=pr;
+    /* gerçek ölçekte cisimler çoğu zaman pikselden küçüktür: yerini sabit boyutlu küçük bir nokta gösterir, yaklaşınca gerçek küre görünür */
+    if(REAL){if(!b.mark&&!b.def.craft){var mc=new THREE.Color((b.def.dot&&b.def.dot[0])||'#ffffff');b.mark=new THREE.Sprite(new THREE.SpriteMaterial({map:dotTex(),color:mc,sizeAttenuation:false,depthWrite:false,depthTest:false,transparent:true}));b.mark.scale.setScalar(b.parent?.007:.011);b.mark.renderOrder=6;scene.add(b.mark);}
+      if(b.mark){var mv=!hide&&pr<2.5&&!b.destroyed&&!b.sysHide&&b.pivot.visible&&!(SURF&&b!==SURF.b&&!NAKED[b.def.id]);b.mark.visible=mv;if(mv)b.mark.position.copy(b.pos);}}
     if(hide){b.label.style.display='none';}
     else cands.push(b);
     if(b.line)b.line.visible=!SURF&&!b.destroyed&&!b.sysHide&&showOrbits&&(!b.parent||b.parent===sys)&&!(gravityOn&&b.grav)&&(!b.def.minor||b===focus);
@@ -1763,7 +1776,9 @@ function frame(now){
   if(SLOWMO>0)SLOWMO-=dt;
   var dDays=playing?dt*SPEEDS[speedIdx].d*(reverse?-1:1)*(SLOWMO>0?.12:1):0;if(gravityOn){dDays=clamp(dDays,-7,7);gSlow+=(gSlowNext-gSlow)*(gSlowNext<gSlow?.5:.05);dDays*=gSlow;if(gSlowNext<.3&&performance.now()-slowWarned>8000){slowWarned=performance.now();toast('Çarpışma yaklaşıyor: zaman yavaşlatıldı');}gSlowNext=1;}simDays+=dDays;
   if(!wxT)wxT=simDays;wxT+=clamp(dDays,-15*dt,15*dt);
-  updateBodies(dDays);timeline(dDays);if(SKYG)SKYG.position.copy(camera.position);scene.updateMatrixWorld(true);
+  updateBodies(dDays);timeline(dDays);if(SKYG){SKYG.position.copy(camera.position);
+    /* gökyüzü küresi saydam olduğu için opak cisimlerden sonra çizilir; gerçek ölçekte cisimler küreden uzakta kalınca onları örtüyordu. Küre görüş uzaklığının sınırına büyütülür */
+    if(REAL)SKYG.scale.setScalar(camera.far*.85/5200);}scene.updateMatrixWorld(true);
   updateSolarFx(now,SIMDT);updateFxList(SIMDT);updateExotic(SIMDT);stepDarts(SIMDT);stepTimers(SIMDT);updateStarWinds(SIMDT);tripDraw(dt);drawTDE(SDT);updateWeather();updatePlanetWx();updateEclipse();updateSkyLabels();
   var nr=clamp(nearestSurface()*.25,.1,4);if(Math.abs(nr-camera.near)>.02){camera.near=nr;camera.updateProjectionMatrix();}
   BODIES.forEach(function(b){
@@ -2347,7 +2362,7 @@ function addStar(o,silent){
   /* başlangıç açısı initialAngle'da def.P (2500 gün) ile hesaplanır; boş açıyı ona göre çevir */
   if(L0==null){var fp=silent?null:freeL0(o.a*DS,2500,Math.max(o.a*DS*.08,9*o.size*3));L0=fp!=null?fp:rnd(0,360);}
   var h1='#'+('000000'+T.hi.toString(16)).slice(-6),h2='#'+('000000'+T.lo.toString(16)).slice(-6);
-  var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:9*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
+  var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:SUNVR*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
     desc:'Güneş\'in çevresinde dönen ikinci bir yıldız. Işığı tüm gezegenleri aydınlatır; Yerçekimi simülasyonu açıkken yörüngeleri de bozar.',
     stats:[['Tür',T.name],['Çap',Math.round(1392700*o.size).toLocaleString('tr-TR')+' km'],['Güneş\'e uzaklık',Math.round(o.a)+' birim']]};
   buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(byId[id]&&o.type===5)byId[id].nsOld=true;if(byId[id]&&o.type===6)byId[id].bhOld=true;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
@@ -2459,7 +2474,7 @@ function fluxAt(p){
   BODIES.forEach(function(s){
     if(!s.glow1||isGone(s))return;
     var d=Math.max(invOrbit(p.distanceTo(s.pos)),.005);
-    var L=s.def.id==='sun'?starL():SUN_TYPES[s.starType].L*Math.pow(s.def.vr/9*s.mod.size,2);
+    var L=s.def.id==='sun'?starL():SUN_TYPES[s.starType].L*Math.pow(s.def.vr/SUNVR*s.mod.size,2);
     S+=L/(d*d);
   });
   return S;
@@ -2724,8 +2739,9 @@ function bindSolarUi(){
 
 bindSolarUi();
 Array.prototype.forEach.call(document.querySelectorAll('.dsb'),function(b){
-  b.setAttribute('aria-checked',String(+b.dataset.ds===DS));
-  b.addEventListener('click',function(){if(+b.dataset.ds===DS)return;try{localStorage.setItem('se_ds',b.dataset.ds);}catch(e){}toast('Mesafe ölçeği değişiyor…');setTimeout(function(){location.reload();},350);});
+  var cur=function(){return b.dataset.ds==='R'?REAL:(!REAL&&+b.dataset.ds===DS);};
+  b.setAttribute('aria-checked',String(cur()));
+  b.addEventListener('click',function(){if(cur())return;try{localStorage.setItem('se_ds',b.dataset.ds);}catch(e){}toast('Mesafe ölçeği değişiyor…');setTimeout(function(){location.reload();},350);});
 });
 /* ---------- Dünya hava durumu (simülasyon zamanına bağlı) ---------- */
 var wxT=0;
@@ -3433,6 +3449,8 @@ function moonRR(b){var m=MOONR[b.def.id];return m?m[0]:(b.def.orbit/(b.parent?b.
 function moonRoche(b){var m=MOONR[b.def.id];return m?m[1]:2.44;}
 function moonVisR(b){
   var d=b.def,p=b.parent,rr0=moonRR(b),rr=b.mod.rr||rr0,R0=p.def.vr;
+  /* gerçek ölçekte uydu uzaklığı gezegen yarıçapı cinsinden gerçek değer (Ay: 60,3 Dünya yarıçapı) */
+  if(REAL)return effVr(p)*rr;
   return effVr(p)+(d.orbit-R0)*(rr-1)/(rr0-1);
 }
 function moonPScale(b){var rr0=moonRR(b),rr=b.mod.rr||rr0;return Math.pow(rr/rr0,1.5);}

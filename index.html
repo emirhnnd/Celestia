@@ -430,6 +430,8 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
           <div class="rrow"><label for="sOrbit">Yörünge hızı</label><input type="range" id="sOrbit" min="-10" max="50" step=".1" value="1"><output id="oOrbit"></output></div>
           <div class="rrow"><label for="sSize">Boyut</label><input type="range" id="sSize" min=".1" max="20" step=".05" value="1"><output id="oSize"></output></div>
           <div class="rrow"><label for="sTilt">Eksen eğikliği</label><input type="range" id="sTilt" min="0" max="180" step="1" value="0"><output id="oTilt"></output></div>
+          <div class="rrow"><label for="sBM">Kütle</label><input type="range" id="sBM" min="0" max="1" step=".001" value=".5"><output id="oBM"></output></div>
+          <p class="note" id="bmNote" hidden></p>
           <div class="frow" id="lockRow"><label for="sLock">Gelgit kilidi</label><span class="chk"><input type="checkbox" id="sLock"><span>Bir yüzü hep yıldıza baksın</span></span></div>
           <div class="btnrow"><button class="btn" id="labReset">Bu cismi sıfırla</button><button class="btn danger" id="labDel" hidden>Gezegeni sil</button></div>
         </section>
@@ -478,6 +480,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
             <div class="frow" data-f="color"><label for="nColor">Ana renk</label><input type="color" id="nColor" value="#3b82d6"></div>
             <div class="rrow" data-f="psize"><label for="nSize">Çap (Dünya = 1)</label><input type="range" id="nSize" min=".1" max="25" step=".1" value="1.4"><output id="onSize"></output></div>
             <div class="rrow" data-f="pdist"><label for="nDist">Güneş'e uzaklık</label><input type="range" id="nDist" min=".2" max="100" step=".1" value="2.6"><output id="onDist"></output></div>
+            <p class="note" id="addZone" style="white-space:pre-line"></p>
             <div class="frow" data-f="moons"><label for="nMoons">Uydu sayısı</label><select id="nMoons"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></div>
             <div class="frow" data-f="ring"><label for="nRing">Halka</label><span class="chk"><input type="checkbox" id="nRing"><span>Satürn gibi halka</span></span></div>
             <div class="rrow" data-f="ssize"><label for="xSize">Boyut (Güneş = 1)</label><input type="range" id="xSize" min=".3" max="2" step=".05" value=".8"><output id="oxSize"></output></div>
@@ -487,7 +490,7 @@ textarea{width:100%;min-height:58px;resize:vertical;padding:8px 10px;border-radi
             <div class="btnrow"><button class="btn pri" id="addGo">Ekle</button><button class="btn" id="nRand">Rastgele</button></div>
             <p class="note" id="addCount"></p>
           </div>
-          <select id="nType" hidden><option value="ocean">Okyanus dünyası</option><option value="rocky">Kayalık</option><option value="gas">Gaz devi</option><option value="ice">Buz dünyası</option><option value="lava">Lav dünyası</option><option value="desert">Çöl dünyası</option></select>
+          <select id="nType" hidden><option value="earth">Dünya benzeri</option><option value="ocean">Okyanus dünyası</option><option value="rocky">Kayalık</option><option value="gas">Gaz devi</option><option value="ice">Buz dünyası</option><option value="lava">Lav dünyası</option><option value="desert">Çöl dünyası</option></select>
           <select id="xType" hidden><option value="0">Sarı cüce</option><option value="1">Kırmızı cüce</option><option value="2" selected>Mavi dev</option><option value="3">Kırmızı dev</option><option value="4">Beyaz cüce</option><option value="5">Nötron yıldızı</option><option value="6">Kara delik</option></select>
           <button id="nAdd" hidden></button><button id="xAdd" hidden></button>
         </section>
@@ -741,6 +744,16 @@ function customFns(type,rgb,seed){
   var em=null,fn;
   if(type==='rocky'){
     fn=function(x,y,z){var n=fbm(x*4+s,y*4,z*4,6),c=fbm(x*15+s,y*15,z*15,2);return mix(mix(dark,rgb,ss(.25,.6,n)),light,ss(.62,.85,n)*.7).map(function(v,i){return v*(1-ss(.55,.3,c)*.22);});};
+  }else if(type==='earth'){
+    /* Dünya benzeri: ~%30 kara (yeşil-kahverengi, enleme göre çöl/orman/tundra), mavi okyanus, kutup buzulları */
+    fn=function(x,y,z){
+      var n=fbm(x*1.8+s,y*1.8,z*1.8,6),la=Math.abs(y),ice=la+(vnoise(x*6,y*6,z*6)-.5)*.12;
+      if(ice>.86)return [238,244,250];
+      if(n<.58){var d=ss(.3,.58,n);return mix([14,40,92],[34,96,160],d);}
+      var e=ss(.58,.8,n),dry=ss(.12,.32,Math.abs(la-.33))*(fbm(x*5+s,y*5,z*5,3)),forest=[52,96,44],steppe=[150,140,90],desert=[196,168,116],tundra=[130,128,110];
+      var c=la>.62?mix(forest,tundra,ss(.62,.8,la)):mix(forest,mix(steppe,desert,ss(.4,.7,dry)),ss(.25,.6,dry));
+      return mix(c,[150,140,130],ss(.78,.95,n)*.8).map(function(v){return v*(.85+.3*e);});
+    };
   }else if(type==='ocean'){
     var land=mix(rgb,[255,255,255],.1);land=[land[1]*.7+40,land[2]*.5+80,land[0]*.4+30];
     fn=function(x,y,z){
@@ -1554,6 +1567,21 @@ var tp={x:0,z:0};
 /* ek yıldızın Güneş'e göre yörünge dönemi Kepler'e göre toplam kütleden: P = 2π√(r³ / G(M☉+m)). Ölçek, Dünya'nın 365 günlük yılından.
    (Önceden kütleden bağımsız 2500 gündü: 100 Güneş kütleli kara delik de Güneş benzeri bir yıldız gibi yavaşça dönüyordu.) */
 function starP(b){var rE=orbitR(1),r=b.def.r||rE;return 365.25*Math.pow(r/rE,1.5)/Math.sqrt(Math.max(.05,sunMass)+Math.max(.01,stMass(b)));}
+/* ortak kütle merkezi (barimerkez): Güneş ve ek yıldızlar onun etrafında döner. Ek yıldızın yörüngesi Güneş'e göre hesaplanır (göreli yörünge),
+   sonra herkes kütle merkezi sabit kalacak şekilde kaydırılır: Güneş −Σmᵢrᵢ/M kadar, yıldızlar da aynı miktarda. 50 Güneş kütleli bir kara delik
+   eklenince Güneş (gezegenleriyle birlikte) onun çevresinde büyük bir yörüngede dolanır; Güneş benzeri ikinci yıldızda ikisi de ortadaki noktanın etrafında döner. */
+var _bs=new THREE.Vector3();
+function baryStep(){
+  if(SYS||!sunBody)return;
+  if(sunBody.dart||BODIES.some(function(b){return b.dart&&b.dart.t===sunBody;}))return;
+  var M=Math.max(.05,sunMass);_bs.set(0,0,0);var L=[];
+  var so=sunBody.pivot.position;
+  BODIES.forEach(function(b){if(!b.def.star||b===sunBody||isGone(b)||b.sysHide||b.parent)return;var m=stMass(b);
+    /* fırlatılmakta olan yıldızın konumu mutlak: Güneş'e göre konumu kullanılır ki kütle merkezi sıçramasın */
+    if(b.dart){_bs.x+=(b.pivot.position.x-so.x)*m;_bs.y+=(b.pivot.position.y-so.y)*m;_bs.z+=(b.pivot.position.z-so.z)*m;}else{_bs.addScaledVector(b.pivot.position,m);L.push(b);}M+=m;});
+  _bs.multiplyScalar(-1/M);
+  sunBody.pivot.position.copy(_bs);L.forEach(function(b){b.pivot.position.add(_bs);});
+}
 function sysCOM(out){var M=Math.max(.05,sunMass);out.set(0,0,0);BODIES.forEach(function(b){if(!b.def.star||b===sunBody||isGone(b)||b.sysHide||b.dart)return;var m=stMass(b);out.addScaledVector(b.pos,m);M+=m;});return out.multiplyScalar(1/M);}
 var _com=new THREE.Vector3();
 function updateBodies(dDays){
@@ -1580,7 +1608,9 @@ function updateBodies(dDays){
     if(b.mod.lock&&!d.parent)applyLock(b);
     if(b.clouds)b.clouds.rotation.y=b.def.id==='earth'?b.mesh.rotation.y:b.spinRot*1.06;
   });
+  baryStep();
   if(gravityOn)stepGravity(dDays);
+  debStep(dDays);
   updateDebrisRings(dDays);
   updateBelts(dDays,SIMDT);
 }
@@ -1955,7 +1985,7 @@ function syncLab(){
   $('sTilt').value=b.mod.tilt;$('oTilt').textContent=Math.round(b.mod.tilt)+'°';
   $('labDel').hidden=!(b.def.custom&&!b.parent);
   $('lockRow').hidden=!(b.hab&&!b.parent);$('sLock').checked=!!b.mod.lock;
-  syncMoonUI();fillTargets();$('lGo').disabled=!((b.grav||b.def.star)&&!b.parent&&!isGone(b));
+  syncMoonUI();fillTargets();if(typeof bmSync==='function')bmSync();$('lGo').disabled=!((b.grav||b.def.star)&&!b.parent&&!isGone(b));
   var hb=b.hab;$('climSec').hidden=!hb;
   if(hb){$('climName').textContent=b.def.name;$('cAtm').value=hb.atm;$('cWater').value=hb.water;$('oWater').textContent=Math.round(hb.water*100)+'%';$('cMag').value=hb.mag;$('oMag').textContent=Math.round(hb.mag*100)+'%';}
   labCtx();
@@ -1969,13 +1999,13 @@ function labCtx(){
   showRow('sSpin',!bh&&!craft&&ty!==7);showRow('sOrbit',b!==sunBody&&!craft);showRow('sSize',!bh&&!craft&&ty!==7);showRow('sTilt',!isStar&&!craft&&!comet);
   $('labReset').hidden=craft||bh;$('labDel').textContent=isStar?(bh?'Kara deliği sil':'Yıldızı sil'):'Gezegeni sil';
   var nt=$('lsBodyNote');if(!nt){nt=document.createElement('p');nt.className='note';nt.id='lsBodyNote';$('labReset').closest('.btnrow').after(nt);}
-  nt.textContent=craft?'Uzay araçları gerçek yörüngelerinde ilerler; burada değiştirilecek bir ayarları yok.':bh?'Kara deliğin kütlesi, ışık bükülmesi ve ona cisim fırlatma Yıldız sekmesinde.':isStar?'Yıldızın türü ve ölümü Yıldız sekmesinde.':'';nt.hidden=!nt.textContent;
+  nt.textContent=craft?'Uzay araçları gerçek yörüngelerinde ilerler; burada değiştirilecek bir ayarları yok.':bh?'Işık bükülmesi ve kara deliğe cisim fırlatma Yıldız sekmesinde.':isStar?'Yıldızın türü ve ölümü Yıldız sekmesinde.':'';nt.hidden=!nt.textContent;
   var ls=labStar(),lt=ls===sunBody?sunType:ls.starType,sun=ls===sunBody,col=sun?!!EXO.col:!!ls.exoCol;
   var h=$('lsStar').querySelector('h4');if(h&&h.firstChild&&h.firstChild.nodeType===3)h.firstChild.nodeValue=lt===6?'Kara delik ':lt===5?'Nötron yıldızı ':lt===7?'Yıldız kalmadı ':'Yıldız türü ';
   $('lsStar').classList.toggle('rem',lt>=5);$('starBack').hidden=!(sun&&lt>=5);$('starBtns').hidden=!sun&&lt>=5;
   showRow('sAge',sun&&(lt===0||lt===3||lt===4));showRow('sAct',sun&&lt<4);showRow('sFlare',lt<4);
   $('sNova').hidden=!(lt<5&&lt!==1)||col;$('sBH').hidden=lt===6||lt===7||col||!!bhBlock(ls);$('sNova').closest('.btnrow').hidden=$('sNova').hidden&&$('sBH').hidden;
-  showRow('sPN',sun&&(lt===0||lt===3));showRow('sMass',sun);
+  showRow('sPN',sun&&(lt===0||lt===3));showRow('sMass',false);
   var notes=$('lsStar').querySelectorAll(':scope > .note:not(#starBack)');if(notes[0])notes[0].hidden=!(sun&&lt<4);if(notes[1])notes[1].hidden=!(lt<4);
   var bx=$('bhBox');bx.hidden=lt!==6;
   if(lt===6){$('bhLens').textContent=LENS.on?'Açık':'Kapalı';$('bhLens').classList.toggle('on',LENS.on);$('bhLens').setAttribute('aria-pressed',String(LENS.on));
@@ -1985,6 +2015,37 @@ function labCtx(){
 }
 $('bhLens').addEventListener('click',function(){LENS.on=!LENS.on;try{localStorage.setItem('gsg-lens',LENS.on?'1':'0');}catch(e){}$('vLens').setAttribute('aria-checked',String(LENS.on));labCtx();});
 $('bhThrow').addEventListener('click',function(){var p=byId[$('bhPrey').value],t=labStar();if(!p||!t)return;launchPair(p,t);});
+/* ---- Cisim sekmesinde kütle ----
+   Yıldızlar ve kalıntılar Güneş kütlesiyle (M☉), gezegenler Dünya kütlesiyle (M⊕) ayarlanır; logaritmik kaydırıcı.
+   Eşikler: nötron yıldızı ~2,3 M☉ üstünde kara deliğe çöker; gaz devi ~13 Jüpiter kütlesinde (4.100 M⊕) kahverengi cüce olur
+   (çekirdeğinde döteryum yanar); ~80 Jüpiter kütlesinde hidrojen füzyonu başlar, yani artık bir yıldızdır (kırmızı cüce). */
+var MJ=317.8;
+function bmKind(b){if(!b||b.def.craft||b.def.comet||b.parent)return null;if(b===sunBody)return SYS?null:'sun';if(b.def.star){var t=b.starType;return t===6?'bh':t===5?'ns':t===7?null:'star';}return b.grav?(b.hab&&b.hab.gas?'gas':'rock'):null;}
+function bmRange(k){return k==='bh'?[3,1000]:k==='ns'?[1.1,3]:k==='star'?[.08,150]:k==='gas'?[1,80*MJ]:[.01,20];}
+function bmGet(b,k){return k==='sun'?sunMass:(k==='bh'||k==='ns'||k==='star')?stMass(b):bodyMass(b);}
+function bmTxt(m,k){if(k==='gas'||k==='rock'){if(m>=150)return (m/MJ).toFixed(m/MJ<10?2:0).replace('.',',')+' MJ';return (m<1?m.toFixed(2):m<10?m.toFixed(1):Math.round(m)+'').replace('.',',')+' M⊕';}return (m<1?m.toFixed(2):m<10?m.toFixed(1):Math.round(m)+'').replace('.',',')+' M☉';}
+function bmNoteTxt(m,k){
+  if(k==='gas')return m>=80*MJ*.98?'80 Jüpiter kütlesi: çekirdekte hidrojen füzyonu başlar; bu artık bir kırmızı cüce yıldız olurdu. Gaz devleri bu sınırı geçemez.':m>=13*MJ?'13 Jüpiter kütlesinin üstü: kahverengi cüce. Çekirdeğinde bir süre döteryum yanar, kızılötesinde hafifçe parlar ama gerçek bir yıldız değildir.':m>=2*MJ?'Jüpiter\'den ağır gaz devleri çapça pek büyümez: kütle arttıkça kendi ağırlığıyla sıkışır.':'';
+  if(k==='rock')return m>=10?'10 Dünya kütlesinin üstündeki kayalık gezegenler genellikle hidrojen tutup gaz devine dönüşür; "süper Dünya"lar ~2–10 M⊕ arasıdır.':'';
+  if(k==='ns')return m>2.3?'Bırakınca: nötron basıncı bu ağırlığı taşıyamaz, yıldız kara deliğe çöker.':'';
+  if(k==='bh')return 'Kütle arttıkça olay ufku ve gölge büyür (ufuk yarıçapı kütleyle doğru orantılı, ekranda yumuşatılmış).';
+  return '';}
+function bmSync(){var b=focus,k=bmKind(b),row=rowOf('sBM');if(row)row.hidden=!k;if(!k){$('bmNote').hidden=true;return;}
+  var R=bmRange(k),m=bmGet(b,k);if(k==='sun'){$('sBM').value=$('sMass').value;$('oBM').textContent=massTxt()+' M☉';}
+  else{$('sBM').value=Math.log(clamp(m,R[0],R[1])/R[0])/Math.log(R[1]/R[0]);$('oBM').textContent=bmTxt(m,k);}
+  var nt=bmNoteTxt(m,k);$('bmNote').textContent=nt;$('bmNote').hidden=!nt;}
+$('sBM').addEventListener('input',function(){var b=focus,k=bmKind(b);if(!k)return;
+  if(k==='sun'){$('sMass').value=this.value;$('sMass').dispatchEvent(new Event('input'));$('oBM').textContent=massTxt()+' M☉';return;}
+  var R=bmRange(k),m=R[0]*Math.pow(R[1]/R[0],+this.value);
+  if(k==='gas'||k==='rock')b.mass=m/Math.pow(b.mod.size,3);else b.massAbs=m;
+  $('oBM').textContent=bmTxt(m,k);var nt=bmNoteTxt(m,k);$('bmNote').textContent=nt;$('bmNote').hidden=!nt;});
+$('sBM').addEventListener('change',function(){var b=focus,k=bmKind(b);if(!k)return;
+  if(k==='sun'){$('sMass').dispatchEvent(new Event('change'));return;}
+  var m=bmGet(b,k);
+  if(k==='ns'&&m>2.3){starBH(b);return;}
+  /* yıldız kütlesi türünü belirler (ana kol): <0,5 kırmızı cüce, 0,5–8 sarı cüce, >8 mavi dev */
+  if(k==='star'&&b.starType<=2){var ny=m<.5?1:m<8?0:2;if(ny!==b.starType){var keep=b.massAbs;setStarOn(b,ny);b.massAbs=keep;toast(b.def.name+': '+SUN_TYPES[ny].name.toLowerCase()+' oldu (kütle '+bmTxt(m,k)+').',4000);}}
+  if(focus===b)updateInfo();});
 function applySize(b){
   b.tilt.scale.setScalar(b.mod.size*(b.typeScale||1));b.vr=effVr(b);
   if(b===focus){dist=Math.max(dist,minDist());}
@@ -2007,17 +2068,18 @@ $('labDel').addEventListener('click',function(){
 });
 
 /* yeni gezegen */
-var CUSTOM_TYPES={ocean:'Okyanus dünyası',rocky:'Kayalık dünya',gas:'Gaz devi',ice:'Buz dünyası',lava:'Lav dünyası',desert:'Çöl dünyası'};
+var CUSTOM_TYPES={earth:'Dünya benzeri',ocean:'Okyanus dünyası',rocky:'Kayalık dünya',gas:'Gaz devi',ice:'Buz dünyası',lava:'Lav dünyası',desert:'Çöl dünyası'};
 var customs=[],cid=0;
 function fmtYear(a){var y=Math.pow(a,1.5);return y<1?Math.round(y*365.25)+' gün':fmt.format(y)+' Dünya yılı';}
 function addCustom(o,silent){
   var id=o.id||('c'+(++cid));if(/^c\d+$/.test(id))cid=Math.max(cid,+id.slice(1));if(!silent)act('born',{id:id});
   var rgb=hexStr(o.color),seed=o.seed!=null?o.seed:Math.floor(Math.random()*90),fns=customFns(o.type,rgb,seed);
   var v=1.6*Math.sqrt(o.size),a=o.a,light=mix(rgb,[255,255,255],.5),dark=mix(rgb,[0,0,0],.5);
-  var def={id:id,custom:true,habType:o.type,hsize:o.size,name:o.name,kind:CUSTOM_TYPES[o.type]+' · yarattığın',a:a,P:365.25*Math.pow(a,1.5),L0:o.L0!=null?o.L0:rnd(0,360),r:orbitR(a),vr:v,
+  var P0=365.25*Math.pow(a,1.5),L00=o.L0!=null?o.L0:(silent?null:freeL0(orbitR(a),P0,Math.max(orbitR(a)*.07,6*DS)));
+  var def={id:id,custom:true,habType:o.type,hsize:o.size,name:o.name,kind:CUSTOM_TYPES[o.type]+' · yarattığın',a:a,P:P0,L0:L00!=null?L00:rnd(0,360),r:orbitR(a),vr:v,
     texFn:fns.fn,emFn:fns.em,tw:512,rotH:o.rotH||rnd(8,40),tilt:o.tilt!=null?o.tilt:rnd(0,32),ring:!!o.ring,ringTint:o.ring?new THREE.Color(rgb[0]/255*.5+.5,rgb[1]/255*.5+.5,rgb[2]/255*.5+.5):null,
     dot:[rgbCss(light),rgbCss(dark)],
-    atmo:(o.type==='ocean'||o.type==='gas'||o.type==='ice')?[parseInt(rgbCss(light).replace(/\D+/g,' ').trim().split(' ').map(function(x,i){return i<3?('0'+(+x).toString(16)).slice(-2):'';}).join(''),16),1.1]:null,
+    atmo:(o.type==='earth'||o.type==='ocean'||o.type==='gas'||o.type==='ice')?[parseInt(rgbCss(light).replace(/\D+/g,' ').trim().split(' ').map(function(x,i){return i<3?('0'+(+x).toString(16)).slice(-2):'';}).join(''),16),1.1]:null,
     desc:o.name+' senin yarattığın gezegen. Laboratuvar sekmesinden dönüş hızını, yörüngesini, boyutunu ve eksen eğikliğini değiştirebilirsin.',
     stats:[['Tür',CUSTOM_TYPES[o.type]],['Çap',Math.round(12742*o.size).toLocaleString('tr-TR')+' km'],['Güneş\'e uzaklık',fmt.format(a)+' AU'],['Yıl',fmtYear(a)],['Uydu',String(o.moons)]]};
   var b=buildBody(def);
@@ -2042,7 +2104,7 @@ $('nAdd').addEventListener('click',function(){
   addCustom(readForm());
 });
 var NAMES=['Nova','Kaya','Aster','Zirve','Lumis','Orion-7','Teras','Sirius B','Mira','Atlas','Kyra','Eylül','Bora','Ege','Selva'];
-var TYPE_COLORS={ocean:['#2f6fd0','#2aa6a0'],rocky:['#9a8b7a','#7a6a5a'],gas:['#d8a460','#7aa6d8','#c97a9a'],ice:['#9ad8ff','#bfe8ff'],lava:['#ff5a1a','#ff3a3a'],desert:['#d8a05a','#c8783a']};
+var TYPE_COLORS={earth:['#2a64c0','#2f72b8'],ocean:['#2f6fd0','#2aa6a0'],rocky:['#9a8b7a','#7a6a5a'],gas:['#d8a460','#7aa6d8','#c97a9a'],ice:['#9ad8ff','#bfe8ff'],lava:['#ff5a1a','#ff3a3a'],desert:['#d8a05a','#c8783a']};
 $('nRand').addEventListener('click',function(){
   var types=Object.keys(CUSTOM_TYPES),t=types[Math.floor(Math.random()*types.length)],cl=TYPE_COLORS[t];
   $('nName').value=NAMES[Math.floor(Math.random()*NAMES.length)];$('nType').value=t;$('nColor').value=cl[Math.floor(Math.random()*cl.length)];
@@ -2050,7 +2112,7 @@ $('nRand').addEventListener('click',function(){
   $('nRing').checked=t==='gas'&&Math.random()<.6;$('nMoons').value=String(Math.floor(Math.random()*4));
   fillOuts();addCustom(readForm());
 });
-function fillOuts(){$('onSize').textContent=(+$('nSize').value).toFixed(1).replace('.',',')+'×';$('onDist').textContent=(+$('nDist').value).toFixed(1).replace('.',',')+' AU';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';$('oxDist').textContent=Math.round($('xDist').value)+' br';$('oMass').textContent=fmtX(massFromSlider(+$('sMass').value));if($('oaMass'))$('oaMass').textContent=String(addMassVal()).replace('.',',')+' M☉';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';}
+function fillOuts(){$('onSize').textContent=(+$('nSize').value).toFixed(1).replace('.',',')+'×';$('onDist').textContent=(+$('nDist').value).toFixed(1).replace('.',',')+' AU';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';$('oxDist').textContent=Math.round($('xDist').value)+' br';$('oMass').textContent=fmtX(massFromSlider(+$('sMass').value));if($('oaMass'))$('oaMass').textContent=String(addMassVal()).replace('.',',')+' M☉';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';if(typeof addZoneUpd==='function')addZoneUpd();}
 $('xSize').addEventListener('input',function(){fillOuts();});$('xDist').addEventListener('input',function(){fillOuts();});
 $('nSize').addEventListener('input',fillOuts);$('nDist').addEventListener('input',fillOuts);
 $('nType').addEventListener('change',function(){$('nColor').value=TYPE_COLORS[this.value][0];});
@@ -2059,11 +2121,12 @@ $('nType').addEventListener('change',function(){$('nColor').value=TYPE_COLORS[th
    Önce ne ekleneceği seçilir (gezegen türü, yıldız, nötron yıldızı, kara delik); altında yalnızca o cisim için anlamlı ayarlar çıkar.
    Sınırlar: en çok 10 gezegen ve 2 ek yıldız/kalıntı (kara delik ışın izlemeyle çizildiği için telefonda ağırlaşmasın). */
 var ADDCAT=[
-  ['Gezegenler',[['p:ocean','Okyanus','Su kaplı'],['p:rocky','Kayalık','Dünya gibi'],['p:gas','Gaz devi','Jüpiter gibi'],['p:ice','Buz','Donmuş'],['p:lava','Lav','Erimiş yüzey'],['p:desert','Çöl','Kuru, tozlu']]],
+  ['Gezegenler',[['p:earth','Dünya benzeri','Yaşama uygun'],['p:ocean','Okyanus','Su kaplı'],['p:rocky','Kayalık','Dünya gibi'],['p:gas','Gaz devi','Jüpiter gibi'],['p:ice','Buz','Donmuş'],['p:lava','Lav','Erimiş yüzey'],['p:desert','Çöl','Kuru, tozlu']]],
   ['Yıldızlar',[['s:0','Sarı cüce','Güneş gibi'],['s:1','Kırmızı cüce','Soluk, uzun ömürlü'],['s:2','Mavi dev','Çok sıcak, parlak'],['s:3','Kırmızı dev','Şişmiş, yaşlı'],['s:4','Beyaz cüce','Ölü yıldız çekirdeği']]],
   ['Yıldız kalıntıları',[['s:5','Nötron yıldızı','Pulsar · 1,4 M☉'],['s:6','Kara delik','Işığı büker']]]];
 var ADDF={planet:['name','color','psize','pdist','moons','ring'],star:['name','ssize','sdist'],ns:['name','sdist'],bh:['name','mass','sdist']};
 var ADDNOTE={
+  earth:'Kıtaları, okyanusları ve Dünya gibi bir atmosferi olan kayalık gezegen. Yıldızının yaşanabilir kuşağına koyarsan suyu sıvı kalır; Bilgi sekmesinde yaşanabilirlik endeksine bak. Dünya\'nın 0,5–1,6 katı büyüklüğü gerçekçi.',
   ocean:'Yüzeyi okyanus; uzaklığı ve yıldızın türü sıcaklığını belirler. Çok yaklaştırırsan okyanusları kaynar.',rocky:'Dünya benzeri kayalık bir gezegen.',gas:'Hidrojen ve helyumdan dev bir gezegen. Gerçek gaz devleri Dünya\'dan 4–11 kat büyüktür.',
   ice:'Yüzeyi buz tutmuş soğuk bir dünya.',lava:'Yıldızına çok yakın, yüzeyi erimiş bir dünya.',desert:'Az suyu olan, kurak bir dünya.',
   0:'Güneş benzeri bir yıldız. Işığı tüm gezegenleri aydınlatır; yerçekimi açıksa yörüngeleri bozar.',1:'Evrendeki yıldızların çoğu kırmızı cücedir: küçük, soğuk ve trilyonlarca yıl yaşar.',2:'Güneş\'ten on binlerce kat parlak. Birkaç milyon yıl yaşar, sonu süpernovadır.',
@@ -2073,6 +2136,18 @@ var ADDNOTE={
 var ADDSEL='p:ocean';
 /* aynı adlı iki cisim olmasın: "Nötron yıldızı B" varsa yenisi "Nötron yıldızı C" */
 function uniqName(nm){var used={};BODIES.forEach(function(b){if(!isGone(b))used[b.def.name]=1;});if(!used[nm])return nm;var m=nm.match(/^(.*) ([A-Z])$/),base=m?m[1]:nm;for(var c=66;c<91;c++){var n=base+' '+String.fromCharCode(c);if(!used[n])return n;}for(var i=2;i<99;i++){if(!used[nm+' '+i])return nm+' '+i;}return nm;}
+/* yaşanabilir kuşak (Kopparapu ve ark. 2013, kabaca): iç sınır √(L/1,1), dış sınır √(L/0,53) AU; L yıldızın parlaklığı (Güneş = 1) */
+function habZone(){var L=Math.max(1e-6,starL());return [Math.sqrt(L/1.1),Math.sqrt(L/.53)];}
+function fmtAU(x){return (x<1?x.toFixed(2):x.toFixed(1)).replace('.',',');}
+/* yakındaki yörüngeler: aynı mesafeye konan cisimler aynı noktada başlayıp iç içe geçmesin diye boş bir açıya yerleştirilir */
+function orbitNeighbors(r,tol){var out=[],so=sunBody.pivot.position;BODIES.forEach(function(b){if(b.parent||b===sunBody||isGone(b)||b.def.craft||b.def.comet||b.sysHide)return;var p=b.pivot.position,rb=Math.hypot(p.x-so.x,p.z-so.z);if(Math.abs(rb-r)<tol)out.push({b:b,ang:Math.atan2(-(p.z-so.z),p.x-so.x),rb:rb});});return out;}
+function freeL0(r,P,tol){var nb=orbitNeighbors(r,tol);if(!nb.length)return null;var best=0,bd=-1;for(var k=0;k<72;k++){var a=k/72*TAU+Math.random()*.02,md=9;nb.forEach(function(o){var d=Math.abs(Math.atan2(Math.sin(a-o.ang),Math.cos(a-o.ang)));md=Math.min(md,d);});if(md>bd){bd=md;best=a;}}
+  return ((best/D2R-360*simDays/P)%360+360)%360;}
+function nearOrbitTxt(r){var nb=orbitNeighbors(r,Math.max(r*.07,6*DS));if(!nb.length)return '';nb.sort(function(a,b){return Math.abs(a.rb-r)-Math.abs(b.rb-r);});return nb[0].b.def.name+' ile aynı yörüngede: boş bir noktaya yerleştirilecek.';}
+function addZoneUpd(){var el=$('addZone');if(!el||!sunBody)return;var kind=addKind(ADDSEL);if(kind!=='planet'&&kind!=='star'&&kind!=='bh'&&kind!=='ns'){el.textContent='';return;}
+  var t='';if(kind==='planet'){var z=habZone(),a=+$('nDist').value,inZ=a>=z[0]&&a<=z[1];t='Yaşanabilir kuşak: '+fmtAU(z[0])+'–'+fmtAU(z[1])+' AU'+(inZ?' · bu mesafe kuşağın içinde ✓':a<z[0]?' · bu mesafe çok sıcak':' · bu mesafe çok soğuk');var no=nearOrbitTxt(orbitR(a));if(no)t+='\n'+no;}
+  else{var no2=nearOrbitTxt(+$('xDist').value*DS);if(no2)t=no2;}
+  el.textContent=t;}
 function addKind(k){if(k.charAt(0)==='p')return 'planet';var t=+k.slice(2);return t===5?'ns':t===6?'bh':'star';}
 function addMassVal(){var v=+$('aMass').value;return Math.round(3*Math.pow(100/3,v)*10)/10;}
 function bhSizeFor(m){return clamp(.8*Math.pow((m||10)/10,.25),.4,1.6);}
@@ -2086,6 +2161,7 @@ function addPick(k){
   $('addTitle').textContent=item[1];$('addSub').textContent=item[2];$('addDot').setAttribute('style',addDotCss(k));
   if(kind==='planet'){var t=k.slice(2);$('nType').value=t;$('nColor').value=TYPE_COLORS[t][0];
     if(t==='gas'){if(+$('nSize').value<4)$('nSize').value=7;$('nRing').checked=true;}else{if(+$('nSize').value>3)$('nSize').value=1.2;$('nRing').checked=false;}
+    if(t==='earth'&&sunBody){var hz=habZone();$('nSize').value=1;$('nDist').value=Math.max(.2,Math.min(100,Math.sqrt(hz[0]*hz[1]))).toFixed(1);$('nMoons').value='1';}
     if(!$('nName').dataset.user)$('nName').value=NAMES[Math.floor(Math.random()*NAMES.length)];}
   else{var ty=+k.slice(2);$('xType').value=ty;if(!$('nName').dataset.user)$('nName').value=SUN_TYPES[ty].name+' B';}
   $('nRand').hidden=kind!=='planet';$('addGo').textContent=kind==='planet'?'Gezegeni ekle':kind==='bh'?'Kara deliği ekle':kind==='ns'?'Nötron yıldızını ekle':'Yıldızı ekle';
@@ -2138,7 +2214,7 @@ function resetSystem(e){
   resetArm=0;vm.hidden=true;tv.setAttribute('aria-expanded','false');
   setGravity(false);if(SYS)unloadSystem();
   /* süren her şeyi durdur: patlama kabuğu, çöküş, gaz akıntıları, bulutsular, fırlatmalar, bekleyen dönüşümler */
-  TIMERS=[];SLOWMO=0;EXO.fuel=0;clearTDES();
+  TIMERS=[];SLOWMO=0;EXO.fuel=0;clearTDES();debClear();
   ENVS.forEach(function(e){scene.remove(e.m);e.m.geometry.dispose();e.m.material.dispose();});ENVS=[];TDL.forEach(tdlKill);TDL=[];MORPH=[];SETTLE=[];
   PNEB.forEach(function(P){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();});PNEB=[];
   if(EXO.sn){scene.remove(EXO.sn.shell);if(EXO.sn.flash.parent)EXO.sn.flash.parent.remove(EXO.sn.flash);if(EXO.sn.jets&&EXO.sn.jets.parent)EXO.sn.jets.parent.remove(EXO.sn.jets);EXO.sn=null;}
@@ -2166,7 +2242,8 @@ $('vReset').addEventListener('click',resetSystem);
 var gravityOn=false,sunMass=1,TR=1500,gSlowNext=1;
 function gInit(b){
   var d=b.def,r=d.r,w=TAU/d.P;b.GM=w*w*r*r*r;
-  var pp=b.pivot.position,rr=Math.hypot(pp.x,pp.z);if(rr<1){pp.set(r*Math.cos(b.ang),0,-r*Math.sin(b.ang));rr=r;}
+  /* Güneş ortak kütle merkezi etrafında hareket edebildiği için yerçekimi koordinatları Güneş merkezli */
+  var so=sunBody?sunBody.pivot.position:new THREE.Vector3(),pp=b.pivot.position.clone().sub(so),rr=Math.hypot(pp.x,pp.z);if(rr<1){pp.set(r*Math.cos(b.ang),0,-r*Math.sin(b.ang));rr=r;}
   var an=Math.atan2(-pp.z,pp.x),vc=Math.sqrt(b.GM/rr);
   b.gx=pp.x;b.gy=pp.y;b.gz=pp.z;b.gvx=-vc*Math.sin(an);b.gvy=0;b.gvz=-vc*Math.cos(an);b.trailN=0;
   if(!b.trailLine){
@@ -2199,9 +2276,10 @@ function stepGravity(dDays){
        Güneş merkezli çerçeve ivmeli bir çerçevedir: yıldız Güneş'i de çeker, bu yüzden her gezegene Güneş'in ivmesinin tersi eklenir
        (dolaylı terim). Böylece ağır bir kara delik eklenince Güneş ve gezegenleri birlikte ona doğru savrulur, gezegenler tek tek değil. */
     stars.forEach(function(s){if(s===sunBody||isGone(s)||s.sysHide)return;
-      var m=stMass(s),dx=s.pos.x-x,dy=s.pos.y-y,dz=s.pos.z-z,q=dx*dx+dy*dy+dz*dz+9,kk=b.GM*m/(q*Math.sqrt(q));
+      /* koordinatlar Güneş merkezli: yıldızın Güneş'e göre konumu */
+      var sp=s.pivot.position,so=sunBody.pivot.position,sx=sp.x-so.x,sy=sp.y-so.y,sz=sp.z-so.z,m=stMass(s),dx=sx-x,dy=sy-y,dz=sz-z,q=dx*dx+dy*dy+dz*dz+9,kk=b.GM*m/(q*Math.sqrt(q));
       a[0]+=kk*dx;a[1]+=kk*dy;a[2]+=kk*dz;
-      var sx=s.pos.x,sy=s.pos.y,sz=s.pos.z,q2=sx*sx+sy*sy+sz*sz+9,k2=b.GM*m/(q2*Math.sqrt(q2));a[0]-=k2*sx;a[1]-=k2*sy;a[2]-=k2*sz;
+      var q2=sx*sx+sy*sy+sz*sz+9,k2=b.GM*m/(q2*Math.sqrt(q2));a[0]-=k2*sx;a[1]-=k2*sy;a[2]-=k2*sz;
     });
   }
   if(dDays!==0){
@@ -2265,12 +2343,14 @@ $('sMass').addEventListener('input',function(){if(!massEv)massEv=act('mass',{v:s
 var sid=0;
 function addStar(o,silent){
   var id=o.id||('s'+(++sid));if(/^s\d+$/.test(id))sid=Math.max(sid,+id.slice(1));if(!silent)act('born',{id:id});
-  var T=SUN_TYPES[o.type],L0=o.L0!=null?o.L0:rnd(0,360);
+  var T=SUN_TYPES[o.type],L0=o.L0!=null?o.L0:null;
+  /* başlangıç açısı initialAngle'da def.P (2500 gün) ile hesaplanır; boş açıyı ona göre çevir */
+  if(L0==null){var fp=silent?null:freeL0(o.a*DS,2500,Math.max(o.a*DS*.08,9*o.size*3));L0=fp!=null?fp:rnd(0,360);}
   var h1='#'+('000000'+T.hi.toString(16)).slice(-6),h2='#'+('000000'+T.lo.toString(16)).slice(-6);
   var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:9*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
     desc:'Güneş\'in çevresinde dönen ikinci bir yıldız. Işığı tüm gezegenleri aydınlatır; Yerçekimi simülasyonu açıkken yörüngeleri de bozar.',
     stats:[['Tür',T.name],['Çap',Math.round(1392700*o.size).toLocaleString('tr-TR')+' km'],['Güneş\'e uzaklık',Math.round(o.a)+' birim']]};
-  buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
+  buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(byId[id]&&o.type===5)byId[id].nsOld=true;if(byId[id]&&o.type===6)byId[id].bhOld=true;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
   customs.push({kind:'star',id:id,name:def.name,type:o.type,size:o.size,a:o.a,L0:L0,m:o.m||null});
   if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi');}
   return id;
@@ -2360,6 +2440,7 @@ var HAB={
   titan:{A:.22,atm:'thick',water:.2,mag:0,g:.14,surf:1}
 };
 var HAB_CUSTOM={
+  earth:{A:.3,atm:'earth',water:.7,mag:1,clim:1,surf:1},
   ocean:{A:.3,atm:'earth',water:1,mag:.9,clim:1,surf:1},
   rocky:{A:.15,atm:'thin',water:.05,mag:.4,surf:1},
   gas:{A:.5,atm:'h2',water:0,mag:1,gas:1,surf:0},
@@ -3483,6 +3564,49 @@ function birthMoon(big,f){
   rebuildLists();toast(big.def.name+' çevresindeki enkaz halkası toplandı: yeni bir uydu doğdu!',6000);return md;
 }
 var dmId=0;
+/* ---- kalıcı enkaz ----
+   Çarpışmada uzaya savrulan parçalar kaybolmaz: Güneş'in çekimiyle kendi yörüngelerinde dolaşır. Çarpışmanın olduğu yörünge boyunca
+   zamanla yayılıp bir enkaz kuşağı oluştururlar (gerçekte de böyle olur; Ay'ı oluşturan çarpışmanın enkazı on milyonlarca yıl Dünya'ya yağdı).
+   Bir parça bir gezegenin yanından geçerse ona çarpar: küçük bir parlama ve krater. Güneş'e düşen parça buharlaşır. */
+var DEB={N:0,max:LOWQ?300:700,pos:null,vel:null,gm:null,ts:null,pts:null,warn:0,hits:0};
+function debInit(){if(DEB.pts)return;var M=DEB.max;DEB.pos=new Float32Array(M*3);DEB.vel=new Float32Array(M*3);DEB.gm=new Float32Array(M);DEB.ts=new Float64Array(M);DEB.src=[];
+  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(M*3),3));g.setDrawRange(0,0);
+  DEB.pts=new THREE.Points(g,new THREE.PointsMaterial({size:2.8,sizeAttenuation:false,color:0xf0d2b0,transparent:true,opacity:.95,depthWrite:false,map:dotTex(),alphaTest:.05}));DEB.pts.frustumCulled=false;scene.add(DEB.pts);}
+function debSpawn(big,n,spread){
+  debInit();var vb=Math.sqrt(big.gvx*big.gvx+big.gvy*big.gvy+big.gvz*big.gvz)||1,R=effVr(big);
+  for(var i=0;i<n;i++){if(DEB.N>=DEB.max){debDel(0);}var k=DEB.N++,d=new THREE.Vector3(Math.random()-.5,(Math.random()-.5)*.6,Math.random()-.5).normalize();
+    DEB.pos[k*3]=big.gx+d.x*R*1.6;DEB.pos[k*3+1]=big.gy+d.y*R*1.6;DEB.pos[k*3+2]=big.gz+d.z*R*1.6;
+    /* kaçış hızının biraz üstünde savrulur: Güneş'e göre hız farkı yörünge hızının birkaç yüzdesi */
+    var dv=vb*spread*(.3+Math.random());DEB.vel[k*3]=big.gvx+d.x*dv;DEB.vel[k*3+1]=big.gvy+d.y*dv;DEB.vel[k*3+2]=big.gvz+d.z*dv;DEB.gm[k]=big.GM||1;DEB.ts[k]=simDays;DEB.src[k]=big.def.name;}
+}
+function debDel(k){var L=--DEB.N;if(k!==L){for(var c=0;c<3;c++){DEB.pos[k*3+c]=DEB.pos[L*3+c];DEB.vel[k*3+c]=DEB.vel[L*3+c];}DEB.gm[k]=DEB.gm[L];DEB.ts[k]=DEB.ts[L];DEB.src[k]=DEB.src[L];}}
+function debClear(){DEB.N=0;if(DEB.pts)DEB.pts.geometry.setDrawRange(0,0);}
+function debStep(dDays){
+  if(!DEB.pts||!DEB.N)return;
+  for(var k=DEB.N-1;k>=0;k--)if(simDays<DEB.ts[k])debDel(k);   /* geri sarınca çarpışmadan önceye dönülürse enkaz da yok olur */
+  if(dDays!==0){var n=clamp(Math.ceil(Math.abs(dDays)*Math.sqrt(Math.max(1,sunMass))/.5),1,120),h=dDays/n,P=DEB.pos,V=DEB.vel,sr=effVr(sunBody)*1.05;
+    for(var s=0;s<n;s++)for(var k2=DEB.N-1;k2>=0;k2--){var x=P[k2*3],y=P[k2*3+1],z=P[k2*3+2],r2=x*x+y*y+z*z+1,r=Math.sqrt(r2),a=-DEB.gm[k2]*sunMass/(r2*r)*h;
+      V[k2*3]+=x*a;V[k2*3+1]+=y*a;V[k2*3+2]+=z*a;P[k2*3]+=V[k2*3]*h;P[k2*3+1]+=V[k2*3+1]*h;P[k2*3+2]+=V[k2*3+2]*h;
+      if(r<sr||r>6000*DS)debDel(k2);}
+    debHits();}
+  var A=DEB.pts.geometry.attributes.position.array,so=sunBody.pivot.position;for(var i=0;i<DEB.N;i++){A[i*3]=DEB.pos[i*3]+so.x;A[i*3+1]=DEB.pos[i*3+1]+so.y;A[i*3+2]=DEB.pos[i*3+2]+so.z;}
+  DEB.pts.geometry.attributes.position.needsUpdate=true;DEB.pts.geometry.setDrawRange(0,DEB.N);
+}
+/* gezegene çarpma: gezegenin Güneş merkezli konumu (yerçekimi açıksa gx, değilse yörünge konumu) */
+var _dh=new THREE.Vector3();
+function debHits(){
+  var so=sunBody.pivot.position;
+  BODIES.forEach(function(b){if(b.parent||b.def.star||b===sunBody||isGone(b)||b.def.craft||b.def.comet||!b.hab)return;
+    var bx,by,bz;if(gravityOn&&b.grav){bx=b.gx;by=b.gy;bz=b.gz;}else{bx=b.pivot.position.x-so.x;by=b.pivot.position.y-so.y;bz=b.pivot.position.z-so.z;}
+    var R=effVr(b)*1.15,R2=R*R;
+    for(var k=DEB.N-1;k>=0;k--){var dx=DEB.pos[k*3]-bx,dy=DEB.pos[k*3+1]-by,dz=DEB.pos[k*3+2]-bz;if(dx*dx+dy*dy+dz*dz>R2)continue;
+      if(simDays-DEB.ts[k]<30&&DEB.src[k]===b.def.name){continue;}   /* yeni savrulan parça kendi gezegenine hemen geri düşmüş sayılmasın */
+      _dh.set(dx,dy,dz).normalize();flashAt(b.pivot,_dh.clone().multiplyScalar(effVr(b)*.98),effVr(b)*.9,0xffd0a0);FXL[FXL.length-1].T=1.2;
+      if(typeof scarFx==='function'&&!(b.hab&&b.hab.gas)&&(!b.lastScar||performance.now()-b.lastScar>8000)){b.lastScar=performance.now();scarFx(b,_dh.clone(),.002);}DEB.hits++;
+      if(performance.now()-DEB.warn>9000){DEB.warn=performance.now();toast(DEB.src[k]+' çarpışmasının enkazından bir parça '+b.def.name+'\'e çarptı.',4000);}
+      debDel(k);}
+  });
+}
 function collide(a,b){
   takeSnap();
   var ma=bodyMass(a),mb=bodyMass(b),big=ma>=mb?a:b,sm=big===a?b:a,mB=Math.max(ma,mb),mS=Math.min(ma,mb),M=mB+mS;
@@ -3497,6 +3621,8 @@ function collide(a,b){
   var gas=big.hab&&big.hab.gas,smGas=sm.hab&&sm.hab.gas;
   destroyBody(sm);
   if(ratio>.04&&!big.def.star)debrisMoonFx(big,ratio);
+  /* Güneş etrafında dolaşmaya devam eden enkaz: büyük çarpışmada çok, küçükte az */
+  if(ratio>.003)debSpawn(big,Math.round(clamp(ratio*600,12,cat?220:120)),cat?.16:.11);
   focusBody(big.def.id,{dist:effVr(big)*9});SLOWMO=2.5;
   var msg=sm.def.name+', '+big.def.name+' ile çarpıştı: ';
   if(cat)msg+='iki gezegen de parçalandı. Kalıntılar tek bir erimiş gezegende birleşti; kütlenin yaklaşık %15\'i uzaya savruldu. Etrafındaki enkaz halkası toplanıp yeni uydu(lar) oluşturabilir.';
@@ -3769,17 +3895,23 @@ var SETTLE=[];
 function dartRelease(D,t,a,aPos){
   if(!D||!D.tp)return;
   var H=D.th,off=new THREE.Vector3().subVectors(D.tp,H);
-  if(off.lengthSq()>1e-10&&!isGone(t))SETTLE.push({b:t,off:off,t:0,base:H.clone(),last:D.tp.clone()});
-  if(a===sunBody&&aPos){var o2=aPos.clone();if(o2.lengthSq()>1e-10)SETTLE.push({b:a,off:o2,t:0,base:new THREE.Vector3(),last:aPos.clone()});}
+  /* birleşen yıldız eski yörünge noktasına geri kaymaz: kalıntı birleşmenin olduğu yerden, o uzaklıktaki yörüngesiyle devam eder.
+     (Önceden ilk seçilen yıldızın yerine geri süzülüyordu; momentum korunumuna aykırı ve tuhaf görünüyordu.) */
+  if(off.lengthSq()>1e-10&&!isGone(t)){
+    if(t!==sunBody&&t.def.star&&!t.parent){var sp=sunBody.pivot.position,rx=D.tp.x-sp.x,rz=D.tp.z-sp.z,r=Math.sqrt(rx*rx+rz*rz);
+      if(r>1e-3){t.def.r=r;t.ang=Math.atan2(-rz,rx);var np=new THREE.Vector3(Math.cos(t.ang)*r,0,-Math.sin(t.ang)*r).add(sp);SETTLE.push({b:t,off:new THREE.Vector3().subVectors(D.tp,np),t:0,T:2.5,base:np,last:D.tp.clone()});t.pivot.position.copy(D.tp);
+        customs.forEach(function(c){if(c.id===t.id){c.a=r/DS;}});saveCustom();}}
+    else SETTLE.push({b:t,off:off,t:0,T:t===sunBody?5:1.8,base:H.clone(),last:D.tp.clone()});}
+  if(a===sunBody&&aPos){var o2=aPos.clone();if(o2.lengthSq()>1e-10)SETTLE.push({b:a,off:o2,t:0,T:5,base:new THREE.Vector3(),last:aPos.clone()});}
   D.tp=null;
 }
 function dartSnap(D,t){if(D&&D.tp&&!isGone(t)){t.pivot.position.copy(D.th);}if(D)D.tp=null;}
 function settleStep(dt){
   for(var i=SETTLE.length-1;i>=0;i--){var S=SETTLE[i];if(isGone(S.b)||!S.b.pivot){SETTLE.splice(i,1);continue;}
     var P=S.b.pivot.position;if(!(S.last&&P.distanceToSquared(S.last)<1e-10))S.base.copy(P);
-    S.t+=Math.min(dt,.1);var q=clamp(S.t/1.8,0,1);q=q*q*(3-2*q);
+    var TT=S.T||1.8;S.t+=Math.min(dt,.1);var q=clamp(S.t/TT,0,1);q=q*q*(3-2*q);
     P.copy(S.base).addScaledVector(S.off,1-q);S.last=P.clone();
-    if(S.t>=1.8)SETTLE.splice(i,1);}
+    if(S.t>=TT)SETTLE.splice(i,1);}
 }
 /* ---- ortak zarf ----
    İki normal yıldız birbirine değecek kadar yaklaşınca dış katmanları birleşir ve ikisini de saran tek, şişkin, kızıl bir gaz zarfı oluşur
@@ -3817,13 +3949,29 @@ function envFade(dt){for(var i=ENVS.length-1;i>=0;i--){var e=ENVS[i];e.t+=Math.a
 var _so=new THREE.Vector3(),SUNOFF=false;
 function carrySun(){
   if(!sunBody)return;_so.copy(sunBody.pivot.position);var on=_so.lengthSq()>1e-8;if(!on&&!SUNOFF)return;SUNOFF=on;
+  BODIES.forEach(function(b){if(b!==sunBody&&b.def.star&&!b.parent&&b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BODIES.forEach(function(b){if(b===sunBody||b.parent||b.def.star||isGone(b))return;
     if(on&&!b.dart&&!b.homing&&!b.tdeNow){b.pivot.position.add(_so);b.pivot.updateMatrixWorld(true);b.pivot.getWorldPosition(b.pos);}
     if(b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BELTS.forEach(function(o){if(o.pts.parent===scene)o.pts.position.copy(_so);});
 }
+/* yörüngeleri kesişen cisimler birbirinin içinden geçmesin: değdiklerinde çarpışır/birleşir.
+   (Örn. aynı uzaklıktaki iki ek yıldızın kütleleri farklıysa dönemleri de farklıdır; bir süre sonra biri ötekine yetişir.) */
+var OVT=0;
+function checkOverlaps(dt){
+  OVT-=dt;if(OVT>0||dt<=0)return;OVT=.2;
+  var L=BODIES.filter(function(b){return !b.parent&&!isGone(b)&&!b.def.craft&&!b.def.comet&&!b.sysHide&&!b.dart&&!b.homing&&!b.engulfed&&(b.grav||b.def.star);});
+  for(var i=0;i<L.length;i++)for(var j=i+1;j<L.length;j++){var a=L[i],c=L[j];
+    if(!a.def.custom&&!c.def.custom)continue;if(gravityOn&&a.grav&&c.grav)continue;
+    if(BODIES.some(function(x){return x.dart&&(x.dart.t===a||x.dart.t===c);}))continue;
+    var d=a.pos.distanceTo(c.pos),tch=(a.def.star||c.def.star)?mergeR(a)+mergeR(c):effVr(a)+effVr(c);
+    if(d<tch*1.05){var hv=(a===sunBody||(c!==sunBody&&(isStarB(a)?stMass(a):bodyMass(a)/333000)>=(isStarB(c)?stMass(c):bodyMass(c)/333000)))?a:c,lt=hv===a?c:a;
+      toast(lt.def.name+' ile '+hv.def.name+' yörüngelerinde karşılaştı: çarpışma!',4000);
+      /* iki gezegen: yerçekimi simülasyonu açılır, zaten değdikleri için çarpışma oradan doğal olarak işlenir (fırlatma gibi uzağa taşınmaz) */
+      if(!a.def.star&&!c.def.star){if(!gravityOn)setGravity(true);}else launchPair(lt,hv);return;}}
+}
 function stepDarts(dt){
-  settleStep(dt);morphStep(dt);envFade(dt);
+  settleStep(dt);morphStep(dt);envFade(dt);checkOverlaps(dt);
   BODIES.forEach(function(a){var D=a.dart;if(!D)return;var t=D.t;if(isGone(t)||isGone(a)){a.dart=null;envKill(D);unstretch(a);unstretch(t);return;}
     /* fırlatma simülasyon saatine bağlı: zaman durunca durur, geri sarınca yıldız geldiği yola geri döner */
     var kk=(simDays-D.t0)/D.Ts;if(kk<0){a.dart=null;envKill(D);a.pivot.position.copy(D.p0);if(a.grav){a.gx=D.p0.x;a.gy=D.p0.y;a.gz=D.p0.z;}dartSnap(D,t);unstretch(a);unstretch(t);return;}
@@ -3901,7 +4049,7 @@ function mergeStars(a,t,ta,tt,host){
     else if(M>=2.3){ej=.03;dl=7;head='Nötron yıldızları birleşti: kalıntı önce süperkütleli nötron yıldızı, sonra kara delik.';det='Kalıntı ('+fmM(M-.08)+' Güneş kütlesi) dönmeyen sınırı aşıyor ama hızlı dönüşle ayakta duruyor: süperkütleli bir manyetar. Dönüşü dakikalar–saatler içinde yavaşlayınca kara deliğe çöker (burada kısaltıldı). ~0,03 Güneş kütlesi madde fırlayıp kilonova verdi.';}
     else{ej=.03;dl=null;head='Nötron yıldızları birleşti: kalıntı kararlı bir manyetar.';det='Toplam kütle ('+fmM(M)+' Güneş kütlesi) sınırın altında kaldığı için kalıntı çökmedi: milisaniye dönüşlü, çok güçlü manyetik alanlı tek bir nötron yıldızı. ~0,03 Güneş kütlesi madde fırlayıp kilonova verdi. Bu tür kalıntıların X-ışını platosu ve uzun parlayan jetleri olabilir.';}
     flash=false;kilonova(t,ej);gwRipple(host,OVD()*.2);setStarMass(t,M-.05-ej);
-    if(dl!=null)after(dl,function(){if(isGone(t))return;starInto(t,6);var ex=t===sunBody?EXO:t.exo;if(ex)ex.dimK=.35;});
+    if(dl!=null)after(dl,function(){if(isGone(t))return;starInto(t,6);var ex=t===sunBody?EXO:t.exo;if(ex)ex.fuel=.6;});
     msg=head+'\n'+det;
   }
   else if(one(6)&&one(5)){
@@ -4026,7 +4174,9 @@ function launchPair(b,t){
   if(b.parent){toast('Uydular fırlatılamaz; önce gezegeni seç');return;}
   if(isGone(t)){toast('Hedef artık yok');return;}
   if(t===sunBody&&sunType===7){toast('Merkezde artık bir yıldız yok; önce yıldız türünü seç.',5000);return;}
-  if(isStarB(b)||isStarB(t)){var de={type:'dart',a:b.id,tg:t.id};addEvent(de);de.Ts=startDart(b,t);if(b.dart)b.dart.ev=de;return;}
+  /* gezegen → Güneş: gerçek kütleçekimle düşer (yerçekimi simülasyonu). Güneş kara delikse gezegen gelgitle uzayıp girdap çizen bir akıntıya
+     dönüşür. Dün bu yol yanlışlıkla düz "fırlatma" yoluna bağlanmıştı; spagettileşme girdabı bu yüzden kaybolmuştu. */
+  if(b.def.star||t.def.star||b===sunBody){var de={type:'dart',a:b.id,tg:t.id};addEvent(de);de.Ts=startDart(b,t);if(b.dart)b.dart.ev=de;return;}
   if(!b.grav){toast('Bu cisim fırlatılamaz');return;}
   if(!gravityOn)setGravity(true);
   if(isGone(t)){toast('Hedef artık yok');return;}
@@ -4523,7 +4673,8 @@ function nebTex(){
 function beamMat(k,wd){return new THREE.ShaderMaterial({uniforms:{k:{value:k},wd:{value:wd},f:{value:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
   vertexShader:'uniform float wd;varying vec2 vU;varying float vAl;void main(){vec4 o=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 e=modelViewMatrix*vec4(0.0,1.0,0.0,1.0);vec3 ax=e.xyz-o.xyz;vAl=1.0-smoothstep(.75,.97,abs(dot(normalize(ax),normalize(-o.xyz))));vec3 pos=o.xyz+ax*position.y;vec3 sd=cross(ax,pos);float l=length(sd);sd=l>1e-6?sd/l:vec3(0.0);pos+=sd*position.x*wd*mix(1.0,2.6,position.y);vU=vec2(position.x,position.y);gl_Position=projectionMatrix*vec4(pos,1.0);}',
   fragmentShader:'uniform float k;uniform float f;varying vec2 vU;varying float vAl;void main(){float x2=vU.x*vU.x;float g=exp(-x2*5.0),c=exp(-x2*36.0);float al=exp(-vU.y*2.2)*(1.0-smoothstep(.8,1.0,vU.y));vec3 col=mix(vec3(.5,.68,1.0),vec3(.96,.98,1.0),c);float a=(g*.28+c*.85)*al*k*(1.0+f*2.2)*vAl;gl_FragColor=vec4(col*a,1.0);}'});}
-var PULS_HZ=5,PULS_TILT=1.05;
+/* manyetik eksenin dönme eksenine eğikliği: gözlenen pulsarlarda çoğunlukla 10–40°; burada ~22° */
+var PULS_HZ=5,PULS_TILT=.38;
 function removeExotic(){
   if(!sunBody)return;EXO.dimK=null;
   if(sunBody.sunMat){sunBody.mesh.material=sunBody.sunMat;sunBody.sunMat=null;}
@@ -4549,13 +4700,14 @@ function magLines(r0){
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
   var m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x7fc8ff,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false}));m.frustumCulled=false;return m;
 }
-function makePulsar(R,parent){
+function makePulsar(R,parent,noNeb){
   var r0=R*SUN_TYPES[5].sc,o={},bg=new THREE.Group(),L=R*30,mt=beamMat(.75,r0*1.6),pg=new THREE.PlaneGeometry(2,1,1,1);pg.translate(0,.5,0);
   [1,-1].forEach(function(sg){var st=new THREE.Mesh(pg,mt);st.scale.y=L;if(sg<0)st.rotation.z=Math.PI;st.renderOrder=3;st.frustumCulled=false;bg.add(st);});
   var ml=magLines(r0);bg.add(ml);o.mag=ml;
   var arm=new THREE.Group();arm.rotation.z=PULS_TILT;arm.add(bg);o.arm=arm;
   var spin=new THREE.Group();spin.add(arm);parent.add(spin);o.beams=spin;o.bmats=[mt];o.ph=Math.random()*TAU;o.fl=0;
-  var ns=nebPoints('snr');ns.scale.setScalar(R*44);parent.add(ns);o.neb=ns;o.nebT=0;o.nebK=.55;o.R=R;
+  /* süpernova kalıntısı bulutsusu yalnızca yeni doğan pulsarda: birkaç on bin yılda dağılır. Ekle'den eklenen (yaşlı) pulsar bulutsusuz */
+  if(!noNeb){var ns=nebPoints('snr');ns.scale.setScalar(R*44);parent.add(ns);o.neb=ns;o.nebT=0;o.nebK=.55;}o.R=R;
   return o;
 }
 function makeBH(R,parent){
@@ -4569,7 +4721,7 @@ function applyExotic(i){
   else if(i===6){
     sunBody.sunMat=sunBody.mesh.material;sunBody.mesh.material=new THREE.MeshBasicMaterial({color:0x000000});
     sunBody.glow1.visible=sunBody.glow2.visible=false;if(FX&&FX.g)FX.g.visible=false;
-    var q=makeBH(R,sunBody.pivot);EXO.disk=q.disk;EXO.ringS=q.ringS;
+    var q=makeBH(R,sunBody.pivot);EXO.disk=q.disk;EXO.ringS=q.ringS;EXO.fuel=2;
   }else if(i===7){
     sunBody.mesh.visible=false;sunBody.glow1.visible=sunBody.glow2.visible=false;if(FX&&FX.g)FX.g.visible=false;
     var ns=nebPoints('snr');sunBody.pivot.add(ns);EXO.neb=ns;EXO.nebT=0;EXO.nebK=.8;
@@ -4595,8 +4747,8 @@ function setStarOn(b,i){
   b.glow1.material.color.setHex(T.glow);b.glow2.material.color.setHex(T.glow);
   if(b.light){b.light.color.setHex(T.light);b.light.intensity=T.I*.7;}
   b.typeScale=T.sc;b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
-  if(i===5){b.exo=makePulsar(b.def.vr,b.pivot);b.sunMat=b.mesh.material;b.mesh.material=nsMat();}
-  else if(i===6){b.sunMat=b.mesh.material;b.mesh.material=new THREE.MeshBasicMaterial({color:0x000000});b.glow1.visible=b.glow2.visible=false;b.exo=makeBH(b.def.vr,b.pivot);}
+  if(i===5){b.exo=makePulsar(b.def.vr,b.pivot,b.nsOld);b.nsOld=false;b.sunMat=b.mesh.material;b.mesh.material=nsMat();}
+  else if(i===6){b.sunMat=b.mesh.material;b.mesh.material=new THREE.MeshBasicMaterial({color:0x000000});b.glow1.visible=b.glow2.visible=false;b.exo=makeBH(b.def.vr,b.pivot);b.exo.fuel=b.bhOld?0:2;b.bhOld=false;}
   if(b.def.stats&&b.def.stats[0])b.def.stats[0][1]=T.name;
   if(b.def.stats){if(!b.def.stats0)b.def.stats0=b.def.stats.map(function(r){return r.slice();});if(!b.def.desc0)b.def.desc0=b.def.desc;
     var st=b.def.stats0.map(function(r){return r.slice();});st[0][1]=T.name;
@@ -4640,7 +4792,9 @@ function bhMassK(){var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M
 function bhK(b){if(b===sunBody)return bhMassK();var o=b.exo;if(!o)return 1;var m=Math.max(.2,stMass(b));if(!o.m0)o.m0=m;return Math.pow(m/o.m0,.16);}
 /* disk parlaklığı: Güneş kara deliği de eklenen kara delikler de aynı kural. fuel = yakın zamanda yutulan madde; zamanla diske düşüp söner.
    dimK: kilonova sonrası gibi sönük enkaz halkası. Logaritmik: büyük bir yutma diski parlatır ama ekranı beyaza boğmaz. */
-function diskFuelStep(o,dt){o.fuel=(o.fuel||0)*Math.exp(-Math.abs(dt)*.15);if(o.disk&&o.disk.material.uniforms.b)o.disk.material.uniforms.b.value=(o.dimK!=null?o.dimK+(1-o.dimK)*Math.min(1,o.fuel):1)+Math.log(1+o.fuel)*.8;}
+/* disk yalnızca madde varken parlar: yalnız bir kara deliğin çevresinde yutacak gaz yoktur, yalnızca gölge ve foton halkası görünür.
+   Çöküşten geri düşen madde (fuel≈2) yaklaşık bir dakikada tükenir; bir şey yutunca disk yeniden parlar. Logaritmik: büyük yutmalar ekranı beyaza boğmaz. */
+function diskFuelStep(o,dt){o.fuel=(o.fuel||0)*Math.exp(-Math.abs(dt)*(o.fuel>1?.12:.06));if(o.fuel<.003)o.fuel=0;var f=o.fuel;if(o.disk&&o.disk.material.uniforms.b)o.disk.material.uniforms.b.value=Math.pow(Math.min(1,f),.8)+Math.log(1+Math.max(0,f-1))*.6;}
 function bhExo(t){return t===sunBody?EXO:t.exo;}
 function bhStep(o,body,dt){
   var kM=bhK(body),sh=effVr(body)*kM;
@@ -4701,7 +4855,7 @@ function lensMat(st){
       'float g=sqrt(max(1.0-1.0/r,0.0))/(ga*(1.0-be*cs));float Tn=pow(max(F,0.0),.25)*g;'+
       'float fade=smoothstep(rIn,rIn*1.08,r)*smoothstep(rOut,rOut*.7,r);float lanes=.9+.1*sin(lr*5.0+n*8.0);'+
       'float I=dB*1.1*g*g*g*F*(.4+1.2*n)*lanes;vec3 c=1.0-exp(-temp(Tn*.82)*I*1.6);'+
-      'float a=clamp((.35+.9*sqrt(F))*(.55+.7*n)*fade,0.0,.97);return vec4(c*fade,a);}'+
+      'float a=clamp(dB*1.6,0.0,1.0)*clamp((.35+.9*sqrt(F))*(.55+.7*n)*fade,0.0,.97);return vec4(c*fade,a);}'+
     'void main(){vec3 base=texture2D(tCol,vUv).rgb;vec3 d=rayDir(vUv);vec3 o=(camPos-bh)/rs;float ro=length(o);float tca=-dot(o,d);vec3 pc=o+d*tca;float b=length(pc);'+
       'if(tca<0.0&&ro>rInt){gl_FragColor=vec4(base,1.0);return;}'+
       'vec3 pn=b>1e-5?pc/b:normalize(cross(d,abs(d.y)<.9?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0)));'+
@@ -5107,11 +5261,11 @@ $('sysClose').addEventListener('click',function(){$('sysPanel').hidden=true;});
 
 /* ================= GELGİT PARÇALANMASI (spagettileşme) ================= */
 var TDES=[];
-function clearTDES(){TDES.forEach(function(T){if(T.pts){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();}});TDES=[];TDEDONE=[];}
+function clearTDES(){TDES.forEach(function(T){if(T.pts){if(T.pts.parent)T.pts.parent.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();}});TDES=[];TDEDONE=[];}
 var TDEDONE=[];
 /* geri sarma TDE'nin başladığı ana gelince: gaz akıntısı kalkar, yıldız parçalanmadan hemen önceki haline ve fırlatma yoluna döner */
 function tdeUndo(T,fromRestore){
-  if(T.pts){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;}
+  if(T.pts){if(T.pts.parent)T.pts.parent.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;}
   var a=T.body;if(!a||!byId[a.id])return;
   if(a.def.star){if(a.destroyed){undestroy(a);a.ownDestroy=false;if(a.cust&&!customs.some(function(c){return c.id===a.id;})){customs.push(a.cust);saveCustom();}rebuildLists();}
     if(T.D){a.dart=T.D;T.D.lk=(simDays-T.D.t0)/T.D.Ts;}}
@@ -5124,6 +5278,14 @@ var EATEN=0;
 function eatMass(b){var m=b.def.star?stMass(b)*333000*.5:bodyMass(b);EATEN+=m;sunMass+=m/333000;$('oMass').textContent=massTxt();if(focus===sunBody)updateInfo();return m;}
 function massTxt(){return sunMass<10?(EATEN>0?sunMass.toFixed(4).replace('.',',')+'×':fmtX(sunMass)):Math.round(sunMass)+'×';}
 function startTDE(b,Dsv){
+  /* gerçek gelgit bozulmalarında cisim kara deliğe dümdüz düşmez: gelgit yarıçapına yakın bir enberiyle neredeyse parabolik bir yörüngede geçer.
+     Yaklaşma yolu çoğu zaman neredeyse radyal olduğundan (fırlatma), bu anda hızı enberideki gibi teğetsel yaparız: böylece maddenin yarısı
+     kara deliğe bağlı kalıp onun çevresinde girdap çizerek diske dolar, yarısı kurtulup uzaya savrulur. Radyal hızla tüm madde bir saniyede içeri düşüyordu. */
+  (function(){var rx=b.gx,ry=b.gy,rz=b.gz,rl=Math.sqrt(rx*rx+ry*ry+rz*rz)||1,ux=rx/rl,uy=ry/rl,uz=rz/rl,vx=b.gvx||0,vy=b.gvy||0,vz=b.gvz||0;
+    var vr=vx*ux+vy*uy+vz*uz,tx=vx-vr*ux,ty=vy-vr*uy,tz=vz-vr*uz,tl=Math.sqrt(tx*tx+ty*ty+tz*tz);
+    if(tl<1e-6){tx=-uz;ty=0;tz=ux;tl=Math.sqrt(tx*tx+tz*tz)||1;if(tl<1e-6){tx=1;tz=0;tl=1;}}
+    /* çekirdek bağlı (dairesel hızın 1,3 katı, kaçış 1,41); aşağıda yakın taraf yavaş (bağlı, girdap), uzak taraf hızlı (kurtulur) */
+    var vs=Math.sqrt((b.GM||1)*sunMass/rl)*1.3;b.gvx=tx/tl*vs;b.gvy=ty/tl*vs;b.gvz=tz/tl*vs;})();
   var N=b.def.star?(LOWQ?1800:4200):(LOWQ?900:2200),pos=new Float32Array(N*3),vel=new Float32Array(N*3),col=new Float32Array(N*3),alive=new Uint8Array(N),R=effVr(b);
   var c=new THREE.Vector3(b.gx,b.gy,b.gz),u=c.clone().normalize(),rr=c.length(),GM=(b.GM||1)*sunMass,w=Math.sqrt(GM/(rr*rr*rr));
   var base=new THREE.Color(b.def.dot?b.def.dot[0]:'#c08060');
@@ -5131,12 +5293,13 @@ function startTDE(b,Dsv){
     var d=new THREE.Vector3(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1);if(d.lengthSq()>1){i--;continue;}d.multiplyScalar(R);
     var s=d.dot(u);
     pos[i*3]=c.x+d.x;pos[i*3+1]=c.y+d.y;pos[i*3+2]=c.z+d.z;
-    vel[i*3]=b.gvx+u.x*s*w*3.2+(Math.random()-.5)*w*R*.1;vel[i*3+1]=b.gvy+u.y*s*w*3.2;vel[i*3+2]=b.gvz+u.z*s*w*3.2+(Math.random()-.5)*w*R*.1;
+    var tf=1+.26*s/R;vel[i*3]=b.gvx*tf+u.x*s*w*3.2+(Math.random()-.5)*w*R*.1;vel[i*3+1]=b.gvy*tf+u.y*s*w*3.2;vel[i*3+2]=b.gvz*tf+u.z*s*w*3.2+(Math.random()-.5)*w*R*.1;
     col[i*3]=base.r;col[i*3+1]=base.g;col[i*3+2]=base.b;alive[i]=1;
   }
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
   var pts=new THREE.Points(g,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,map:dotTex()}));
-  pts.frustumCulled=false;scene.add(pts);
+  /* akıntı Güneş'in çerçevesinde (Güneş ortak kütle merkezi etrafında hareket edebilir) */
+  pts.frustumCulled=false;sunBody.pivot.add(pts);
   /* kamera yalnızca izlenen cisim yutulduysa yeni hedefe geçer; kullanıcı zaten kara delikteyse (uzaklaşmış olsa bile) kamerayı oynatma */
   if(focus===b||focus.parent===b){focusBody('sun',{dist:Math.max(dist,rtOf(b)*7)});}
   if(SPEEDS[speedIdx].d>1){speedIdx=3;speed.value=3;setSpeed();}
@@ -5182,7 +5345,8 @@ function tdeLite(host,vic,rel){
     var sr=d.dot(u);d.multiplyScalar(Rv);d.addScaledVector(tau,d.dot(tau)*2.5);
     var p=c0.clone().add(d);pos[i*3]=p.x;pos[i*3+1]=p.y;pos[i*3+2]=p.z;
     /* enerji yayılımı: kara deliğe yakın yarı bağlı (v < √2·vc), uzak yarı serbest */
-    var vt=vc*(1.12+.42*sr+(Math.random()-.5)*.08),v=tau.clone().multiplyScalar(vt).addScaledVector(u,-vc*.15);
+    /* Güneş kara deliğindeki akıntıyla aynı fizik: çekirdek bağlı (1,3·v_dairesel), yakın taraf yavaş (girdap çizip diske dolar), uzak taraf kurtulur */
+    var vt=vc*1.3*(1+.26*sr)+(Math.random()-.5)*vc*.03,v=tau.clone().multiplyScalar(vt).addScaledVector(u,sr*vc*.25);
     vel[i*3]=v.x;vel[i*3+1]=v.y;vel[i*3+2]=v.z;col[i*3]=base.r;col[i*3+1]=base.g;col[i*3+2]=base.b;alive[i]=1;
   }
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
@@ -5199,7 +5363,7 @@ function stepTDL(dt){
         var x=p[i*3],y=p[i*3+1],z=p[i*3+2],r2=x*x+y*y+z*z+T.rs*T.rs*.01,r=Math.sqrt(r2),a=-T.GM/(r2*r)*h;
         v[i*3]+=x*a;v[i*3+1]+=y*a;v[i*3+2]+=z*a;
         /* diskte sürtünme (viskozite): bağlı gaz yavaş yavaş içeri sarmal çizer, diske yassılaşır */
-        if(r<T.R0*.9){var dr=Math.min(.05,h*.35*(T.R0/r));v[i*3]*=1-dr;v[i*3+1]*=1-dr*3;v[i*3+2]*=1-dr;}
+        if(r<T.R0*1.2){var dr=Math.min(.05,h*.12*(T.R0/r));v[i*3]*=1-dr;v[i*3+1]*=1-dr*3;v[i*3+2]*=1-dr;}
         p[i*3]+=v[i*3]*h;p[i*3+1]+=v[i*3+1]*h;p[i*3+2]+=v[i*3+2]*h;
         if(r<hz||r>T.R0*40){T.alive[i]=0;T.left--;p[i*3]=p[i*3+1]=p[i*3+2]=0;if(r<hz)feed++;}}
       if(feed&&T.host.exo)T.host.exo.fuel=Math.min(4,(T.host.exo.fuel||0)+feed*(T.star?.0025:.0012));
@@ -5208,7 +5372,7 @@ function stepTDL(dt){
     for(var j=0;j<T.N;j++){if(!T.alive[j]){c[j*3]=c[j*3+1]=c[j*3+2]=0;continue;}
       var rr=Math.sqrt(P[j*3]*P[j*3]+P[j*3+1]*P[j*3+1]+P[j*3+2]*P[j*3+2]);tdeColor(c,j,rr/T.R0,fresh,T.base,1.2,1.5,6,.3);}
     T.pts.geometry.attributes.position.needsUpdate=true;T.pts.geometry.attributes.color.needsUpdate=true;
-    if(T.left<=T.N*.03||T.age>45){tdlKill(T);TDL.splice(k,1);toast(T.name+' artık yok: bağlı kalan maddesi diskte ısınıp olay ufkundan içeri düştü, kalanı uzaya savruldu.',5000);}
+    if(T.left<=T.N*.03||T.age>60){tdlKill(T);TDL.splice(k,1);toast(T.name+' artık yok: bağlı kalan maddesi diskte ısınıp olay ufkundan içeri düştü, kalanı uzaya savruldu.',5000);}
   }
 }
 function drawTDE(dt){
@@ -5223,7 +5387,7 @@ function drawTDE(dt){
     for(var i=0;i<T.N;i++){if(!T.alive[i]){c[i*3]=c[i*3+1]=c[i*3+2]=0;continue;}
       var r=Math.sqrt(p[i*3]*p[i*3]+p[i*3+1]*p[i*3+1]+p[i*3+2]*p[i*3+2]);tdeColor(c,i,r/T.rt,clamp(1-T.age/6,0,1),T.base,.6,2,10,.12);}
     T.pts.geometry.attributes.position.needsUpdate=true;T.pts.geometry.attributes.color.needsUpdate=true;
-    if(T.left<=T.N*.02||T.age>120||sunType!==6){scene.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;TDES.splice(k,1);TDEDONE.push(T);
+    if(T.left<=T.N*.02||T.age>120||sunType!==6){if(T.pts.parent)T.pts.parent.remove(T.pts);T.pts.geometry.dispose();T.pts.material.dispose();T.pts=null;TDES.splice(k,1);TDEDONE.push(T);
       if(sunType===6)toast(T.name+' artık yok: maddesinin çoğu diskte ısınıp X-ışını saçarak olay ufkundan içeri düştü.',6000);}
   }
 }

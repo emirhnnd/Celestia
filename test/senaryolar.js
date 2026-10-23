@@ -43,5 +43,17 @@ module.exports=async(page,E,shot)=>{
     for(const id of ["'sun'","'earth'","'moon'","'iss'","'halley'"]){await E(`focusBody(${id});openSide();showTab('lab')`);await page.waitForTimeout(300);
       out.push(await E("[focus.def.name, ['sSpin','sOrbit','sSize','sTilt'].map(function(i){var r=rowOf(i);return r&&!r.hidden?1:0}).join('')]"));}
     return out;});
+  await T('ayni-yorunge',async()=>{await fresh(page);await E("addStar({name:'A',type:0,size:.8,a:220},false);addStar({name:'B',type:0,size:.8,a:220},false)");await page.waitForTimeout(1500);
+    return await E("(function(){var L=BODIES.filter(function(b){return b.def.star&&b!==sunBody});return [L.length,L[0].pos.distanceTo(L[1].pos).toFixed(0),(mergeR(L[0])+mergeR(L[1])).toFixed(0)]})()");});
+  await T('kutle-ns',async()=>{await fresh(page);await E("addStar({name:'N',type:5,size:.8,a:220,m:1.4},false)");await page.waitForTimeout(1500);
+    await E("focusBody(focus.id);openSide();showTab('lab');showLabTab('cisim');$('sBM').value=.9;$('sBM').dispatchEvent(new Event('input'));$('sBM').dispatchEvent(new Event('change'))");
+    await waitFor(E,"BODIES.some(function(b){return b.def.star&&b!==sunBody&&b.starType===6})",60);
+    return await E("[$('oBM').textContent, BODIES.filter(function(b){return b.def.star&&b!==sunBody}).map(function(b){return b.def.name+':'+b.starType})]");});
+  await T('barimerkez',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:220,m:50},false)");await page.waitForTimeout(3000);
+    return await E("[sunBody.pivot.position.length().toFixed(1), sysCOM(new THREE.Vector3()).length().toFixed(2), byId.earth.pos.distanceTo(sunBody.pos).toFixed(1)]");});
+  await T('enkaz',async()=>{await fresh(page);await E("LENS.on=false;launchPair(byId.mars,byId.earth)");await waitFor(E,"isGone(byId.mars)",120);await page.waitForTimeout(3000);
+    return await E("[DEB.N, DEB.hits]");});
+  await T('dunya-benzeri',async()=>{await fresh(page);await E("openSide();showTab('lab');showLabTab('ekle');addPick('p:earth');$('addGo').click()");await page.waitForTimeout(2000);
+    return await E("[focus.def.kind, focus.def.a, $('addZone').textContent.slice(0,60), Math.round(habScore(focus))]");});
   console.log('TOTAL ERRORS',errs.length);
 };

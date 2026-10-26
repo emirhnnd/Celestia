@@ -53,7 +53,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #tSnd .w{opacity:.25}
 #tSnd.on{color:var(--accent);border-color:rgba(143,208,255,.4)}
 #tSnd.on .w{opacity:1}
-#viewMenu{position:absolute;top:44px;right:0;width:210px;padding:6px;z-index:6}
+#viewMenu{position:absolute;top:44px;right:0;width:210px;padding:6px;z-index:6;max-height:calc(100vh - 80px);max-height:calc(100dvh - 80px);overflow-y:auto;overscroll-behavior:contain}
 #viewMenu[hidden]{display:none}
 #viewMenu button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:38px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:500;color:var(--fg);text-align:left}
 #viewMenu button:hover{background:var(--panel2)}

@@ -1348,9 +1348,9 @@ function buildBody(def){
   if(def.comet&&!def.asteroid)buildCometFx(b);
   return b;
 }
-function disposeBody(b){if(b.mark){scene.remove(b.mark);b.mark.material.dispose();b.mark=null;}
+function disposeBody(b){
   b.pivot.parent.remove(b.pivot);if(b.line&&b.line.parent)b.line.parent.remove(b.line);
-  b.pivot.traverse(function(o){if(o.geometry)o.geometry.dispose();if(o.material){var m=o.material;['map','bumpMap','emissiveMap'].forEach(function(k){if(m[k])m[k].dispose();});m.dispose();}});
+  b.pivot.traverse(function(o){if(o.geoHi)o.geometry=o.geoHi;if(o.geometry)o.geometry.dispose();if(o.material){var m=o.material;['map','bumpMap','emissiveMap'].forEach(function(k){if(m[k])m[k].dispose();});m.dispose();}});
   if(b.label.parentNode)b.label.parentNode.removeChild(b.label);
   var i=BODIES.indexOf(b);if(i>=0)BODIES.splice(i,1);delete byId[b.id];
 }
@@ -1682,8 +1682,45 @@ function updateCamera(dt){
   }
 }
 var v3=new THREE.Vector3();
+/* ayrıntı düzeyi: ekranda küçük görünen küreler az üçgenli geometriyle, pikselin altına düşenler hiç çizilmez
+   (gerçek ölçekte gezegenlerin çoğu pikselden küçüktür; yerlerini işaret noktası gösterir) */
+/* gerçek ölçek işaretleri: her cisim için ayrı sprite yerine tek bir nokta bulutu (tek çizim çağrısı) */
+var MARK={n:0,cap:0,pts:null};
+function markAdd(b){
+  if(MARK.n>=MARK.cap){var cap=Math.max(64,MARK.cap*2),P=new Float32Array(cap*3),C=new Float32Array(cap*3),S=new Float32Array(cap);
+    if(MARK.pts){P.set(MARK.P);C.set(MARK.C);S.set(MARK.S);MARK.pts.geometry.dispose();}
+    var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('color',new THREE.BufferAttribute(C,3));g.setAttribute('sz',new THREE.BufferAttribute(S,1));
+    MARK.P=P;MARK.C=C;MARK.S=S;MARK.cap=cap;
+    if(!MARK.pts){MARK.mat=new THREE.ShaderMaterial({uniforms:{uH:{value:400},map:{value:dotTex()}},transparent:true,depthWrite:false,depthTest:false,
+        vertexShader:'attribute float sz;attribute vec3 color;uniform float uH;varying vec3 vC;void main(){vC=color;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);gl_PointSize=sz*uH;}',
+        fragmentShader:'uniform sampler2D map;varying vec3 vC;void main(){vec4 t=texture2D(map,gl_PointCoord);if(t.a<.02)discard;gl_FragColor=vec4(vC*t.rgb,t.a);}'});
+      MARK.pts=new THREE.Points(g,MARK.mat);MARK.pts.frustumCulled=false;MARK.pts.renderOrder=6;scene.add(MARK.pts);}
+    else MARK.pts.geometry=g;}
+  var i=MARK.n++,c=b.markC||(b.markC=new THREE.Color((b.def.dot&&b.def.dot[0])||'#ffffff'));
+  MARK.P[i*3]=b.pos.x;MARK.P[i*3+1]=b.pos.y;MARK.P[i*3+2]=b.pos.z;MARK.C[i*3]=c.r;MARK.C[i*3+1]=c.g;MARK.C[i*3+2]=c.b;MARK.S[i]=b.parent?.007:.011;
+}
+function markFlush(){
+  if(!MARK.pts)return;var g=MARK.pts.geometry;g.setDrawRange(0,MARK.n);MARK.pts.visible=MARK.n>0;if(!MARK.n)return;
+  ['position','color','sz'].forEach(function(k){g.attributes[k].needsUpdate=true;});
+  renderer.getDrawingBufferSize(_mkV);MARK.mat.uniforms.uH.value=_mkV.y*.5;
+}
+var _mkV=new THREE.Vector2();
+var LODG={};
+function lodGeo(r,lo){var k=r.toFixed(4)+':'+lo;return LODG[k]||(LODG[k]=new THREE.SphereGeometry(r,lo?28:14,lo?18:10));}
+function bodyLod(b,pr){
+  if(!b.tilt||!b.mesh)return;
+  var hide=pr<.3&&!b.glow1;
+  if(b.lodHide!==hide){b.lodHide=hide;b.tilt.visible=!hide;}
+  if(hide)return;
+  var lv=pr<6?2:pr<45?1:0;if(b.lodLv===lv)return;
+  [b.mesh,b.clouds,b.atmoMesh].forEach(function(m){if(!m||m.geometry.type!=='SphereGeometry')return;
+    if(!m.geoHi)m.geoHi=m.geometry;
+    m.geometry=lv===0?m.geoHi:lodGeo(m.geoHi.parameters.radius,lv===1);});
+  b.lodLv=lv;
+}
 function updateLabels(){
   var sys=systemOf(focus),tanH=Math.tan(camera.fov*D2R/2),cands=[];
+  MARK.n=0;
   BODIES.forEach(function(b){
     b.pivot.getWorldPosition(b.pos);
     var d=camera.position.distanceTo(b.pos),ev=effVr(b);
@@ -1692,16 +1729,16 @@ function updateLabels(){
     var vis=showLabels&&(!b.parent||b.parent===sys||b===sys);
     v3.copy(b.pos).project(camera);
     var hide=!vis||isEngulfed(b)||b.inactive||(SURF&&b===SURF.b)||(SURF&&!NAKED[b.def.id]&&!(b.def.id==='uranus'&&!SURF.lp))||(b.def.minor&&b!==focus&&camera.position.distanceTo(b.pos)>45*DS)||v3.z>1||(pr>H*.45&&b===focus)||Math.abs(v3.x)>1.1||Math.abs(v3.y)>1.1;
-    b.sx=(v3.x*.5+.5)*W;b.sy=(-v3.y*.5+.5)*H;b.pr=pr;
+    b.sx=(v3.x*.5+.5)*W;b.sy=(-v3.y*.5+.5)*H;b.pr=pr;bodyLod(b,pr);
     /* gerçek ölçekte cisimler çoğu zaman pikselden küçüktür: yerini sabit boyutlu küçük bir nokta gösterir, yaklaşınca gerçek küre görünür */
-    if(REAL){if(!b.mark&&!b.def.craft){var mc=new THREE.Color((b.def.dot&&b.def.dot[0])||'#ffffff');b.mark=new THREE.Sprite(new THREE.SpriteMaterial({map:dotTex(),color:mc,sizeAttenuation:false,depthWrite:false,depthTest:false,transparent:true}));b.mark.scale.setScalar(b.parent?.007:.011);b.mark.renderOrder=6;scene.add(b.mark);}
-      if(b.mark){var mv=!hide&&pr<2.5&&!b.destroyed&&!b.sysHide&&b.pivot.visible&&!(SURF&&b!==SURF.b&&!NAKED[b.def.id]);b.mark.visible=mv;if(mv)b.mark.position.copy(b.pos);}}
+    if(REAL&&!b.def.craft&&!hide&&pr<2.5&&!b.destroyed&&!b.sysHide&&b.pivot.visible&&!(SURF&&b!==SURF.b&&!NAKED[b.def.id]))markAdd(b);
     if(hide){b.label.style.display='none';}
     else cands.push(b);
     if(b.line)b.line.visible=!SURF&&!b.destroyed&&!b.sysHide&&showOrbits&&(!b.parent||b.parent===sys)&&!(gravityOn&&b.grav)&&(!b.def.minor||b===focus);
     if(b.trailLine)b.trailLine.visible=gravityOn&&showOrbits&&!SURF;
     if(b.line){b.line.material.opacity=(b===focus||b===sys)&&!b.parent?.55:(b.parent?.35:.26);}
   });
+  markFlush();
   // çakışma önleme: odak, güneş, gezegenler, uydular
   cands.sort(function(a,c){var pa=a===focus?0:a.id==='sun'?1:a.parent?3:2,pc=c===focus?0:c.id==='sun'?1:c.parent?3:2;return pa-pc||(c.pr-a.pr);});
   var placed=[];
@@ -2318,6 +2355,11 @@ function stepGravity(dDays){
         var px=rl.x,py=rl.y,pz=rl.z;H.v.addScaledVector(rl,-gm/(d*d*d)*h);rl.addScaledVector(H.v,h);
         if(t.def.id==='sun'){var sx=rl.x-px,sy=rl.y-py,sz=rl.z-pz,L2=sx*sx+sy*sy+sz*sz,u=L2>0?clamp(-(px*sx+py*sy+pz*sz)/L2,0,1):0,cx=px+sx*u,cy=py+sy*u,cz=pz+sz*u;
           if(sunType===6&&Math.sqrt(cx*cx+cy*cy+cz*cz)<rtOf(b)){rl.set(cx,cy,cz);H.hit=true;b.tdeNow=true;}else if(sunType!==6&&Math.sqrt(cx*cx+cy*cy+cz*cz)<effVr(t)+effVr(b)){rl.set(0,0,0);H.v.set(0,0,0);H.hit=true;}}
+        else{
+          /* adım içinde hedefin içinden geçip geçmediği: gerçek ölçekte cisimler küçük, hız yüksek; bir adımda hedefin üstünden atlayıp
+             sapan gibi fırlatılıyordu. Yol parçasının hedefe en yakın noktası temas mesafesindeyse cisim o noktada bırakılır, çarpışma yakalanır */
+          var qx=rl.x-px,qy=rl.y-py,qz=rl.z-pz,Q2=qx*qx+qy*qy+qz*qz,w=Q2>0?clamp(-(px*qx+py*qy+pz*qz)/Q2,0,1):0,ex=px+qx*w,ey=py+qy*w,ez=pz+qz*w,Rc=(effVr(t)+effVr(b))*.9,ed=Math.sqrt(ex*ex+ey*ey+ez*ez);
+          if(w>0&&w<1&&ed<Rc){var kk=ed>1e-6?Rc*.98/ed:0;rl.set(ex*kk,ey*kk,ez*kk);if(!kk)rl.set(Rc*.98,0,0);}}
         b.gx=tx+rl.x;b.gy=ty+rl.y;b.gz=tz+rl.z;b.gvx=tvx+H.v.x;b.gvy=tvy+H.v.y;b.gvz=tvz+H.v.z;
         if(s%2===0)pushTrail(b);
       });

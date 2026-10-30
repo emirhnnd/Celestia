@@ -70,9 +70,11 @@
 - **İklim modeli.** Yörüngeyi, boyutu ya da atmosferi değiştir; sıcaklık, buzullar, okyanuslar ve yaşanabilirlik puanı canlı olarak güncellenir.
 - **Kütleçekim simülasyonu.** Gezegenler birbirini çeker. İki gezegeni çarpıştırabilirsin; Roche sınırını aşan uydular parçalanır.
 - **Yıldızın ölümü.** Güneş'i kırmızı deve, beyaz cüceye, süpernovaya ya da kara deliğe dönüştürebilirsin. Kara deliğe fazla yaklaşan gezegen spagetti gibi uzayıp parçalanarak yutulur.
+- **Yıldız fırlat.** Eklediğin yıldızı Güneş'e, bir gezegene ya da kara deliğe fırlat; kompakt çiftler kütleçekim dalgasıyla sarmalanıp birleşir, normal yıldızlar ortak zarf gazıyla iç içe geçer.
 - **Işığı büken kara delik.** Kara deliğe yaklaşınca her piksel için ışığın yolu Schwarzschild uzay-zamanında hesaplanır. Diskin arka tarafı gölgenin üstüne ve altına sarılır, arkadaki gezegenler ve yıldızlar uzaklıklarına göre bükülür, Einstein halkası oluşur.
 - **Zamanı geri sar.** Çarpışmaları ve felaketleri geri alabilirsin; ileri oynatınca aynen yeniden yaşanırlar.
 - **Kendi gezegenini yarat.** Ekle kataloğundan gezegen, yıldız, nötron yıldızı ya da kara delik seç; yalnızca o cismin ayarları çıkar. Sistemi bir kodla arkadaşına gönderebilirsin.
+- **Gerçek ölçek.** Üstteki Görünüm menüsündeki mesafe ayarında "Gerçek ölçek"i seç: boyutlar ve uzaklıklar gerçek oranlarında olur. Gezegenlerin çoğu pikselden küçüktür; yerlerini küçük bir nokta gösterir, yaklaşınca gerçek küre görünür.
 - **Gelgit kilidi, yüzey görünümü, ölçek yolculuğu.** Bir gezegenin yüzeyinden gökyüzüne bakabilir ya da Güneş'ten en yakın yıldızlara kadar uçabilirsin.
 
 ## 🎧 Ekstralar
@@ -82,6 +84,7 @@ Bunların hepsi isteğe bağlı:
 - Gerçek fırtına mevsimlerine göre oluşan kasırgalar.
 - Kutup ışıkları.
 - Güneş rüzgârı parçacıkları.
+- **Ara** düğmesi: gök cisimlerini ve eylemleri ("Güneş'i kara deliğe dönüştür", "Sonraki Ay tutulması" gibi) yazarak bul.
 - Telefona uygun arayüz.
 
 <div align="center">
@@ -110,6 +113,8 @@ Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm ins
 |---|---|
 | `main` | Gerçek fotoğraf dokuları |
 | `eski-modeller` | Kodla üretilen (prosedürel) gezegen dokuları. Daha hafiftir; Dünya dışındaki gezegenlerde gerçek doku kullanmaz. |
+
+Geliştirme sırasında açılan diğer dallar (`gercek-olcek`, `laboratuvar-karadelik` gibi) geçmiş için saklanıyor.
 
 ## 🧪 Test
 

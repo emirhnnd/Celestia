@@ -8,7 +8,7 @@
 
 <img src="docs/karadelik.jpg" alt="Güneş kara deliğe dönüştü: Doppler etkisiyle parlayan yığılma diski ve foton halkası" width="100%">
 
-<sub><i>Güneş'i kara deliğe çevirdik. Diskin bize doğru dönen tarafı Doppler etkisiyle daha parlak; olay ufkunun çevresinde foton halkası.</i></sub>
+<sub><i>Güneş'i kara deliğe çevirdik. Diskin bize doğru dönen tarafı Doppler etkisiyle daha parlak; ışık olay ufkunun çevresinde bükülüyor.</i></sub>
 
 <br><br>
 

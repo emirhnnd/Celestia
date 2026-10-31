@@ -4546,15 +4546,19 @@ var SHOWERS=[['Kadrantidler',3.5,.6,110,230,49,'2003 EH1 asteroidi',41,[.8,.9,1]
 var MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function showerNow(){var dt=new Date(J2000+simDays*864e5),Y=dt.getUTCFullYear(),doy=(dt-Date.UTC(Y,0,1))/864e5,best=null;
   SHOWERS.forEach(function(sh){var d=doy-sh[1];if(d>182)d-=365.25;if(d<-182)d+=365.25;var g=Math.exp(-Math.pow(d/sh[2],2));if(!best||g*sh[3]>best.k)best={s:sh,g:g,k:g*sh[3],d:d,pk:new Date(Date.UTC(Y,0,1)+(sh[1]+(d>150?365.25:d<-150?-365.25:0))*864e5)};});return best;}
-var MET={list:[],nx:.4},metA=new THREE.Vector3(),metB=new THREE.Vector3(),metC=new THREE.Vector3(),metD=new THREE.Vector3(),metS=new THREE.Vector3();
+var MET={list:[],nx:.4,bt:rnd(3,8),bd:0},metA=new THREE.Vector3(),metB=new THREE.Vector3(),metC=new THREE.Vector3(),metD=new THREE.Vector3(),metS=new THREE.Vector3();
+/* meteorların ~%60'ı kameranın baktığı yöne düşer (yaklaşık 36° içi); geri kalanı ve son denemeler gökyüzünün her yerinden gelir.
+   Çıkış noktasının çevresine geniş yayıldıkları için aksi halde çoğu kadraj dışında kalıyordu. */
+var metFw=new THREE.Vector3();
+function metInView(a,b){return metC.copy(a).add(b).normalize().dot(metFw)>.81;}
 function metSpawn(up,sh){
-  var s=null,e=null;
-  for(var k=0;k<6&&!s;k++){
+  var s=null,e=null,want=Math.random()<.6;camera.getWorldDirection(metFw);
+  for(var k=0;k<10&&!s;k++){
     if(sh){var rd=skyDir(sh.s[4],sh.s[5]),ax=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).cross(rd).normalize(),a0=rnd(.25,1.15),
         /* çıkış noktasına yakın izler perspektiften dolayı kısa görünür, uzaklaştıkça uzar */
         a1=a0+rnd(.1,.27)*(.4+.6*Math.sin(a0));
-      var s1=rd.clone().applyAxisAngle(ax,a0),e1=rd.clone().applyAxisAngle(ax,a1);if(s1.dot(up)>.08&&e1.dot(up)>.03){s=s1;e=e1;}}
-    else{var r=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();if(r.dot(up)<.15)continue;var ax2=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).cross(r).normalize(),e2=r.clone().applyAxisAngle(ax2,rnd(.06,.18));if(e2.dot(up)>.03){s=r;e=e2;}}
+      var s1=rd.clone().applyAxisAngle(ax,a0),e1=rd.clone().applyAxisAngle(ax,a1);if(s1.dot(up)>.08&&e1.dot(up)>.03&&(!want||k>=8||metInView(s1,e1))){s=s1;e=e1;}}
+    else{var r=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();if(r.dot(up)<.15)continue;var ax2=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).cross(r).normalize(),e2=r.clone().applyAxisAngle(ax2,rnd(.06,.18));if(e2.dot(up)>.03&&(!want||k>=8||metInView(r,e2))){s=r;e=e2;}}
   }
   if(!s)return;
   /* parlaklık dağılımı: çoğu meteor sönük, azı parlak; ~%3,5'i ateş topu */
@@ -4643,9 +4647,13 @@ function updateMeteors(dt,up,dark){
     m.ln.geometry.attributes.position.needsUpdate=true;}
   if(dark<.2||!playing)return;
   /* varışlar Poisson süreci: aralıklar rastgele, bazen iki meteor art arda düşer */
-  var sh=showerNow(),act=sh&&sh.g>.03?sh:null,rate=(.06+(act?act.k/100*1.4:0))*dark;MET.nx-=dt;
+  var sh=showerNow(),act=sh&&sh.g>.03?sh:null,rate=(.06+(act?act.k/100*1.4:0))*dark;
+  /* zirveye yakın yağmurlarda ara sıra birkaç saniyelik meteor fırtınası: oran 3-7 kat artar, çiftler çoğalır */
+  if(act&&act.g>.35){MET.bt-=dt;if(MET.bt<=0){MET.bt=rnd(8,18);MET.bd=rnd(2.5,5);MET.nx=Math.min(MET.nx,.1);}}
+  if(MET.bd>0){MET.bd-=dt;rate*=3+4*clamp(act?act.k/100:0,0,1);}
+  MET.nx-=dt;
   while(MET.nx<=0){MET.nx+=Math.max(.02,-Math.log(1-Math.random())/rate);
-    if(MET.list.length<40){var pk=act&&Math.random()<.85?act:null;metSpawn(up,pk);if(Math.random()<(act?.14:.04))metSpawn(up,pk);}}
+    if(MET.list.length<40){var pk=act&&Math.random()<.85?act:null;metSpawn(up,pk);if(Math.random()<(MET.bd>0?.3:act?.14:.04))metSpawn(up,pk);}}
 }
 /* şehir silüeti ve ışık kirliliği: üç derinlik katmanı (uzak tepeler + ev ışıkları, orta, yakın), kıyı şehirlerinde deniz,
    Türk şehirlerinde cami kubbe ve minareleri. Pencereler yerel saate göre yanıp söner. */
@@ -4788,7 +4796,7 @@ function cityDraw(p,up,north,east,dark){
 }
 function cityClear(){var cv=$('cityCv');if(cv){cv.style.display='none';}if(SKYG&&SKYG.starMat){SKYG.starMat.uniforms.lim.value=0;SKYG.starMat.uniforms.vis.value=1;}if(SKYG&&SKYG.mw)SKYG.mw.material.opacity=1;if(SKYG&&SKYG.faint)SKYG.faint.material.uniforms.op.value=1;}
 $('surfLP').addEventListener('click',function(){if(!SURF)return;SURF.lp=!SURF.lp;lpBtn();toast(SURF.lp?'Işık kirliliği açık: şehrin ışıkları gökyüzünü aydınlatıyor, yalnızca en parlak yıldızlar ve gezegenler görünüyor.':'Işık kirliliği kapalı: şehir karanlıkta. Samanyolu ve binlerce sönük yıldız ortaya çıktı; şehirlerin çoğunda insanlar bu manzarayı hiç görmüyor.',6000);});
-function clearMeteors(){while(MET.list.length)metKill(MET.list.length-1);MET.nx=.4;if(SPK){SPK.life.fill(0);SPK.c.fill(0);SPK.g.attributes.color.needsUpdate=true;}}
+function clearMeteors(){while(MET.list.length)metKill(MET.list.length-1);MET.nx=.4;MET.bt=rnd(3,8);MET.bd=0;if(SPK){SPK.life.fill(0);SPK.c.fill(0);SPK.g.attributes.color.needsUpdate=true;}}
 function surfCityLabel(dark){
   var c=CITIES[SURF.city],dt=new Date(J2000+simDays*864e5+c[3]*36e5),hh=('0'+dt.getUTCHours()).slice(-2),mm=('0'+dt.getUTCMinutes()).slice(-2);
   var sh=showerNow(),t=c[0].replace(/ \(.*\)/,'')+' · yerel saat '+hh+':'+mm+(dark>.5?' · gece':dark>.1?' · alacakaranlık':' · gündüz');

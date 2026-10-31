@@ -69,6 +69,7 @@
 ## 🧪 Laboratuvar: "Ya olsaydı?"
 
 - **İklim modeli.** Yörüngeyi, boyutu ya da atmosferi değiştir; sıcaklık, buzullar, okyanuslar ve yaşanabilirlik puanı canlı olarak güncellenir.
+- **Mevsimler, CO₂ ve yaşam.** Eksen eğikliği mevsim farkını belirler: 0°'de mevsim yoktur, 90°'de yaz-kış farkı Dünya'dakinin yaklaşık iki katına çıkar; Dünya'da hava durumu ve şehir sıcaklıkları da buna uyar. CO₂ düzeyi her ikiye katlanmada yaklaşık 3 °C ısıtır. Levha tektoniği açıksa karbonat-silikat döngüsü CO₂'yi dengeler (zaman ölçeği izlenebilsin diye sıkıştırılmıştır); kapalıysa denge kurulmaz. Gün uzunluğu, mevsim uçları ve tektonik yaşanabilirlik puanına girer. Dünya için basitleştirilmiş Milankovitch döngüleri (eğiklik, yörünge basıklığı, günberi yönü) "1000 yıl/sn" hızında buzul çağı benzeri dalgalanma verir. Bunlar eğitici modellerdir, bilimsel tahmin değildir.
 - **Kütleçekim simülasyonu.** Gezegenler birbirini çeker. İki gezegeni çarpıştırabilirsin; Roche sınırını aşan uydular parçalanır.
 - **Yıldızın ölümü.** Güneş'i kırmızı deve, beyaz cüceye, süpernovaya ya da kara deliğe dönüştürebilirsin. Kara deliğe fazla yaklaşan gezegen spagetti gibi uzayıp parçalanarak yutulur.
 - **Yıldız fırlat.** Eklediğin yıldızı Güneş'e, bir gezegene ya da kara deliğe fırlat; kompakt çiftler kütleçekim dalgasıyla sarmalanıp birleşir, normal yıldızlar ortak zarf gazıyla iç içe geçer.

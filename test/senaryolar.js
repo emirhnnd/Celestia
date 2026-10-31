@@ -55,5 +55,15 @@ module.exports=async(page,E,shot)=>{
     return await E("[DEB.N, DEB.hits]");});
   await T('dunya-benzeri',async()=>{await fresh(page);await E("openSide();showTab('lab');showLabTab('ekle');addPick('p:earth');$('addGo').click()");await page.waitForTimeout(2000);
     return await E("[focus.def.kind, focus.def.a, $('addZone').textContent.slice(0,60), Math.round(habScore(focus))]");});
+  /* iklim: eğiklik mevsim farkını artırır, varsayılan Dünya değişmez, CO₂ ikiye katlanınca ~+3 K, termostat tektonikle çalışır, Milankovitch bugüne göre sıfırlı */
+  await T('iklim-mevsim',async()=>{await fresh(page);await E("focusBody('earth')");await page.waitForTimeout(1500);
+    const sw=async(t)=>E("(function(){var e=byId.earth;e.mod.tilt="+t+";setTiltRot(e,"+t+");computeClimate(e);return +e.cl.sw.toFixed(1)})()");
+    const loop="for(var i=0;i<400;i++){e.cl.sd=simDays-5;e.cl.rt-=500;computeClimate(e);}";
+    const s0=await sw(0),s23=await sw(23.44),s90=await sw(90);await sw(23.44);
+    const def=await E("(function(){var e=byId.earth;computeClimate(e);return [Math.round(habScore(e)),Math.round(e.cl.Ts-273.15),e.cl.mil]})()");
+    const dco2=await E("(function(){var e=byId.earth,h=e.hab;h.co2=0;"+loop+"var a=e.cl.Ts;h.co2=1;"+loop+"var b=e.cl.Ts;h.co2=0;return +(b-a).toFixed(1)})()");
+    const thermo=async(tect)=>E("(function(){var e=byId.earth,h=e.hab;h.co2=-3;h.tect="+tect+";h.cs=0;for(var k=0;k<4;k++){for(var i=0;i<400;i++){e.cl.sd=simDays-2e5;e.cl.rt-=5e6;computeClimate(e);}}var r=+(e.cl.Ts-273.15).toFixed(1);h.co2=0;h.tect=1;h.cs=0;return r})()");
+    const withT=await thermo(1),noT=await thermo(0);
+    return {mevsimFarki:[s0,s23,s90],artiyor:s0<s23&&s23<s90,varsayilanHabTsMil:def,iki_katCO2_K:dco2,termostatC:{tektonikli:withT,tektoniksiz:noT},termostatSaglikli:withT>noT+1};});
   console.log('TOTAL ERRORS',errs.length);
 };

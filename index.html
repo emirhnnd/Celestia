@@ -251,6 +251,8 @@ textarea{width:100%;min-height:60px;resize:vertical;padding:9px 11px;border-radi
 @keyframes hintOut{to{opacity:0}}
 #toast{position:absolute;left:50%;top:calc(var(--toph,64px) + 4px);transform:translate(-50%,-8px);width:max-content;max-width:min(540px,calc(100% - 24px));padding:10px 16px;border-radius:14px;background:rgba(13,16,28,.9);border:1px solid var(--line);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);font-size:13.5px;font-weight:600;line-height:1.4;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:7}
 #toast.show{opacity:1;transform:translate(-50%,0)}
+/* yüzeyde üst çubuk dolu: bildirimler konsolun üstünde çıkar */
+body.surfmode #toast{top:auto;bottom:calc(var(--dockh,120px) + 8px)}
 #toast.more.show{pointer-events:auto;cursor:pointer}
 #toast .tm{display:inline-block;margin-left:8px;font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
 #toast .tb{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;font-weight:400;line-height:1.55;color:var(--soft)}
@@ -296,14 +298,22 @@ textarea{width:100%;min-height:60px;resize:vertical;padding:9px 11px;border-radi
 #skyTint{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;z-index:0}
 #cityCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none}
 body.surfmode #tree,body.surfmode #mini,body.surfmode #hint{display:none!important}
-#surfBar{position:absolute;left:50%;transform:translateX(-50%);top:var(--toph,64px);display:flex;align-items:center;gap:10px;padding:6px 6px 6px 16px;z-index:5;font-weight:600;font-size:13.5px;max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;border-radius:999px}
-#surfName{flex:1 1 200px;min-width:0;line-height:1.35}
-#surfCity{background:var(--panel2);color:inherit;border:1px solid var(--line);border-radius:999px;padding:7px 12px;font:inherit;font-size:13px}
+/* yüzey çubuğu: geniş ekranda tek satır (yer · şehir · ışık kirliliği · çık), dar ekranda yer adı üstte, düğmeler altta yan yana */
+#surfBar{position:absolute;left:var(--gx);top:var(--toph,64px);z-index:5;display:grid;grid-template-columns:minmax(150px,1fr) auto auto;align-items:center;gap:8px;width:max-content;max-width:min(760px,calc(100% - 352px - var(--gx) - var(--gr) - 12px));padding:12px;border-radius:var(--r-lg);font-size:13.5px}
+#surfName{grid-column:1/-1;min-width:0;max-width:56ch;font-weight:600;line-height:1.4;padding:2px 4px 2px 2px}
+#surfLP[hidden]+#surfExit{grid-column:1/-1;justify-self:start}
+#surfCity{height:38px;min-width:150px;padding:0 34px 0 12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--panel2);color:var(--fg);font:inherit;font-size:13px;font-weight:600;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);background-position:calc(100% - 16px) 52%,calc(100% - 11.5px) 52%;background-size:4.5px 4.5px;background-repeat:no-repeat;cursor:pointer}
 #surfCity option{background:var(--solid)}
-#surfBar .btn{border-radius:999px}
+#surfBar .btn{flex:none;min-height:38px;white-space:nowrap}
+@media (max-width:760px){
+  #surfBar{grid-template-columns:1fr 1fr;width:auto;right:var(--gr);max-width:none;padding:12px}
+  #surfCity{grid-column:1/-1;width:100%}
+  #surfBar .btn{min-width:0;white-space:normal;line-height:1.2;padding:6px 10px}
+  #surfLP[hidden]+#surfExit{justify-self:stretch}
+}
 #trip{position:absolute;inset:0;z-index:6;pointer-events:none}
 #tripCv{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .8s}
-#tripCard{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;width:min(580px,calc(100% - 32px));padding:18px 20px;pointer-events:auto}
+#tripCard{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--dockh,120px) + 8px);width:min(580px,calc(100% - 32px));padding:18px 20px;pointer-events:auto}
 #tripCard h3{margin:4px 0 6px;font:800 24px var(--display);letter-spacing:-.02em}
 #tripCard p{margin:0 0 12px;color:var(--soft);font-size:13.5px;line-height:1.6}
 #skyLabels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}

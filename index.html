@@ -297,7 +297,11 @@ body.surfmode #toast{top:auto;bottom:calc(var(--dockh,120px) + 8px)}
 /* ---------- yüzey, ölçek yolculuğu, gök adları, tutulma ---------- */
 #skyTint{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;z-index:0}
 #cityCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none}
-body.surfmode #tree,body.surfmode #mini,body.surfmode #hint{display:none!important}
+body.surfmode #tree,body.surfmode #mini,body.surfmode #hint,body.surfmode #side,body.surfmode #planets,body.surfmode #cam,body.surfmode #tList,body.surfmode .brand b{display:none!important}
+/* yüzeyde gökyüzü önde: konsol yalnızca zaman denetimine iner, ortada küçük bir kapsül olur */
+body.surfmode #dock{width:auto}
+body.surfmode #console{grid-template-columns:auto;grid-template-areas:none;padding:5px 8px 5px 5px}
+body.surfmode #time{grid-area:auto}
 /* yüzey çubuğu: geniş ekranda tek satır (yer · şehir · ışık kirliliği · çık), dar ekranda yer adı üstte, düğmeler altta yan yana */
 #surfBar{position:absolute;left:var(--gx);top:var(--toph,64px);z-index:5;display:grid;grid-template-columns:minmax(150px,1fr) auto auto;align-items:center;gap:8px;width:max-content;max-width:min(760px,calc(100% - 352px - var(--gx) - var(--gr) - 12px));padding:12px;border-radius:var(--r-lg);font-size:13.5px}
 #surfName{grid-column:1/-1;min-width:0;max-width:56ch;font-weight:600;line-height:1.4;padding:2px 4px 2px 2px}
@@ -306,10 +310,11 @@ body.surfmode #tree,body.surfmode #mini,body.surfmode #hint{display:none!importa
 #surfCity option{background:var(--solid)}
 #surfBar .btn{flex:none;min-height:38px;white-space:nowrap}
 @media (max-width:760px){
-  #surfBar{grid-template-columns:1fr 1fr;width:auto;right:var(--gr);max-width:none;padding:12px}
-  #surfCity{grid-column:1/-1;width:100%}
-  #surfBar .btn{min-width:0;white-space:normal;line-height:1.2;padding:6px 10px}
-  #surfLP[hidden]+#surfExit{justify-self:stretch}
+  #surfBar{grid-template-columns:minmax(0,1fr) auto auto;width:auto;right:var(--gr);max-width:none;padding:10px;gap:6px;font-size:12.5px}
+  #surfCity{min-width:0;width:100%;height:36px;font-size:12.5px;padding-right:28px}
+  #surfBar .btn{min-height:36px;padding:0 10px;font-size:12px}
+  #surfExit{font-size:0!important}#surfExit::before{content:"Çık";font-size:12px}
+  #surfLP[hidden]+#surfExit{grid-column:auto;justify-self:end;font-size:12px!important}#surfLP[hidden]+#surfExit::before{content:none}
 }
 #trip{position:absolute;inset:0;z-index:6;pointer-events:none}
 #tripCv{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .8s}
@@ -4411,9 +4416,12 @@ var sV1=new THREE.Vector3(),sV2=new THREE.Vector3(),sV3=new THREE.Vector3(),sV4=
 var NAKED={sun:1,moon:1,mercury:1,venus:1,mars:1,jupiter:1,saturn:1};
 function surfApparent(ob){
   var pxA=camera.fov*D2R/Math.max(200,H),tmin=pxA*1.1;
+  /* gerçek açısal boyut (yarım derece) geniş görüşte ekranda birkaç piksel kalıyor; göz bunu böyle algılamaz (Ay yanılsaması).
+     Geniş açıda Güneş ve Ay büyütülür, yakınlaştırdıkça (görüş açısı ~20°'ye inince) gerçek boyutlarına döner */
+  var MG=clamp(camera.fov/17,1,3);
   BODIES.forEach(function(x){if(x===ob||isGone(x)||(x.parent&&x.parent!==ob))return;if(x.parent===ob&&x.def.id!=='moon')return;
     var d=camera.position.distanceTo(x.pos),R=effVr(x);if(!(R>0)||!(d>0))return;
-    var th=x===sunBody&&!SYS?.00465/Math.max(.05,(ob.parent?ob.parent.def.a:ob.def.a)||1):x.def.id==='moon'&&ob.def.id==='earth'?.00452:0;
+    var th=x===sunBody&&!SYS?.00465*MG/Math.max(.05,(ob.parent?ob.parent.def.a:ob.def.a)||1):x.def.id==='moon'&&ob.def.id==='earth'?.00452*MG:0;
     var s=Math.min(1,d*Math.tan(Math.max(th,tmin*(x.def.id==='venus'?1.4:x.def.id==='jupiter'?1.25:1)))/R);x.pivot.scale.setScalar(s);x.surfK=s;});
 }
 function surfApparentOff(){BODIES.forEach(function(x){if(x.surfK!=null){x.pivot.scale.set(1,1,1);x.surfK=null;}});}
@@ -4551,9 +4559,10 @@ function genSkyline(ci){
     if(sea){for(var s2=0;s2<(kind==='mega'?9:5);s2++){var sa=P.sea[0]+(rr()*2-1)*P.sea[1]*.8;ships.push([sa,-.03-rr()*.12,rr()]);}
       for(var la=P.sea[0]-P.sea[1]+.15;la<P.sea[0]+P.sea[1]-.15;la+=(3.2+rr()*1.5)*D2R)lamps.push(la);}
   }
-  return {L:L,dots:dots,ships:ships,lamps:lamps,kind:kind,sea:sea,P:P};
+  var trees=[];if(city){var nt=kind==='town'?200:kind==='city'?140:100;for(var tq=0;tq<nt;tq++){var tA=rr()*TAU;if(seaW(tA)>.05)continue;var tE=-(3.4+Math.pow(rr(),2)*8);trees.push([tA,tE,.5+rr()*.5]);}trees.sort(function(x,y){return y[1]-x[1];});}
+  return {L:L,dots:dots,ships:ships,lamps:lamps,trees:trees,kind:kind,sea:sea,P:P};
 }
-function lpBtn(){var b=$('surfLP');if(!b||!SURF)return;b.textContent='Işık kirliliği: '+(SURF.lp?'açık':'kapalı');b.classList.toggle('on',!!SURF.lp);}
+function lpBtn(){var b=$('surfLP');if(!b||!SURF)return;b.textContent=(innerWidth<=760?'Şehir ışığı: ':'Işık kirliliği: ')+(SURF.lp?'açık':'kapalı');b.classList.toggle('on',!!SURF.lp);}
 var CV1=new THREE.Vector3(),CV2=new THREE.Vector3();
 function bShape(b){var t=b.ty,h=b.h;
   if(t==='step')return [[0,0],[0,h*.72],[.18,h*.72],[.18,h*.9],[.3,h*.9],[.3,h],[.72,h],[.72,h*.82],[1,h*.82],[1,0]];
@@ -4592,10 +4601,26 @@ function cityDraw(p,up,north,east,dark){
       g.fillStyle=dark>.4?'rgba(255,190,120,'+(.25*fl*k+.04*fl)+')':'rgba(255,255,255,'+(.18*fl*day)+')';g.fillRect(pt.x-len/2,pt.y,len,Math.max(1,dpr));}
     if(dark>.3)S.ships.forEach(function(s){proj(s[0],s[1]*D2R,pt);if(pt.z>=1)return;g.fillStyle=s[2]<.2?'rgba(255,90,80,.9)':s[2]<.35?'rgba(120,255,140,.9)':'rgba(255,240,215,.95)';g.fillRect(pt.x-1.2*dpr,pt.y-1.2*dpr,2.4*dpr,2.4*dpr);
       g.fillStyle='rgba(255,220,170,.18)';g.fillRect(pt.x-.6*dpr,pt.y+2*dpr,1.2*dpr,(10+s[2]*14)*dpr);});}
+  /* Güneş parıltısı: atmosferde saçılan ışık diskin çevresinde geniş bir hale yapar; alçaldıkça turuncuya döner. Binalar üstüne çizilir, onu örter */
+  var sdv=CV2.copy(sunBody.pos).sub(p).normalize(),sel=sdv.dot(up);
+  if(sunType<5&&sel>-.03&&day>.02){CV1.copy(p).addScaledVector(sdv,1000).project(camera);
+    if(CV1.z<1){var sx=(CV1.x*.5+.5)*Wc,sy=(-CV1.y*.5+.5)*Hc,lo=1-ss(.02,.3,sel),R1=ppd*(2.2+2*lo),R2=ppd*(16+10*lo),ga=Math.min(1,day*1.4)*(1-.5*ss(-.03,.02,-sel));
+      var hg=g.createRadialGradient(sx,sy,0,sx,sy,R2);hg.addColorStop(0,'rgba(255,'+Math.round(244-60*lo)+','+Math.round(214-120*lo)+','+(.55*ga)+')');hg.addColorStop(.12,'rgba(255,'+Math.round(230-70*lo)+','+Math.round(180-110*lo)+','+(.22*ga)+')');hg.addColorStop(1,'rgba(255,200,140,0)');g.fillStyle=hg;g.fillRect(sx-R2,sy-R2,R2*2,R2*2);
+      var cg=g.createRadialGradient(sx,sy,0,sx,sy,R1);cg.addColorStop(0,'rgba(255,255,250,'+(.95*ga)+')');cg.addColorStop(.35,'rgba(255,'+Math.round(246-50*lo)+','+Math.round(220-110*lo)+','+(.6*ga)+')');cg.addColorStop(1,'rgba(255,220,160,0)');g.fillStyle=cg;g.fillRect(sx-R1,sy-R1,R1*2,R1*2);}}
+  /* Ay: gündüz gökyüzü renginin altında soluk kalmasın diye çevresinde hafif bir hale (gece daha belirgin) */
+  var mo=byId.moon;if(mo&&!isGone(mo)&&mo.pr>0){var mdv=CV2.copy(mo.pos).sub(sV1).normalize();if(mdv.dot(up)>-.02){CV1.copy(p).addScaledVector(mdv,1000).project(camera);if(CV1.z<1){var mx=(CV1.x*.5+.5)*Wc,my=(-CV1.y*.5+.5)*Hc,mr=mo.pr*dpr,ma=.14+.14*dark;
+    var mg=g.createRadialGradient(mx,my,mr*.9,mx,my,mr*4);mg.addColorStop(0,'rgba(235,240,255,'+ma+')');mg.addColorStop(1,'rgba(235,240,255,0)');g.fillStyle=mg;g.fillRect(mx-mr*4,my-mr*4,mr*8,mr*8);}}}
+  var sdv=CV2.copy(sunBody.pos).sub(p).normalize(),sel=sdv.dot(up);
+  /* zemin: ufukta havanın pusuna karışan, öne doğru koyulaşan toprak/kent dokusu (eskiden düz gri bir dolguydu) */
+  var warmS=1-ss(.03,.3,sel),lk=.5+.5*ss(-.02,.45,sel),GB=S.kind==='ice'?[214,222,236]:S.kind==='dark'?[150,108,78]:S.kind==='town'?[86,96,66]:[96,94,88];
+  var gTop=mix([22+36*k,20+20*k,28+8*k],[Math.round(GB[0]*.45+172*.55+40*warmS),Math.round(GB[1]*.45+184*.55+10*warmS),Math.round(GB[2]*.45+204*.55-30*warmS)]),
+      gMid=mix([12+14*k,12+8*k,17+3*k],[Math.round(GB[0]*lk*(1+.1*warmS)),Math.round(GB[1]*lk*(1-.08*warmS)),Math.round(GB[2]*lk*(1-.25*warmS))]),
+      gBot=mix([5,6,9],[Math.round(GB[0]*.5*lk),Math.round(GB[1]*.5*lk),Math.round(GB[2]*.52*lk)]);
+  function groundFill(y0){var gg=g.createLinearGradient(0,y0,0,Hc);gg.addColorStop(0,rgb(gTop));gg.addColorStop(Math.min(.9,Math.max(.04,ppd*1.5/Math.max(1,Hc-y0))),rgb(gMid));gg.addColorStop(1,rgb(gBot));return gg;}
   var wpx=Math.max(1.2,.2*ppd);
   S.L.forEach(function(Ly,li){
     var pts=[],hz=[];for(var az=yaw-hf;az<=yaw+hf;az+=st){var ia=((Math.floor(((az%TAU)+TAU)%TAU/TAU*Ly.H.length))%Ly.H.length);proj(az,Ly.H[ia]*D2R,pt);if(pt.z<1){pts.push([pt.x,pt.y]);if(li===0){proj(az,0,q2);hz.push([q2.x,q2.y]);}}}
-    if(pts.length<2)return;var col=LC[li];g.fillStyle=li===2&&S.L[2].B.length?rgb(mix([16+16*k,13+9*k,13+5*k],[78,80,84])):rgb(col);
+    if(pts.length<2)return;var col=LC[li];g.fillStyle=li===2?groundFill(Math.max(0,Math.min(hzY,Hc-1))):rgb(col);
     /* uzak katman yalnızca ufkun üstünde (altı denizi ya da yakın katmanlar örter) */
     g.beginPath();if(li===0){g.moveTo(hz[0][0],hz[0][1]);pts.forEach(function(q){g.lineTo(q[0],q[1]);});for(var z=hz.length-1;z>=0;z--)g.lineTo(hz[z][0],hz[z][1]+1);}
     else{g.moveTo(pts[0][0],Hc+10);pts.forEach(function(q){g.lineTo(q[0],Math.min(q[1],Hc+10));});g.lineTo(pts[pts.length-1][0],Hc+10);}g.closePath();g.fill();
@@ -4619,6 +4644,11 @@ function cityDraw(p,up,north,east,dark){
       for(i=0;i<wc.length;i+=3){var tv=wc[i+2]<.05;g.fillStyle=tv?'rgba(150,180,255,'+(.5+.4*Math.sin(now*9+wc[i]))+')':'rgba(200,222,255,.88)';g.fillRect(wc[i]-ww/2,wc[i+1]-wh/2,ww,wh);}g.globalAlpha=1;}
     for(var j=0;j<wt.length;j+=2){g.fillStyle='rgba(180,255,190,.85)';g.fillRect(wt[j]-wpx*.4,wt[j+1]-wpx*.4,wpx*.8,wpx*.8);}
   });
+  /* önde ağaç kümeleri: yakın zemine derinlik verir (aşağıdakiler daha yakın, daha büyük) */
+  if(S.trees&&S.trees.length){var tc=rgb(mix([6+7*k,8+4*k,9+2*k],[Math.round(30*lk),Math.round(42*lk),Math.round(34*lk)])),tc2=rgb(mix([8+8*k,10+5*k,11+2*k],[Math.round(40*lk),Math.round(54*lk),Math.round(42*lk)]));
+    S.trees.forEach(function(t){var da=Math.atan2(Math.sin(t[0]-yaw),Math.cos(t[0]-yaw));if(Math.abs(da)>hf+.1)return;proj(t[0],t[1]*D2R,pt);if(pt.z>=1||pt.y>Hc+40)return;
+      var r=Math.max(1.2,t[2]*ppd*(-t[1])/5.5);g.fillStyle=tc;g.beginPath();g.arc(pt.x,pt.y-r*.9,r,0,TAU);g.arc(pt.x-r*.75,pt.y-r*.45,r*.75,0,TAU);g.arc(pt.x+r*.8,pt.y-r*.5,r*.8,0,TAU);g.fill();
+      if(day>.3){g.fillStyle=tc2;g.beginPath();g.arc(pt.x-r*.3,pt.y-r*1.2,r*.42,0,TAU);g.fill();}});}
   /* sahil yolu lambaları ve denizdeki yansımaları */
   if(S.sea&&S.lamps&&S.lamps.length){S.lamps.forEach(function(la){var da=Math.atan2(Math.sin(la-yaw),Math.cos(la-yaw));if(Math.abs(da)>hf)return;
     proj(la,-6.5*D2R,pt);proj(la,-3.6*D2R,q2);if(pt.z>=1||q2.z>=1)return;g.strokeStyle=rgb(LC[2]);g.lineWidth=Math.max(1,1.2*dpr);g.beginPath();g.moveTo(pt.x,pt.y);g.lineTo(q2.x,q2.y);g.stroke();

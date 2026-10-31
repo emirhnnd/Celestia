@@ -1408,7 +1408,12 @@ function buildCometFx(b){
 function updateCometFx(){BODIES.forEach(function(b){if(b.fx)updateOneComet(b);});}
 function updateOneComet(b){
   var P=b.pos,rS=P.length(),F=b.fx,def=b.def,au=invOrbit(rS),sz=def.cm.size||1,mn=!!def.minor,vr=def.vr;
-  var act=Math.pow(clamp((3.4-au)/2.8,0,1),1.2),L=act*(70+40*DS)*sz;if(b.pivot&&!b.pivot.visible)L=0;
+  /* kuyruk yıldızın ışımasına bağlı: buzun süblimleşmesi aldığı ışınıma bağlıdır (S ~ L/r²), yani "etkin uzaklık" = au/√L.
+     Kırmızı cüce / beyaz cüce / kara delikte kuyruk söner, mavi ve kırmızı devde uzar. Yıldız türü değişince bir anda değil yumuşakça geçer. */
+  var Ls=Math.max(0,starL()),ae=au/Math.sqrt(Math.max(Ls,1e-6)),actT=Math.pow(clamp((3.4-ae)/2.8,0,1),1.2),boost=clamp(1+.3*Math.log10(Math.max(1,Ls)),1,2.2);
+  var tn=performance.now()*.001,dtk=F.lkT?Math.min(.25,tn-F.lkT):0;F.lkT=tn;
+  if(F.actS===undefined||dtk===0&&F.actS===undefined)F.actS=actT;F.actS+=(actT-F.actS)*Math.min(1,dtk*3);
+  var act=F.actS,L=act*boost*(70+40*DS)*sz;if(b.engulfed||(b.pivot&&!b.pivot.visible))L=0;
   var cd=camera.position.distanceTo(P),t=performance.now()*.001,near=clamp((cd-3)/20,.04,1);
   var cs=(3+L*.05)*Math.max(.4,sz)*(mn?.45:1),co=(.06+act*sz*.63)*near*(mn?.6:1)*(1+.04*Math.sin(t*1.7+vr*9));
   F.coma.scale.setScalar(cs*1.5);F.coma.material.opacity=co*.45;
@@ -1826,11 +1831,11 @@ function updateShadows(){
     }
   });
   BODIES.forEach(function(b){
-    if(b.parent||!b.grav||b.destroyed||b.sysHide)return;var sr=sunType===6?effVr(sunBody)*bhMassK()*.98:swallowR(b);
+    if(b.parent||(!b.grav&&!(b.def&&b.def.comet))||b.destroyed||b.sysHide)return;var sr=sunType===6?effVr(sunBody)*bhMassK()*.98:swallowR(b);
     var en=b.pos.length()<sr;
     if(en!==!!b.engulfed){
       b.engulfed=en;b.pivot.visible=!en;if(b.trailLine&&en)b.trailLine.visible=false;if(b.dockBtn)b.dockBtn.hidden=en;if(b.treeBtn)b.treeBtn.hidden=en;
-      if(en){toast(b.def.name+' yıldız tarafından yutuldu');if(focus===b||focus.parent===b)focusBody('sun',{dist:OVD()*.45});}
+      if(en){toast(b.def.name+(b.def.comet?' yıldızın içinde buharlaştı':' yıldız tarafından yutuldu'));if(focus===b||focus.parent===b)focusBody('sun',{dist:OVD()*.45});}
     }
   });
   BODIES.forEach(computeClimate);

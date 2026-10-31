@@ -85,6 +85,33 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   ok('WebGL yoksa hata ekranı', await t.page.evaluate(() => { const x = document.getElementById('boot'); return x.classList.contains('err') && /WebGL/.test(x.textContent); }));
   await t.page.close();
 
+  /* 6b) kuyruklu yıldızlar: kuyruk Güneş'e yakınken görünür, uzakken kaybolur; çekirdek uzaklaşınca küreye dönmez */
+  t = await open(b); await ready(t);
+  const jump = (id, dd) => t.E(`(function(){var C=cmSetup(byId.${id}.def);var x=C.tp+(${dd})-simDays;updateBodies(x);simDays+=x;playing=false;focusBody('${id}',{dist:30});})()`);
+  await jump('halley', 20); await wait(2500);
+  ok('Halley günberide: iyon ve toz kuyruğu görünür', await t.E("byId.halley.fx.ion.visible&&byId.halley.fx.dust.visible"));
+  ok('Halley günberide: uzunluk uniform\'u sıfırdan büyük', await t.E("byId.halley.fx.ion.material.uniforms.uL.value")> 10);
+  await t.E("focusBody('halley',{dist:600})"); await wait(3500);
+  ok('çekirdek uzaklaşınca düzensiz kalıyor (LOD küreyle değiştirmiyor)', await t.E("byId.halley.mesh.geometry.type") === 'CometNucleus');
+  await jump('halley', 27510 / 2); await wait(2500);
+  ok('Halley günöte: kuyruk yok', await t.E("!byId.halley.fx.ion.visible&&!byId.halley.fx.dust.visible"));
+  /* 6c) kuyruk yıldızın ışımasına bağlı; yıldızın içine giren kuyruklu yıldız gizlenir */
+  await jump('halley', 20); await wait(2500);
+  const uL0 = await t.E("byId.halley.fx.ion.material.uniforms.uL.value");
+  await t.E("setStar(2,false)"); await jump('halley', 20); await wait(3500);
+  const uLb = await t.E("byId.halley.fx.ion.material.uniforms.uL.value");
+  ok('mavi devde Halley kuyruğu Güneş\'tekinden uzun', uLb > uL0 * 1.2, [uL0, uLb]);
+  await t.E("setStar(4,false)"); await jump('halley', 20); await wait(3500);
+  ok('beyaz cücede Halley kuyruğu yok', await t.E("!byId.halley.fx.ion.visible&&!byId.halley.fx.dust.visible"));
+  await t.E("setStar(3,false);sunBody.mod.size=3;applySize(sunBody)"); await jump('halley', 20); await wait(3500);
+  ok('kırmızı devin içindeki Halley yutulmuş ve gizli', await t.E("byId.halley.engulfed===true&&byId.halley.pivot.visible===false&&!byId.halley.fx.ion.visible"), await t.E("[byId.halley.pos.length(),swallowR(byId.halley),sunType,byId.halley.engulfed]"));
+  await t.E("setStar(0,false);sunBody.mod.size=1;applySize(sunBody)"); await jump('halley', 20); await wait(3500);
+  ok('normal Güneş\'te Halley yutulmuyor, geri görünür', await t.E("!byId.halley.engulfed&&byId.halley.pivot.visible&&byId.halley.fx.ion.visible"));
+  const bb = JSON.parse(await t.E("(function(){var g=byId.cg67p.mesh.geometry;g.computeBoundingBox();var b=g.boundingBox;return [b.max.x-b.min.x,b.max.y-b.min.y]})()"));
+  ok('67P iki loblu (uzun eksen kısa eksenden en az %35 uzun)', bb[0] / bb[1] > 1.35, bb);
+  ok('kuyruklu yıldız: sayfa hatası yok', t.errs.length === 0, t.errs);
+  await t.page.close();
+
   /* 7) ölçek değişiminde durum koruma */
   t = await open(b, { keepStorage: true }); await ready(t);
   await t.E("setStar(1,false);starAge=9;$('sAge').value=9;gSpin=3;$('gSpin').value=3;byId.mars.mod.size=1.7;applySize(byId.mars)");

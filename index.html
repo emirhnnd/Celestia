@@ -1345,41 +1345,117 @@ function cmSetup(def){
 var COMET=null;
 function cometPos(M,out,C){C=C||COMET;var E=M%TAU;if(E<0)E+=TAU;var Mm=E;for(var i=0;i<7;i++)E=Mm+C.e*Math.sin(E);out.x=C.a*(Math.cos(E)-C.e);out.z=C.b*Math.sin(E);return E;}
 function getCometPlane(def){var C=cmSetup(def);if(!C.plane){var g=new THREE.Group();g.rotation.order='YXZ';g.rotation.y=C.ry;g.rotation.x=C.rx;scene.add(g);C.plane=g;}return C.plane;}
-var cometFx=null;
+/* Kuyruklu yıldız efekti: kuyruklar ve jetler tamamen GPU'da hesaplanır (CPU'da parçacık döngüsü yok).
+   Her parçacık çekirdekten uzağa doğru akar: iyon kuyruğu hızlı, dalgalı ve mavi; toz kuyruğu yavaş, yörüngenin arkasına doğru kıvrık ve sarımsı. */
+var COMET_VS=[
+'uniform vec3 uP,uSun,uA,uB,uVel,uColA,uColB;',
+'uniform float uMode,uT,uL,uSize,uScale,uMinPx,uAlpha,uFlow,uPow,uSpread,uCurve,uRipF,uRipS,uRipA,uFade,uGrow,uJR,uSpin,uR0,uWaveF,uWaveV,uWaveA,uSway;',
+'attribute float aR;',
+'varying vec3 vC;varying float vA;',
+'void main(){',
+'  float u=fract(position.x+uT*uFlow*(.65+.7*aR));',
+'  vec3 lat=uA*position.y+uB*position.z;',
+'  vec3 pos;float alpha;float size=uSize*(.55+.9*aR);',
+'  if(uMode<.5){',
+'    float d=pow(u,uPow)*uL;',
+'    float rip=sin(d*uRipF-uT*uRipS+position.x*40.)*uRipA*d*smoothstep(0.,.25,u);',
+'    pos=uP+uSun*d+lat*(uSpread*d*(.4+u))+uA*rip+uB*rip*.6;',
+'    float sw=uSway*d*u;pos+=uA*sin(uT*.9+d*uWaveF*.12)*sw+uB*cos(uT*.7+d*uWaveF*.1)*sw*.6;',
+'    alpha=pow(1.-u,uFade)*smoothstep(0.,.06,u)*(1.-uWaveA*(.5-.5*sin(uWaveF*(d-uWaveV*uT)+aR*.6)));',
+'  }else if(uMode<1.5){',
+'    float d=pow(u,uPow)*uL;float k=.45+.9*aR;',
+'    pos=uP+uSun*d+lat*(uSpread*d)+uVel*(uCurve*k*d*d/uL);',
+'    float sw=uSway*d*u;pos+=uA*sin(uT*.35+d*uWaveF*.15)*sw;',
+'    alpha=pow(1.-u,uFade)*smoothstep(0.,.14,u)*(1.-uWaveA*(.5-.5*sin(uWaveF*(d-uWaveV*uT)+aR*.8)));',
+'  }else{',
+'    float j=floor(aR*3.);float ang=uSpin+j*2.1;float lit=cos(ang);',
+'    vec3 dir=normalize(-uSun*lit+uA*sin(ang)+uB*.25*(j-1.));',
+'    float dist=u*uJR;',
+'    pos=uP+dir*(uR0+dist)+lat*(.07*dist)+uSun*(dist*dist/uJR*.9);',
+'    alpha=pow(1.-u,2.)*smoothstep(0.,.05,u)*smoothstep(.15,.6,lit);',
+'  }',
+'  vec4 mv=modelViewMatrix*vec4(pos,1.);',
+'  gl_Position=projectionMatrix*mv;',
+'  float raw=size*(1.+uGrow*u)*uScale/max(-mv.z,.001);',
+'  float ps=clamp(raw,uMinPx,96.);',
+'  gl_PointSize=ps;',
+'  vA=alpha*uAlpha*clamp(raw*raw/(ps*ps),.18,1.);',
+'  vC=mix(uColA,uColB,u);',
+'}'].join('\n');
+var COMET_FS=[
+'varying vec3 vC;varying float vA;',
+'void main(){vec2 c=gl_PointCoord-.5;float r=dot(c,c)*4.;if(r>1.)discard;float a=1.-r;a*=a;gl_FragColor=vec4(vC,vA*a);}'].join('\n');
+function cmPoints(n,mode,col,u){
+  var g=new THREE.BufferGeometry(),pos=new Float32Array(n*3),ar=new Float32Array(n);
+  for(var i=0;i<n;i++){pos[i*3]=Math.random();pos[i*3+1]=Math.random()*2-1;pos[i*3+2]=Math.random()*2-1;ar[i]=Math.random();}
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('aR',new THREE.BufferAttribute(ar,1));
+  var un={uP:{value:new THREE.Vector3()},uSun:{value:new THREE.Vector3(1,0,0)},uA:{value:new THREE.Vector3(0,1,0)},uB:{value:new THREE.Vector3(0,0,1)},uVel:{value:new THREE.Vector3(0,0,-1)},
+    uColA:{value:new THREE.Color(col[0])},uColB:{value:new THREE.Color(col[1])},uMode:{value:mode},uT:{value:0},uL:{value:1},uSize:{value:1},uScale:{value:400},uMinPx:{value:1.2},uAlpha:{value:0},
+    uFlow:{value:u.flow},uPow:{value:u.pw},uSpread:{value:u.sp},uCurve:{value:0},uRipF:{value:1},uRipS:{value:2.2},uRipA:{value:u.rip||0},uFade:{value:u.fade},uGrow:{value:u.grow},uJR:{value:1},uSpin:{value:0},uR0:{value:0},uWaveF:{value:1},uWaveV:{value:0},uWaveA:{value:0},uSway:{value:0}};
+  var m=new THREE.ShaderMaterial({uniforms:un,vertexShader:COMET_VS,fragmentShader:COMET_FS,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+  var o=new THREE.Points(g,m);o.frustumCulled=false;o.visible=false;scene.add(o);return o;
+}
 function buildCometFx(b){
-  function mk(color,n,size){
-    var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*3),3));
-    var p=new THREE.Points(g,new THREE.PointsMaterial({color:color,size:size,sizeAttenuation:true,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,map:dotTex(),alphaTest:.01}));
-    p.frustumCulled=false;scene.add(p);return p;
-  }
-  var n=b.def.minor?220:500,seed=[];for(var i=0;i<n;i++)seed.push([Math.pow(Math.random(),1.5),Math.random()*2-1,Math.random()*2-1]);
+  var mn=!!b.def.minor,k=(LOWQ?.5:1)*(mn?.45:1);
   var gt=glowTex([[0,'rgba(255,255,255,.9)'],[.25,'rgba(200,230,255,.45)'],[1,'rgba(160,210,255,0)']]);
-  var coma=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:0xcfe9ff,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
-  coma.scale.set(6,6,1);b.pivot.add(coma);
-  var zs=b.def.minor?.4:1;b.fx={n:n,seed:seed,ion:mk(0x8ec8ff,n,1.1*zs),dust:mk(0xffe3b0,n,1.6*zs),prev:new THREE.Vector3(),vel:new THREE.Vector3(),coma:coma,d:new THREE.Vector3(),pa:new THREE.Vector3(),pb:new THREE.Vector3(),dd:new THREE.Vector3()};
+  function spr(color){var o=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:color,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));o.scale.set(6,6,1);b.pivot.add(o);return o;}
+  var coma=spr(0x9fe6d6),core=spr(0xffffff);
+  b.fx={ion:cmPoints(Math.round(2400*k),0,[0xa9d2ff,0x4a7fe0],{flow:.28,pw:1.15,sp:.035,fade:1.3,grow:.6,rip:.012}),
+        dust:cmPoints(Math.round(7000*k),1,[0xfff1d0,0xd9a070],{flow:.06,pw:1.35,sp:.16,fade:1.1,grow:.9}),
+        jets:cmPoints(Math.round(2000*k),2,[0xfff6e0,0xe8d4b0],{flow:.35,pw:1,sp:1,fade:2,grow:.5}),
+        coma:coma,core:core,d:new THREE.Vector3(),pa:new THREE.Vector3(),pb:new THREE.Vector3(),vel:new THREE.Vector3(),tmp:new THREE.Vector3()};
 }
 function updateCometFx(){BODIES.forEach(function(b){if(b.fx)updateOneComet(b);});}
 function updateOneComet(b){
-  var P=b.pos,rS=P.length(),F=b.fx,au=invOrbit(rS),sz=b.def.cm.size||1,L=Math.pow(clamp((3.4-au)/2.8,0,1),1.2)*(70+40*DS)*sz;if(b.pivot&&!b.pivot.visible)L=0;
-  F.vel.copy(P).sub(F.prev);F.prev.copy(P);if(F.vel.lengthSq()>1e-10)F.vel.normalize();else F.vel.set(0,0,0);
-  var cd=camera.position.distanceTo(P);F.coma.scale.setScalar((3+L*.05)*Math.max(.4,sz)*(b.def.minor?.45:1));F.coma.material.opacity=(.06+L/95*.35)*clamp((cd-3)/20,.04,1)*(b.def.minor?.6:1);
-  var vis=L>1.5;F.ion.visible=F.dust.visible=vis;if(!vis)return;
-  var fade=clamp((cd-5)/35,.06,1);var mk=b.def.minor?.55:1;F.ion.material.opacity=clamp(L/50,0,.85)*fade*mk;F.dust.material.opacity=clamp(L/50,0,.7)*fade*mk;
+  var P=b.pos,rS=P.length(),F=b.fx,def=b.def,au=invOrbit(rS),sz=def.cm.size||1,mn=!!def.minor,vr=def.vr;
+  /* kuyruk yıldızın ışımasına bağlı: buzun süblimleşmesi aldığı ışınıma bağlıdır (S ~ L/r²), yani "etkin uzaklık" = au/√L.
+     Kırmızı cüce / beyaz cüce / kara delikte kuyruk söner, mavi ve kırmızı devde uzar. Yıldız türü değişince bir anda değil yumuşakça geçer. */
+  var Ls=Math.max(0,starL()),ae=au/Math.sqrt(Math.max(Ls,1e-6)),actT=Math.pow(clamp((3.4-ae)/2.8,0,1),1.2),boost=clamp(1+.3*Math.log10(Math.max(1,Ls)),1,2.2);
+  var tn=performance.now()*.001,dtk=F.lkT?Math.min(.25,tn-F.lkT):0;F.lkT=tn;
+  if(F.actS===undefined||dtk===0&&F.actS===undefined)F.actS=actT;F.actS+=(actT-F.actS)*Math.min(1,dtk*3);
+  var act=F.actS,L=act*boost*(70+40*DS)*sz;if(b.engulfed||(b.pivot&&!b.pivot.visible))L=0;
+  var cd=camera.position.distanceTo(P),t=performance.now()*.001,near=clamp((cd-3)/20,.04,1);
+  var cs=(3+L*.05)*Math.max(.4,sz)*(mn?.45:1),co=(.06+act*sz*.63)*near*(mn?.6:1)*(1+.04*Math.sin(t*1.7+vr*9));
+  F.coma.scale.setScalar(cs*1.5);F.coma.material.opacity=co*.45;
+  F.core.scale.setScalar(cs*.38);F.core.material.opacity=Math.min(1,co*1.1);
+  var vis=L>1.5;F.ion.visible=F.dust.visible=vis;
+  var jr=(vr*10+L*.015)*(mn?.8:1),jf=vis&&act>.15?clamp(1-cd/(jr*60),0,1):0;F.jets.visible=jf>.01;
+  if(!vis)return;
+  var fade=clamp((cd-5)/35,.2,1),mk=mn?.55:1,sc=renderer.domElement.height*.5;
   F.d.copy(P).normalize();
   F.pa.set(0,1,0).cross(F.d);if(F.pa.lengthSq()<1e-4)F.pa.set(1,0,0);F.pa.normalize();F.pb.copy(F.d).cross(F.pa);
-  F.dd.copy(F.d).addScaledVector(F.vel,-.55).normalize();
-  var ia=F.ion.geometry.attributes.position.array,da=F.dust.geometry.attributes.position.array;
-  for(var i=0;i<F.n;i++){
-    var s=F.seed[i],d=s[0]*L;
-    ia[i*3]=P.x+F.d.x*d+(F.pa.x*s[1]+F.pb.x*s[2])*d*.05;
-    ia[i*3+1]=P.y+F.d.y*d+(F.pa.y*s[1]+F.pb.y*s[2])*d*.05;
-    ia[i*3+2]=P.z+F.d.z*d+(F.pa.z*s[1]+F.pb.z*s[2])*d*.05;
-    var d2=d*.8;
-    da[i*3]=P.x+F.dd.x*d2+(F.pa.x*s[1]+F.pb.x*s[2])*d2*.2;
-    da[i*3+1]=P.y+F.dd.y*d2+(F.pa.y*s[1]+F.pb.y*s[2])*d2*.2;
-    da[i*3+2]=P.z+F.dd.z*d2+(F.pa.z*s[1]+F.pb.z*s[2])*d2*.2;
+  /* yörünge hızının tersi: toz kuyruğu yörüngenin gerisine doğru kıvrılır (duraklatılmış zamanda da aynı) */
+  var C=cmSetup(def),E=cometPos(b.ang,F.tmp,C);F.vel.set(C.a*Math.sin(E),0,-C.b*Math.cos(E)).transformDirection(getCometPlane(def).matrixWorld);
+  var curve=clamp(.1+.22/(au+.25),.1,.42);
+  function setU(o,al,size){var u=o.material.uniforms;u.uP.value.copy(P);u.uSun.value.copy(F.d);u.uA.value.copy(F.pa);u.uB.value.copy(F.pb);u.uVel.value.copy(F.vel);u.uT.value=t;u.uL.value=L;u.uScale.value=sc;u.uAlpha.value=al;u.uSize.value=size;u.uCurve.value=curve;return u;}
+  var ui=setU(F.ion,clamp(L/50,0,.85)*fade*mk*.38,L*.0065*(mn?.7:1));ui.uRipF.value=TAU*4/L;ui.uWaveF.value=TAU*5/L;ui.uWaveV.value=.42*L;ui.uWaveA.value=.75;ui.uSway.value=.04;
+  var ud=setU(F.dust,clamp(L/50,0,.7)*fade*mk*.5,L*.0046*(mn?.7:1));ud.uL.value=L*.62;ud.uWaveF.value=TAU*3/(L*.62);ud.uWaveV.value=.06*L;ud.uWaveA.value=.45;ud.uSway.value=.03;
+  if(F.jets.visible){var uj=setU(F.jets,jf*.7,vr*.07);uj.uL.value=jr;uj.uJR.value=jr;uj.uSpin.value=b.spinRot;uj.uR0.value=vr*.75;}
+}
+/* çekirdek: düzensiz, koyu. 67P iki lobludur (lastik ördek); ötekiler sıkışık gövdeli uzun patates. */
+function weldNormals(g){
+  var p=g.attributes.position,n=g.attributes.normal,map={},i;
+  for(i=0;i<p.count;i++){var key=Math.round(p.getX(i)*1e4)+'_'+Math.round(p.getY(i)*1e4)+'_'+Math.round(p.getZ(i)*1e4);(map[key]=map[key]||[]).push(i);}
+  Object.keys(map).forEach(function(k){var a=map[k];if(a.length<2)return;var x=0,y=0,z=0;a.forEach(function(j){x+=n.getX(j);y+=n.getY(j);z+=n.getZ(j);});var l=Math.hypot(x,y,z)||1;a.forEach(function(j){n.setXYZ(j,x/l,y/l,z/l);});});
+  n.needsUpdate=true;
+}
+function cometNucleusGeo(def){
+  var R=def.vr,g=new THREE.SphereGeometry(R,LOWQ?48:72,LOWQ?32:48),p=g.attributes.position,v=new THREE.Vector3(),sd=3,i;
+  for(i=0;i<def.id.length;i++)sd+=def.id.charCodeAt(i)*(i+3);sd=(sd%97)*1.37+3;
+  var duck=def.id==='cg67p';
+  for(i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i).normalize();
+    var r=1,x,y,z;
+    if(duck){var L1=[.42,.72],L2=[-.5,.52],d1=L1[0]*v.x,d2=L2[0]*v.x;
+      var r1=d1+Math.sqrt(Math.max(0,d1*d1-L1[0]*L1[0]+L1[1]*L1[1])),r2=d2+Math.sqrt(Math.max(0,d2*d2-L2[0]*L2[0]+L2[1]*L2[1]));
+      r=Math.max(r1,r2)/1.14;}
+    var n1=(fbm(v.x*1.6+sd,v.y*1.6+sd*.7,v.z*1.6+sd*1.3,4)-.47)*2.1,n2=(fbm(v.x*5+sd,v.y*5,v.z*5-sd,3)-.47)*2.1;
+    r*=1+.2*n1+.05*n2;
+    x=v.x*r;y=v.y*r;z=v.z*r;
+    if(!duck){x*=1;y*=.62;z*=.66;var pin=1-.25*Math.exp(-Math.pow(x/.3,2));y*=pin;z*=pin;}
+    p.setXYZ(i,x*R,y*R,z*R);
   }
-  F.ion.geometry.attributes.position.needsUpdate=true;F.dust.geometry.attributes.position.needsUpdate=true;
+  g.computeVertexNormals();weldNormals(g);g.type='CometNucleus';return g;
 }
 
 function buildBody(def){
@@ -1399,12 +1475,13 @@ function buildBody(def){
   else{
     var TW=(def.tw||512)*(LOWQ?1:2),fn=def.texFn||TEX[def.tex],tex=makeTex(TW,TW/2,fn);
     mat=new THREE.MeshStandardMaterial({map:tex,roughness:.92,metalness:0});
+    if(def.comet&&!def.asteroid){mat.color.setScalar(.34);mat.roughness=1;}
     if(def.bump&&!def.crat){mat.bumpMap=tex;mat.bumpScale=def.parent?.45:.8;}
     if(def.crat&&U){U.crat.value=def.crat*2.2;U.cratD.value=def.cratD||1;}
     if(def.emFn){mat.emissiveMap=makeTex(TW,TW/2,def.emFn);mat.emissive=new THREE.Color(0xffffff);mat.emissiveIntensity=1.1;}
     if(U)patchShadow(mat,U,'shp',PLANET_CODE,PLANET_EM);
   }
-  mesh=new THREE.Mesh(new THREE.SphereGeometry(def.vr,def.parent||LOWQ?56:96,def.parent||LOWQ?40:64),mat);b.mesh=mesh;tilt.add(mesh);
+  mesh=new THREE.Mesh(def.comet&&!def.asteroid?cometNucleusGeo(def):new THREE.SphereGeometry(def.vr,def.parent||LOWQ?56:96,def.parent||LOWQ?40:64),mat);b.mesh=mesh;tilt.add(mesh);
   if(def.clouds){
     var ct=def.id==='earth'?null:makeTex(LOWQ?512:1024,LOWQ?256:512,TEX.clouds);
     b.clouds=new THREE.Mesh(new THREE.SphereGeometry(def.vr*1.012,LOWQ?56:96,LOWQ?40:64),def.id==='earth'?weatherMaterial():new THREE.MeshStandardMaterial({map:ct,transparent:true,roughness:1,depthWrite:false}));
@@ -1754,11 +1831,11 @@ function updateShadows(){
     }
   });
   BODIES.forEach(function(b){
-    if(b.parent||!b.grav||b.destroyed||b.sysHide)return;var sr=sunType===6?effVr(sunBody)*bhMassK()*.98:swallowR(b);
+    if(b.parent||(!b.grav&&!(b.def&&b.def.comet))||b.destroyed||b.sysHide)return;var sr=sunType===6?effVr(sunBody)*bhMassK()*.98:swallowR(b);
     var en=b.pos.length()<sr;
     if(en!==!!b.engulfed){
       b.engulfed=en;b.pivot.visible=!en;if(b.trailLine&&en)b.trailLine.visible=false;if(b.dockBtn)b.dockBtn.hidden=en;if(b.treeBtn)b.treeBtn.hidden=en;
-      if(en){toast(b.def.name+' yıldız tarafından yutuldu');if(focus===b||focus.parent===b)focusBody('sun',{dist:OVD()*.45});}
+      if(en){toast(b.def.name+(b.def.comet?' yıldızın içinde buharlaştı':' yıldız tarafından yutuldu'));if(focus===b||focus.parent===b)focusBody('sun',{dist:OVD()*.45});}
     }
   });
   BODIES.forEach(computeClimate);

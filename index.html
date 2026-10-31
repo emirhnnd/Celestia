@@ -1,6 +1,17 @@
+<!doctype html>
+<html lang="tr">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Güneş Sistemi Gezgini</title>
+<title>Celestia · Güneş Sistemi Gezgini</title>
+<meta name="description" content="Tarayıcıda çalışan 3B Güneş Sistemi gezgini: gerçek gezegen konumları, tutulmalar, laboratuvarda 'ya olsaydı?' denemeleri. Kurulum yok.">
+<meta name="theme-color" content="#04050a">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Celestia · Güneş Sistemi Gezgini">
+<meta property="og:description" content="Gezegenler bugünkü gerçek yerlerinde. Güneş'i kara deliğe çevir, Mars'ı Dünya'ya fırlat, tutulmalara git.">
+<meta property="og:image" content="https://emirhnnd.github.io/Celestia/docs/dunya.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304050a'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23f2b84b'/%3E%3Cellipse cx='16' cy='16' rx='13' ry='4.5' fill='none' stroke='%23e8ecf7' stroke-width='1.6' transform='rotate(-20 16 16)'/%3E%3C/svg%3E">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -390,7 +401,16 @@ body.clean #cleanX{display:grid}
 @media (max-width:760px) and (pointer:coarse){#cam .seg{display:none}}
 @media (max-width:380px){#date{font-size:12px}#speed{max-width:96px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}#hint{opacity:1}}
+.noscript{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg);color:var(--fg);font:500 14px var(--body);z-index:20}
+#boot.err div{color:var(--danger)}
+#boot .sub{max-width:34em;margin:14px 24px 0;font:400 13px/1.5 var(--body);letter-spacing:0;text-transform:none;color:var(--dim);text-align:center}
+#boot button{margin-top:18px;padding:9px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);font:600 13px var(--body);cursor:pointer}
+#boot.err{display:flex;flex-direction:column;align-items:center;justify-content:center}
+#boot.err div::before{content:none}
 </style>
+</head>
+<body>
+<noscript><div class="noscript">Celestia çalışmak için JavaScript ister. Tarayıcında JavaScript'i açıp sayfayı yenile.</div></noscript>
 
 <div id="app">
   <canvas id="stage" aria-label="Güneş sistemi 3B sahnesi"></canvas>
@@ -647,6 +667,17 @@ body.clean #cleanX{display:grid}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script>
+/* Açılış hatası ekranı: kütüphane yüklenemedi, WebGL yok ya da grafik bağlamı geri gelmedi. */
+window.__celestiaFail=function(title,detail){
+  var b=document.getElementById('boot');if(!b)return;
+  b.className='err';b.textContent='';
+  var d=document.createElement('div');d.textContent=title;b.appendChild(d);
+  var p=document.createElement('p');p.className='sub';p.textContent=detail;b.appendChild(p);
+  var r=document.createElement('button');r.textContent='Sayfayı yenile';r.onclick=function(){location.reload();};b.appendChild(r);
+};
+if(typeof THREE==='undefined')window.__celestiaFail('3B kütüphanesi yüklenemedi','three.js internetten alınamadı. Bağlantını kontrol edip sayfayı yenile.');
+</script>
 <script>
 (function(){
 'use strict';
@@ -986,7 +1017,15 @@ var J2000=Date.UTC(2000,0,1,12);
 
 /* ---------- sahne ---------- */
 var cv=$('stage');
-var renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+var renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});}
+catch(err){if(window.THREE)window.__celestiaFail('Bu tarayıcıda WebGL çalışmıyor','Donanım hızlandırmayı açmayı ya da başka bir tarayıcıyı denemeyi dene.');throw err;}
+var ctxTimer=0;
+cv.addEventListener('webglcontextlost',function(e){
+  e.preventDefault();clearTimeout(ctxTimer);toast('Grafik bağlamı kesildi, geri yükleniyor…',3000);
+  ctxTimer=setTimeout(function(){window.__celestiaFail('Grafik bağlamı geri gelmedi','Tarayıcı grafik belleğini geri vermedi. Sayfayı yenile.');},6000);
+},false);
+cv.addEventListener('webglcontextrestored',function(){clearTimeout(ctxTimer);toast('Grafikler geri yüklendi',2000);},false);
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.setClearColor(0x04050a,1);
 var scene=new THREE.Scene();
@@ -1210,7 +1249,7 @@ function earthMaterial(day,night,height,U){
   });
 }
 
-var BODIES=[],byId={};
+var BODIES=[],byId=Object.create(null);
 var tmpV=new THREE.Vector3();
 var sunBody=null;
 
@@ -2509,7 +2548,7 @@ function sane(o){
   if(!o||typeof o!=='object')return null;
   var nm=String(o.name||'Nova').slice(0,18);
   if(o.kind==='star'){var t=Math.round(+o.type);if(!(t>=0&&t<7))t=0;var m=+o.m>0?clamp(+o.m,1,100):null;return {kind:'star',id:/^s\d+$/.test(o.id)?o.id:null,name:nm,type:t,size:clamp(+o.size||1,.3,2),a:clamp(+o.a||200,80,520),L0:+o.L0||0,m:m};}
-  if(!CUSTOM_TYPES[o.type])return null;
+  if(!Object.prototype.hasOwnProperty.call(CUSTOM_TYPES,o.type))return null;
   return {id:/^c\d+$/.test(o.id)?o.id:null,name:nm,type:o.type,color:/^#[0-9a-fA-F]{6}$/.test(o.color)?o.color:'#888888',size:clamp(+o.size||1,.1,25),a:clamp(+o.a||1,.2,100),ring:!!o.ring,moons:clamp(Math.round(+o.moons)||0,0,3),seed:+o.seed||0,L0:+o.L0||0,tilt:clamp(+o.tilt||0,0,180),rotH:clamp(+o.rotH||20,4,200)};
 }
 function encodeState(){
@@ -2530,6 +2569,7 @@ function applyState(st){
   var t=Math.round(+st.s);setStar(t>=0&&t<5?t:0,true);starAge=clamp(+st.a||4.57,0,14);$('sAge').value=starAge;ageOut();
   gSpin=clamp(+st.g||1,0,20);$('gSpin').value=gSpin;$('oGSpin').textContent=fmtX(gSpin);
   if(st.m&&typeof st.m==='object')Object.keys(st.m).forEach(function(id){
+    if(id==='__proto__'||id==='constructor'||id==='prototype')return;
     var b=byId[id],v=st.m[id];if(!b||!Array.isArray(v)||v.length<4)return;
     b.mod={spin:clamp(+v[0]||0,-5,25),orbit:clamp(+v[1]||0,0,12),size:clamp(+v[2]||1,.3,3),tilt:clamp(+v[3]||0,0,180)};
     setTiltRot(b,b.mod.tilt);applySize(b);
@@ -2869,7 +2909,9 @@ bindSolarUi();
 Array.prototype.forEach.call(document.querySelectorAll('.dsb'),function(b){
   var cur=function(){return b.dataset.ds==='R'?REAL:(!REAL&&+b.dataset.ds===DS);};
   b.setAttribute('aria-checked',String(cur()));
-  b.addEventListener('click',function(){if(cur())return;try{localStorage.setItem('se_ds',b.dataset.ds);}catch(e){}toast('Mesafe ölçeği değişiyor…');setTimeout(function(){location.reload();},350);});
+  b.addEventListener('click',function(){if(cur())return;try{localStorage.setItem('se_ds',b.dataset.ds);}catch(e){}
+    try{sessionStorage.setItem('se_carry',JSON.stringify({c:encodeState(),d:simDays,f:focus&&focus.id,ev:!!(gravityOn||EVENTS.length)}));}catch(e){}
+    toast('Mesafe ölçeği değişiyor…');setTimeout(function(){location.reload();},350);});
 });
 /* ---------- Dünya hava durumu (simülasyon zamanına bağlı) ---------- */
 var wxT=0;
@@ -3449,7 +3491,7 @@ var CRAFT_DEFS=[
   desc:'Kızılötesinde gözlem yapan dev uzay teleskobu. Dünya\'dan 1,5 milyon km uzaktaki L2 noktasında, Dünya ile birlikte Güneş\'in çevresinde döner. Tenis kortu büyüklüğündeki güneş kalkanı aynayı −230 °C\'de tutar.',
   stats:[['Fırlatma','25 Aralık 2021'],['L2\'ye varış','24 Ocak 2022'],['Ayna','6,5 m, 18 altıgen'],['Dünya\'ya uzaklık','1,5 milyon km']]},
  {id:'iss',name:'Uluslararası Uzay İstasyonu',model:'iss',col:'#ffffff',special:'iss',start:'1998-11-20',tour:1,
-  desc:'1998\'den beri inşa edilen ve 2000\'den beri kesintisiz insan yaşayan istasyon. 400 km yükseklikte, 92 dakikada bir Dünya\'nın çevresini dolaşır; geceleri çıplak gözle görülebilir. Bu modelde boyutu büyütülmüştür.',
+  desc:'1998\'den beri inşa edilen ve 2000\'den beri kesintisiz insan yaşayan istasyon. 400 km yükseklikte, 92 dakikada bir Dünya\'nın çevresini dolaşır; geceleri çıplak gözle görülebilir. Bu modelde boyutu büyütülmüştür ve yörüngesi şematiktir: istasyonun o anki gerçek konumu gösterilmez.',
   stats:[['İlk modül','20 Kasım 1998'],['Yükseklik','~400 km'],['Tur süresi','92 dakika'],['Hız','27.600 km/sa']]}
 ];
 var CRAFT=[];
@@ -5580,6 +5622,19 @@ $('coachOk').addEventListener('click',function(){$('coach').hidden=true;markSeen
 $('coachLab').addEventListener('click',function(){$('coach').hidden=true;markSeen();showTab('lab');});
 
 /* ---------- başlat ---------- */
+/* Mesafe ölçeği değişince sayfa yeniden kurulur; paylaşma koduyla taşınabilen ayarları, tarihi ve odağı geri getirir. */
+function restoreCarry(){
+  var v=null;try{v=sessionStorage.getItem('se_carry');sessionStorage.removeItem('se_carry');}catch(_){}
+  if(!v)return;
+  try{
+    var o=JSON.parse(v);
+    applyState(JSON.parse(decodeURIComponent(escape(atob(o.c)))));
+    var dd=+o.d-simDays;if(isFinite(dd)&&Math.abs(dd)>1e-6){updateBodies(dd);simDays+=dd;}
+    if(o.f&&byId[o.f])focusBody(o.f);
+    updateDate();
+    toast(o.ev?'Ölçek değişti. Ayarların korundu; çarpışma ve yer çekimi sıfırlandı.':'Ölçek değişti. Ayarların korundu.',3500);
+  }catch(_){}
+}
 function init(){
   addSky();addBelt();
   DEFS.forEach(buildBody);
@@ -5595,6 +5650,8 @@ function init(){
   trans=null;target.set(0,0,0);dist=OVD();
   setStar(0);setSpeed();setPlayIcon();updateHint();updateDate();updateLive();fillOuts();$('oGSpin').textContent=fmtX(1);
   camera.position.set(0,0,0);
+  restoreCarry();
+  if(!AE)toast('Gök mekaniği kütüphanesi yüklenemedi: konumlar yaklaşık, gerçek tutulma tarihleri bulunamaz.',6000);
   if(!seen())$('coach').hidden=false;
   requestAnimationFrame(function(t){last=t;requestAnimationFrame(frame);});
   setTimeout(function(){$('boot').classList.add('gone');},250);
@@ -5603,3 +5660,5 @@ resize();
 requestAnimationFrame(function(){setTimeout(init,30);});
 })();
 </script>
+</body>
+</html>

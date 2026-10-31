@@ -32,7 +32,7 @@
 </tr>
 <tr>
 <td align="center"><b>Dünya:</b> rüzgârla sürüklenen gerçek bulut haritası, gece tarafında şehir ışıkları</td>
-<td align="center"><b>Jüpiter:</b> Cassini fotoğraflarından bantlar ve Büyük Kırmızı Leke</td>
+<td align="center"><b>Jüpiter:</b> bantlar ve Büyük Kırmızı Leke (NASA verisine dayanan doku)</td>
 </tr>
 <tr>
 <td><img src="docs/mars.jpg" alt="Mars"></td>
@@ -54,15 +54,16 @@
 
 ---
 
-## 🔭 Gerçek olan her şey
+## 🔭 Gerçek verilerle hesaplananlar
 
 | | |
 |---|---|
 | 🪐 **Konumlar** | Gezegenler ve Ay [astronomy-engine](https://github.com/cosinekitty/astronomy) ile hesaplanır. Ekrandaki yerleri bugünkü gerçek yerleridir. |
 | 🌑 **Tutulmalar** | Bir sonraki güneş veya ay tutulmasına tek dokunuşla gidilir. Ay'ın gölgesi Dünya'ya düşer, tutulan Ay kızıla döner. |
-| 🌍 **Dokular** | NASA görev verilerine dayanan fotoğraflar: Blue Marble, MESSENGER, Magellan radarı, Cassini, Voyager ve LRO. |
+| 🌍 **Dokular** | NASA görev verilerine (Blue Marble, MESSENGER, Magellan, Cassini, Voyager, LRO gibi) dayanan, Solar System Scope'un hazırladığı dokular. Bazıları, özellikle dış gezegenlerinki, sanatsal yorumdur; ham fotoğraf değildir. |
 | ✴️ **Gökyüzü** | 5.000+ parlak yıldız (Hipparcos / Yale), takımyıldızlar ve doğru yere yerleştirilmiş Samanyolu panoraması. Andromeda ve Macellan Bulutları da gerçek yerlerinde. |
-| 🛰️ **Uzay araçları** | ISS, James Webb, Voyager 1, New Horizons ve Parker Solar Probe. |
+| 🛰️ **Uzay araçları** | ISS, James Webb, Voyager 1, New Horizons ve Parker Solar Probe. Derin uzay araçları güzergâh noktaları arasında yaklaşık hesaplanır. ISS'in yörüngesi şematiktir (51,6° eğimli, 92,7 dakikalık daire); anlık gerçek konumu gösterilmez. |
+| 📏 **Ölçek** | Varsayılan görünümde mesafeler ve boyutlar okunabilsin diye sıkıştırılmıştır. Gerçek oranlar için Görünüm menüsünden "Gerçek ölçek"i seç. |
 | ⭐ **Diğer yıldızlar** | Proxima Centauri, Alfa Centauri, TRAPPIST-1 ve yedi gezegeni, 55 Cancri'nin lav dünyası, iki güneşli Kepler-16. |
 
 ## 🧪 Laboratuvar: "Ya olsaydı?"
@@ -111,7 +112,7 @@ Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm ins
 
 | Dal | İçerik |
 |---|---|
-| `main` | Gerçek fotoğraf dokuları |
+| `main` | NASA verisine dayanan gerçek dokular |
 | `eski-modeller` | Kodla üretilen (prosedürel) gezegen dokuları. Daha hafiftir; Dünya dışındaki gezegenlerde gerçek doku kullanmaz. |
 
 Geliştirme sırasında açılan diğer dallar (`gercek-olcek`, `laboratuvar-karadelik` gibi) geçmiş için saklanıyor.
@@ -124,7 +125,7 @@ Geliştirme sırasında açılan diğer dallar (`gercek-olcek`, `laboratuvar-kar
 cd test && npm install && npm test
 ```
 
-`npm test` senaryoları üç mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js`. Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
+`npm test` senaryoları dört mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın, Gerçek ölçek) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js` (Gerçek ölçek için `DS=R`). Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
 
 ## 🛠️ İçinde neler var
 
@@ -135,6 +136,7 @@ cd test && npm install && npm test
 
 ## 📜 Kaynaklar ve lisanslar
 
+- Kod: [MIT](LICENSE). Dokular bu lisansın dışındadır, aşağıdaki kaynaklarının lisansına tabidir.
 - Gezegen, Güneş, Ay, halka, bulut ve Samanyolu dokuları: [Solar System Scope](https://www.solarsystemscope.com/textures/), CC BY 4.0 (NASA verilerine dayanır)
 - Dünya gündüz ve gece dokuları: NASA Blue Marble ve Black Marble
 - Yıldızlar ve takımyıldızlar: [d3-celestial](https://github.com/ofrohn/d3-celestial) © Olaf Frohn, BSD (Hipparcos / Yale Parlak Yıldız Kataloğu)

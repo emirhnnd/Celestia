@@ -1,6 +1,6 @@
 {
   "name": "celestia-test",
   "private": true,
-  "scripts": { "test": "DS=1 node run.js senaryolar.js && DS=2.5 node run.js senaryolar.js && DS=6 node run.js senaryolar.js" },
+  "scripts": { "test": "DS=1 node run.js senaryolar.js && DS=2.5 node run.js senaryolar.js && DS=6 node run.js senaryolar.js && DS=R node run.js senaryolar.js" },
   "dependencies": { "three": "0.128.0", "astronomy-engine": "2.1.19", "playwright": "^1.48.0" }
 }

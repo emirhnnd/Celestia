@@ -316,6 +316,19 @@ body.surfmode #time{grid-area:auto}
   #surfExit{font-size:0!important}#surfExit::before{content:"Çık";font-size:12px}
   #surfLP[hidden]+#surfExit{grid-column:auto;justify-self:end;font-size:12px!important}#surfLP[hidden]+#surfExit::before{content:none}
 }
+#surfMin{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--dim);transition:transform .2s}
+#surfMin:hover{color:var(--fg);background:var(--hover)}
+#surfName{padding-right:36px!important}
+/* küçültülmüş: yalnızca yer adı ve aç düğmesi, tek satır */
+#surfBar.min{grid-template-columns:auto;padding:8px 8px 8px 14px;right:auto;width:max-content;max-width:calc(100% - var(--gx) - var(--gr))}
+#surfBar.min>:not(#surfName):not(#surfMin){display:none!important}
+#surfBar.min #surfName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;padding:6px 40px 6px 2px!important}
+#surfBar.min #surfMin{top:50%;margin-top:-16px;transform:rotate(180deg)}
+/* temiz ekran: tüm arayüz gizlenir, köşede yalnızca geri getirme düğmesi kalır */
+body.clean #top,body.clean #dock,body.clean #side,body.clean #tree,body.clean #mini,body.clean #labels,body.clean #hint,body.clean #surfBar,body.clean #skyLabels,body.clean #eclView,body.clean #toast{display:none!important}
+#cleanX{display:none;position:absolute;top:max(14px,env(safe-area-inset-top,0px));right:var(--gr);z-index:20;width:40px;height:40px;border-radius:50%;place-items:center;color:var(--fg);background:rgba(13,16,28,.5);border:1px solid var(--line);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);opacity:.35;transition:opacity .3s}
+body.clean #cleanX{display:grid}
+#cleanX:hover,#cleanX:focus-visible,body.clean.poke #cleanX{opacity:1}
 #trip{position:absolute;inset:0;z-index:6;pointer-events:none}
 #tripCv{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .8s}
 #tripCard{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--dockh,120px) + 8px);width:min(580px,calc(100% - 32px));padding:18px 20px;pointer-events:auto}
@@ -358,7 +371,7 @@ body.surfmode #time{grid-area:auto}
   #speed{font-size:12px;padding:0 22px 0 10px;max-width:120px}
   .now{font-size:0;width:34px;padding:0}
   .now::before{content:"\21BA";font-size:17px;font-weight:400}
-  #cam .seg{display:none}
+  #cam .seg button{padding:0 10px;font-size:12px;min-height:30px}
   #side{left:var(--gx);right:var(--gr);width:auto;top:auto;bottom:calc(var(--dockh,120px) + 2px);max-height:min(56%,calc(100% - var(--toph,64px) - var(--dockh,120px) - 8px));border-radius:18px}
   #sideMini{display:block}
   #side.collapsed .tabs{display:none}
@@ -373,6 +386,8 @@ body.surfmode #time{grid-area:auto}
   #toast{font-size:13px;padding:9px 13px}
   #toast .tb{font-size:12.5px}
 }
+/* serbest uçuş klavyeyle (W A S D) yapılır: dokunmatik telefonda gizli, dar pencereli bilgisayarda görünür */
+@media (max-width:760px) and (pointer:coarse){#cam .seg{display:none}}
 @media (max-width:380px){#date{font-size:12px}#speed{max-width:96px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}#hint{opacity:1}}
 </style>
@@ -387,6 +402,7 @@ body.surfmode #time{grid-area:auto}
       <button class="chip find" id="tFind" title="Ara ( / tuşu )" aria-label="Ara"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg><span>Cisim ya da deney ara</span><kbd>/</kbd></button>
       <button class="chip" id="tView" aria-haspopup="true" aria-expanded="false" aria-label="Görünüm ayarları"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h8M15 6h2M3 14h2M9 14h8"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg><span>Görünüm</span></button>
       <button class="chip sq" id="tSnd" aria-pressed="false" aria-label="Ses" title="Ses (aç / kapat)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path class="w" d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.8 2 6.6 0 8.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="chip sq" id="tClean" aria-label="Temiz ekran" title="Temiz ekran: arayüzü gizle (çıkmak için × ya da Esc)"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
       <button class="chip sq" id="tHelp" aria-label="Yardım" title="Yardım">?</button>
       <div class="panel" id="viewMenu" hidden role="menu">
         <div class="msep">Sahnede göster</div>
@@ -572,9 +588,10 @@ body.surfmode #time{grid-area:auto}
   <div id="fade"></div>
   <div id="sysPanel" hidden><div class="card" role="dialog" aria-label="Yıldız sistemleri"><h2>Yıldız sistemleri</h2><p class="note">Gerçek gezegen verileri: NASA Ötegezegen Arşivi. Uzaklıklar ve boyutlar görünürlük için sıkıştırılmıştır.</p><div id="sysList"></div><div class="btnrow"><button class="btn" id="sysClose">Kapat</button></div></div></div>
   <div id="skyLabels" hidden></div>
-  <div class="panel" id="surfBar" hidden><span id="surfName"></span><select id="surfCity" aria-label="Şehir" hidden></select><button class="btn" id="surfLP" hidden>Işık kirliliği: açık</button><button class="btn" id="surfExit">Yüzeyden çık</button></div>
+  <div class="panel" id="surfBar" hidden><span id="surfName"></span><button id="surfMin" aria-expanded="true" aria-label="Çubuğu küçült" title="Küçült / aç"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5"/></svg></button><select id="surfCity" aria-label="Şehir" hidden></select><button class="btn" id="surfLP" hidden>Işık kirliliği: açık</button><button class="btn" id="surfExit">Yüzeyden çık</button></div>
   <div id="trip" hidden><canvas id="tripCv"></canvas><div class="panel" id="tripCard"><div class="tag" id="tripN"></div><h3 id="tripT"></h3><p id="tripS"></p><div class="btnrow"><button class="btn" id="tripPrev">Geri</button><button class="btn pri" id="tripNext">İleri</button><button class="btn" id="tripClose">Kapat</button></div></div></div>
   <div id="toast" role="status"></div>
+  <button id="cleanX" aria-label="Arayüzü geri getir" title="Arayüzü geri getir (Esc)"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
   <div class="panel" id="eclView" hidden><canvas id="eclCv" width="150" height="150" aria-label="Dünya'dan Güneş görünümü"></canvas><div class="cap">Dünya'dan Güneş</div><div id="eclTxt"></div></div>
 
   <div id="dock">
@@ -1597,6 +1614,7 @@ cv.addEventListener('wheel',function(e){e.preventDefault();
 addEventListener('keydown',function(e){
   var tag=e.target.tagName;
   if(tag==='INPUT'&&e.target.type!=='range'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if(e.code==='Escape'&&document.body.classList.contains('clean')){setClean(false);return;}
   if(e.code==='Escape'){$('help').hidden=true;$('viewMenu').hidden=true;if(TRIP)endTrip();if(SURF)exitSurface(false);return;}
   if(e.code==='Space'&&tag!=='BUTTON'){e.preventDefault();togglePlay();return;}
   var m=/^Digit(\d)$/.exec(e.code);
@@ -1920,6 +1938,14 @@ $('tOver').addEventListener('click',function(){focusBody('sun',{dist:OVD()});the
 function rangeFill(r){var mn=+r.min||0,mx=+r.max||100,v=+r.value;r.style.setProperty('--p',((v-mn)/((mx-mn)||1)*100).toFixed(1)+'%');}
 document.addEventListener('input',function(e){if(e.target&&e.target.type==='range')rangeFill(e.target);});
 setInterval(function(){var sb=$('sideBody');if(!sb||!sb.offsetParent)return;sb.querySelectorAll('input[type=range]').forEach(function(r){if(r.offsetParent)rangeFill(r);});},400);
+/* temiz ekran */
+var cleanT=0;function setClean(on){document.body.classList.toggle('clean',on);$('viewMenu').hidden=true;if(on){document.body.classList.add('poke');clearTimeout(cleanT);cleanT=setTimeout(function(){document.body.classList.remove('poke');},2200);$('cleanX').focus({preventScroll:true});}resize();}
+$('tClean').addEventListener('click',function(e){e.stopPropagation();setClean(true);});
+$('cleanX').addEventListener('click',function(){setClean(false);});
+/* temiz ekranda dokunma/hareket geri getirme düğmesini kısa süre belirginleştirir */
+addEventListener('pointerdown',function(){if(!document.body.classList.contains('clean'))return;document.body.classList.add('poke');clearTimeout(cleanT);cleanT=setTimeout(function(){document.body.classList.remove('poke');},2200);},true);
+/* yüzey çubuğunu küçült / aç */
+$('surfMin').addEventListener('click',function(){var b=$('surfBar'),m=!b.classList.contains('min');b.classList.toggle('min',m);this.setAttribute('aria-expanded',String(!m));this.setAttribute('aria-label',m?'Çubuğu aç':'Çubuğu küçült');});
 var vm=$('viewMenu'),tv=$('tView');
 tv.addEventListener('click',function(e){e.stopPropagation();vm.hidden=!vm.hidden;tv.setAttribute('aria-expanded',!vm.hidden);});
 document.addEventListener('click',function(e){if(!vm.hidden&&!vm.contains(e.target)){vm.hidden=true;tv.setAttribute('aria-expanded','false');}});

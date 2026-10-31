@@ -1662,7 +1662,9 @@ function updateBodies(dDays){
     }
     var lim=.07*Math.max(1,Math.abs(b.mod.spin*gSpin));
     var dr=clamp(dDays*24/d.rotH*TAU*b.mod.spin*gSpin,-lim,lim);
-    b.spinRot+=dr;if(d.id==='earth'&&AE&&b.mod.spin===1&&gSpin===1&&SPEEDS[speedIdx].d<=1/24){var gs=earthSidereal(simDays);if(gs!=null)b.spinRot=gs;}
+    /* Dünya gerçek yıldız zamanıyla döner. Uzaydan bakarken hızlı zamanda dönüş görsel olarak sınırlanır (titreşmesin diye);
+       yüzeyden bakarken ise her hızda gerçek açıda tutulur, yoksa Güneş ve Ay gökyüzünde yanlış yerde doğup batıyordu */
+    b.spinRot+=dr;if(d.id==='earth'&&AE&&b.mod.spin===1&&gSpin===1&&(SPEEDS[speedIdx].d<=1/24||(SURF&&SURF.b===b))){var gs=earthSidereal(simDays);if(gs!=null)b.spinRot=gs;}
     b.mesh.rotation.y=b.spinRot+(d.parent?b.ang:0);
     if(b.mod.lock&&!d.parent)applyLock(b);
     if(b.clouds)b.clouds.rotation.y=b.def.id==='earth'?b.mesh.rotation.y:b.spinRot*1.06;

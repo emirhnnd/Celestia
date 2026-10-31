@@ -527,9 +527,14 @@ body.clean #cleanX{display:grid}
           <div class="frow"><label for="cAtm">Atmosfer</label><select id="cAtm"><option value="none">Yok</option><option value="thin">İnce</option><option value="earth">Dünya benzeri</option><option value="thick">Yoğun</option><option value="co2">Yoğun CO₂ (sera)</option><option value="h2">Hidrojen (gaz devi)</option></select></div>
           <div class="rrow"><label for="cWater">Su oranı</label><input type="range" id="cWater" min="0" max="1" step=".01" value="1"><output id="oWater"></output></div>
           <div class="rrow"><label for="cMag">Manyetik alan</label><input type="range" id="cMag" min="0" max="1" step=".01" value="1"><output id="oMag"></output></div>
+          <div class="rrow" id="co2Row"><label for="cCo2">CO₂ düzeyi</label><input type="range" id="cCo2" min="-3" max="3" step=".05" value="0"><output id="oCo2"></output></div>
+          <div class="rrow"><label for="cTect">Levha tektoniği</label><input type="range" id="cTect" min="0" max="1" step=".01" value="1"><output id="oTect"></output></div>
+          <div class="frow" id="milRow"><label for="cMil">Milankovitch</label><span class="chk"><input type="checkbox" id="cMil" checked><span>Yörünge döngüleri iklimi etkilesin</span></span></div>
           <div class="btnrow"><button class="btn" id="cReset">Yüzeyi eski haline getir</button></div>
           <p class="note">Bir kez eriyen yüzeyin eski kıtaları geri gelmez; soğuyunca kararmış bazalt kabuk kalır. Bu düğme yüzeyi başlangıçtaki haline döndürür.</p>
           <p class="note">Bu değerler yaşanabilirlik endeksini ve görünümü etkiler. Su oranının görsel etkisi şimdilik Dünya'da görünür.</p>
+          <p class="note">CO₂ her ikiye katlanmada yaklaşık 3 °C ısıtır. Levha tektoniği açıksa karbonat-silikat döngüsü CO₂'yi dengeler (gerçekte 100 bin–1 milyon yıl sürer; burada izlenebilsin diye yaklaşık 27 bin yıla sıkıştırıldı): "1000 yıl/sn" hızında CO₂'yi değiştirince termostatın tepki verdiğini görürsün. Tektonik kapalıysa sıcaklık olduğu gibi kalır. Eksen eğikliği mevsim farkını, Dünya'da ayrıca hava durumunu belirler.</p>
+          <p class="note">Milankovitch: Dünya'nın eğikliği (~41 bin yıl), yörünge basıklığı (~100 bin yıl) ve günberi yönü (~21 bin yıl) yavaşça değişir; "1000 yıl/sn" hızında buzul çağı benzeri dalgalanmayı görürsün. Basitleştirilmiş bir modeldir, gerçek bir tahmin değildir.</p>
         </section>
 
         <section class="lsec" id="lsStar">
@@ -2164,7 +2169,9 @@ function syncLab(){
   $('lockRow').hidden=!(b.hab&&!b.parent);$('sLock').checked=!!b.mod.lock;
   syncMoonUI();fillTargets();if(typeof bmSync==='function')bmSync();$('lGo').disabled=!((b.grav||b.def.star)&&!b.parent&&!isGone(b));
   var hb=b.hab;$('climSec').hidden=!hb;
-  if(hb){$('climName').textContent=b.def.name;$('cAtm').value=hb.atm;$('cWater').value=hb.water;$('oWater').textContent=Math.round(hb.water*100)+'%';$('cMag').value=hb.mag;$('oMag').textContent=Math.round(hb.mag*100)+'%';}
+  if(hb){$('climName').textContent=b.def.name;$('cAtm').value=hb.atm;$('cWater').value=hb.water;$('oWater').textContent=Math.round(hb.water*100)+'%';$('cMag').value=hb.mag;$('oMag').textContent=Math.round(hb.mag*100)+'%';
+    $('cCo2').value=hb.co2||0;$('oCo2').textContent='×'+co2Txt(hb.co2||0);$('cTect').value=hb.tect||0;$('oTect').textContent=Math.round((hb.tect||0)*100)+'%';
+    $('co2Row').hidden=!(GHD[hb.atm]>0);$('milRow').hidden=b.def.id!=='earth';$('cMil').checked=hb.mil!==false;}
   labCtx();
 }
 /* laboratuvar bağlamı: seçili cismin türüne göre yalnızca anlamlı ayarlar görünür (kara deliğin "eksen eğikliği", gezegenin "süpernova"sı gibi
@@ -2631,11 +2638,48 @@ var HAB_CUSTOM={
   lava:{A:.1,atm:'co2',water:0,mag:.3,surf:1},
   desert:{A:.3,atm:'thin',water:.1,mag:.5,clim:1,surf:1}
 };
+/* levha tektoniği / iç etkinlik (0–1): karbonat-silikat döngüsünü (CO₂'yi dengeleyen termostat) ve uzun vadeli yaşanabilirliği besler.
+   Dünya 1; Venüs ve Mars'ta tek parça kabuk (stagnant lid) nedeniyle düşük; Europa ve Io'da gelgit ısınması var; değerler kabaca bir sınıflandırmadır */
+var TECT={mercury:0,venus:.15,earth:1,moon:0,mars:.15,pluto:.1,io:.8,europa:.4,ganymede:.2,callisto:0,titan:.2};
+var TECT_CUSTOM={earth:1,ocean:.8,rocky:.5,gas:0,ice:.3,lava:.8,desert:.4};
 function makeHab(def){
   if(def.star||def.comet||def.craft||def.id==='sun')return null;
-  if(def.habType){var o=Object.assign({},HAB_CUSTOM[def.habType]);o.g=o.gas?.6+def.hsize*.2:clamp(Math.pow(def.hsize,.9),.05,5);return o;}
-  if(HAB[def.id])return Object.assign({},HAB[def.id]);
-  return {A:.15,atm:'none',water:0,mag:0,g:.15,surf:1};
+  if(def.habType){var o=Object.assign({},HAB_CUSTOM[def.habType]);o.g=o.gas?.6+def.hsize*.2:clamp(Math.pow(def.hsize,.9),.05,5);o.tect=TECT_CUSTOM[def.habType]||0;o.co2=0;o.cs=0;return o;}
+  if(HAB[def.id]){var h=Object.assign({},HAB[def.id]);h.tect=TECT[def.id]||0;h.co2=0;h.cs=0;return h;}
+  return {A:.15,atm:'none',water:0,mag:0,g:.15,surf:1,tect:0,co2:0,cs:0};
+}
+/* Milankovitch (yalnızca Dünya, basitleştirilmiş): eğiklik ~41 bin yıl (22,1–24,5°), yörünge basıklığı ~100 bin yıl (0,005–0,058),
+   günberi enlemi ~21 bin yılda bir tur (presesyon). Etki, 65°K yaz ışınımındaki değişim üzerinden hesaplanır ve buzul örtülerinin
+   yavaş tepkisi nedeniyle gecikmeli uygulanır. Gerçek Laskar çözümü değil; tek sinüslü, bugüne (J2000) göre sıfırlanmış bir model. */
+var MIL_W0=283*D2R;
+function milOrbit(t){
+  var eps=23.3+1.2*Math.cos(TAU*(t+9500)/41000);
+  var ecc=.0307+.0273*Math.cos(TAU*t/100000+2.1);
+  var w=MIL_W0+TAU*t/21000;
+  return {eps:eps,ecc:ecc,w:w};
+}
+function milTarget(t){
+  var a=milOrbit(t),o=milOrbit(0);
+  var dQ=8*(a.eps-o.eps)+420*2*(a.ecc*Math.sin(a.w)-o.ecc*Math.sin(o.w));
+  return {dQ:dQ,de:a.eps-o.eps};
+}
+/* ısı dengesi: 1 W/m² ≈ 0,05 K (buz-albedo geri beslemesi ayrıca çalışır) */
+function milState(b){
+  var h=b.hab;if(!h||b.def.id!=='earth'||h.mil===false)return {dT:0,dQ:0,de:0};
+  var t=simDays/365.25,m=milTarget(t),tgt=.05*m.dQ;
+  var last=h.milD;
+  if(h.milT==null||last==null)h.milT=tgt;
+  else{var dy=Math.abs(simDays-last)/365.25;h.milT+=(tgt-h.milT)*(1-Math.exp(-dy/6000));}
+  h.milD=simDays;
+  return {dT:h.milT,dQ:m.dQ,de:m.de};
+}
+/* mevsim şiddeti: Güneş'in gökyüzündeki en büyük sapması δ = asin(sin ε · sin λ) olduğundan genlik sin(eğiklik) ile orantılıdır;
+   Dünya'nın 23,44° değeri 1 sayılır. Gelgit kilidinde mevsim yoktur. */
+var SIN_E0=Math.sin(23.44*D2R);
+function seasonK(b){
+  if(!b||!b.mod||b.mod.lock)return 0;
+  var t=b.mod.tilt+(b.def.id==='earth'&&b.hab&&b.hab.mil!==false?milTarget(simDays/365.25).de:0);
+  return clamp(Math.abs(Math.sin(t*D2R))/SIN_E0,0,2.4);
 }
 function fluxAt(p){
   var S=0;
@@ -2648,11 +2692,23 @@ function fluxAt(p){
   return S;
 }
 var GH={none:0,thin:6,earth:33,thick:20,co2:510,h2:0};
+/* CO₂ ve termostat değişikliklerinin atmosfer türüne göre ne kadar yansıdığı: Venüs gibi doymuş CO₂ atmosferlerinde küçük, atmosfer yoksa sıfır */
+var GHD={none:0,thin:.3,earth:1,thick:1,co2:.15,h2:0};
 function computeClimate(b){
   var h=b.hab;if(!h)return;
   var host=b.parent||b,S=fluxAt(host.pos),A=h.A;
   var Teq=function(a){return 255*Math.pow(S,.25)*Math.pow((1-a)/.7,.25);};
-  var gh=GH[h.atm]||0,T0=Teq(A),Ts=T0+gh;
+  var dn=GHD[h.atm]||0,prev=b.cl;
+  /* karbonat-silikat termostatı (Walker geri beslemesi): sıcak ve yağmurlu gezegende kayaç aşınması CO₂'yi çeker, soğuk ve donmuş gezegende
+     volkanlar CO₂'yi biriktirir. Gerçekte 100 bin–1 milyon yıl sürer; izlenebilsin diye burada ~27 bin yıla sıkıştırılmıştır (dsd/1e7 gün) ve levha tektoniğiyle orantılı işler.
+     Sıcaklık 286–292 K ölü bandındayken karışmaz, bu yüzden bugünkü Dünya değişmez. */
+  if(h.clim&&dn>.5&&h.water>.2&&(h.tect||0)>0&&prev&&prev.TsS!=null&&!isNaN(prev.TsS)&&prev.TsS>200&&prev.TsS<340){
+    var dsd=simDays-prev.sd;
+    if(dsd>0){var er=289-prev.TsS;er=er>3?er-3:(er<-3?er+3:0);h.cs=clamp((h.cs||0)+er*h.tect*Math.min(dsd/1e7,.25),-20,45);}
+  }
+  var mil=milState(b);
+  /* sera: CO₂ her ikiye katlanmada ~3 K (logaritmik), termostat ve Milankovitch aynı kanaldan eklenir; atmosfer yoksa etkisi yok */
+  var gh=(GH[h.atm]||0)+dn*(3*(h.co2||0)+(h.cs||0)+mil.dT),T0=Teq(A),Ts=T0+gh;
   if(h.clim){
     if(Ts<268){A=A+(.75-A)*ss(268,238,Ts)*(.4+.6*h.water);T0=Teq(A);Ts=T0+gh;}
     if(h.atm==='earth'&&h.water>.2)Ts+=ss(262,305,T0)*450*h.water;
@@ -2668,7 +2724,10 @@ function computeClimate(b){
   var ice=h.clim?ss(272,245,Ts):((h.surf&&(h.water>0||h.atm!=='none'))?ss(h.base-15,h.base-70,Ts):0);
   var scorch=h.surf?ss(380,800,Ts):0,glow=ss(750,1700,Ts),K=S<1?Math.max(.42,Math.pow(S,.15)):Math.min(2.4,Math.pow(S,.28));
   h.melt=Math.max(h.melt||0,ss(.35,.6,glow));
-  b.cl={S:S,Ts:Ts,TsS:Ts,sd:simDays,rt:now,ice:ice,scorch:scorch,glow:glow,K:K};
+  /* mevsim farkı (yaz-kış sıcaklık yarı genliği): eğiklikle artar; su ve kalın atmosfer ısıyı depolayıp dengeler, ince atmosferde sapma büyür */
+  var atmF=({none:3,thin:1.7,earth:1,thick:.6,co2:.3,h2:.2})[h.atm];if(atmF==null)atmF=1;
+  var sw=clamp(13*seasonK(b)*atmF*(1.25-.55*h.water),0,60);
+  b.cl={S:S,Ts:Ts,TsS:Ts,sd:simDays,rt:now,ice:ice,scorch:scorch,glow:glow,K:K,sw:sw,mil:mil.dT,dQ:mil.dQ};
   var st=glow>.5?'molten':((h.surf&&Ts>873)?'crust':(h.water>.05&&Ts>373&&h.surf)?'boil':(ice>.85&&h.clim?'frozen':(ice>.85?'frost':'ok')));
   if(h.st&&st!==h.st&&!isEngulfed(b)&&(b===focus||b.def.id==='earth')){
     var nm=b.def.name;
@@ -2696,12 +2755,19 @@ function habFactors(b){
   f.M=.5+.5*h.mag;
   f.UV=Math.min(1,1/(1+.4*(T.uv-1)*(1-.6*h.mag)));
   f.L=Math.sqrt(T.life)*(sunType===0?ss(.3,1.5,starAge):1);
+  /* mevsim uçları: yaz-kış farkı ±18 °C'ye kadar sorun değil, ötesinde yaşam için gittikçe zorlaşır (Dünya ≈ ±11 °C) */
+  f.S=Math.exp(-Math.pow(Math.max(0,(c.sw||0)-18)/22,2));
+  /* gün uzunluğu: 24 saat civarı en elverişli; çok kısa günlerde şiddetli rüzgârlar, çok uzun günlerde gündüz-gece ısı farkı büyür (8 kat sapmada ≈ %61) */
+  f.P=Math.abs(b.def.rotH||24)/Math.max(Math.abs(b.mod.spin),.02);
+  f.R=b.mod.lock?1:Math.exp(-.5*Math.pow(Math.log(f.P/24)/Math.log(8),2));
+  /* levha tektoniği: karbonat-silikat döngüsü ve besin geri dönüşümü sayesinde uzun vadeli elverişlilik; katı yüzeyi olan cisimler için */
+  f.Tc=h.surf?.75+.25*(h.tect||0):1;
   return f;
 }
 function isEngulfed(b){return !!(b.sysHide||b.engulfed||(b.parent&&b.parent.engulfed)||b.destroyed||(b.parent&&b.parent.destroyed));}
 function habScore(b){
   if(!b.hab||!b.cl)return 0;if(isEngulfed(b))return 0;
-  var f=habFactors(b),p=100*f.T*f.A*Math.pow(f.W,.7)*f.G*Math.pow(f.M,.6)*f.UV*f.L*.96;
+  var f=habFactors(b),p=100*f.T*f.A*Math.pow(f.W,.7)*f.G*Math.pow(f.M,.6)*f.UV*f.L*f.S*f.R*f.Tc*.96;
   if(b.hab.gas)p=Math.min(p,.5);
   return p;
 }
@@ -2726,6 +2792,18 @@ function renderHab(b){
     ['Yıldız ışınımı',T.uvName,f.UV],
     ['Yıldız evresi',stage,f.L]
   ];
+  if(h.surf&&!h.gas){
+    var fx=function(v){return (v>=10?Math.round(v):v.toFixed(v>=1?1:2)).toString().replace('.',',');};
+    var sg=function(v){return (v>=0?'+':'−')+Math.abs(v).toFixed(1).replace('.',',')+' °C';};
+    if(!b.mod.lock)rows.push(['Mevsimler','±'+Math.round(c.sw)+' °C · eğiklik '+Math.round(b.mod.tilt)+'°',f.S]);
+    rows.push(['Levha tektoniği',Math.round((h.tect||0)*100)+'%',f.Tc]);
+    if(!b.mod.lock)rows.push(['Gün uzunluğu',f.P<48?fx(f.P)+' saat':fx(f.P/24)+' gün',f.R]);
+    if((GHD[h.atm]||0)>0){
+      if(Math.abs(h.co2||0)>.02)rows.push(['CO₂ düzeyi','×'+fx(Math.pow(2,h.co2)),.8]);
+      if(Math.abs(h.cs||0)>=.5)rows.push(['CO₂ termostatı',sg(h.cs),.8]);
+    }
+    if(b.def.id==='earth'&&h.mil!==false)rows.push(['Yörünge döngüleri',sg(c.mil||0),Math.abs(c.mil||0)<2?1:(Math.abs(c.mil||0)<3.5?.5:.2)]);
+  }
   if(b.mod.lock&&!b.parent){var lt=lockTemps(b);if(lt){rows.push(['Gündüz tarafı',Math.round(lt.d-273.15)+' °C',Math.exp(-Math.pow((lt.d-288)/35,2))]);rows.push(['Gece tarafı',Math.round(lt.n-273.15)+' °C',Math.exp(-Math.pow((lt.n-288)/35,2))]);}}
   $('habRows').innerHTML=rows.map(function(r){return '<div class="hrow"><i class="q '+q(r[2])+'"></i><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>';}).join('');
 }
@@ -2742,6 +2820,12 @@ $('goSol').addEventListener('click',function(){gotoEclipse(false);});
 $('goLun').addEventListener('click',function(){gotoEclipse(true);});
 $('cReset').addEventListener('click',function(){var h=focus.hab;if(!h)return;h.melt=0;h.st=null;toast(focus.def.name+': yüzey sıfırlandı');});
 $('cMag').addEventListener('input',function(){if(!focus.hab)return;focus.hab.mag=+this.value;$('oMag').textContent=Math.round(this.value*100)+'%';});
+function co2Txt(v){var x=Math.pow(2,v);return (x>=10?Math.round(x):x.toFixed(x>=1?1:2)).toString().replace('.',',');}
+$('cCo2').addEventListener('input',function(){if(!focus.hab)return;focus.hab.co2=+this.value;$('oCo2').textContent='×'+co2Txt(+this.value);});
+$('cTect').addEventListener('input',function(){if(!focus.hab)return;focus.hab.tect=+this.value;$('oTect').textContent=Math.round(this.value*100)+'%';});
+$('cMil').addEventListener('change',function(){if(!focus.hab)return;focus.hab.mil=this.checked;focus.hab.milT=null;});
+/* atmosfer değişince CO₂ kaydırıcısının görünürlüğü (atmosferi olmayan cisimde anlamsız) */
+$('cAtm').addEventListener('change',function(){if(focus.hab)$('co2Row').hidden=!(GHD[focus.hab.atm]>0);});
 
 /* ---------- Güneş aktivitesi: protuberans, parlama, CME, kutup ışığı, meteor ---------- */
 var ACT_K=[1,1.8,.7,.6,0,0,0,0],actLevel=1,auroraBoost=0,showPart=false;
@@ -2960,7 +3044,9 @@ function wxWind(lat){var al=Math.abs(lat);return -8*Math.exp(-Math.pow(lat/18,2)
 function wxState(){
   var t=wxT/WX.P,k=Math.floor(t),f=t-k,tb=t+.5,kb=Math.floor(tb),fb=tb-kb;
   var dt=new Date(J2000+simDays*86400000),doy=(dt-Date.UTC(dt.getUTCFullYear(),0,1))/86400000;
-  return {fA:f,fB:fb,sA:((k%53)+53)%53,sB:(((kb+17)%53)+53)%53,wA:1-Math.abs(2*f-1),wB:1-Math.abs(2*fb-1),s:Math.cos(TAU*(doy-172)/365.25),doy:doy};
+  /* mevsim katsayısı: Güneş'in en büyük sapması eğiklikle orantılı (seasonK); eğiklik 0'da mevsim yok, 90°'de Dünya'dakinin ~2,4 katı */
+  var ee=byId.earth,sk=ee?seasonK(ee):1;
+  return {fA:f,fB:fb,sA:((k%53)+53)%53,sB:(((kb+17)%53)+53)%53,wA:1-Math.abs(2*f-1),wB:1-Math.abs(2*fb-1),s:sk*Math.cos(TAU*(doy-172)/365.25),sk:sk,doy:doy};
 }
 function wxLayer(px,py,pz,w,f,sd){
   var a=w*D2R*WX.P*(f-.5),ca=Math.cos(a),sa=Math.sin(a);
@@ -3113,7 +3199,8 @@ function renderWeather(b){
   box.hidden=!ok;if(!ok)return;
   var st=wxState(),m=st.doy/365.25*12-.5,m0=Math.floor(m),fm=m-m0,dT=b.cl?(b.cl.Ts-288):0;
   var html=WXCITIES.map(function(c){
-    var r=wxAt(c[1],c[2],st),a=c[3][((m0%12)+12)%12],z=c[3][((m0+1)%12+12)%12],T=a+(z-a)*fm+r.d*14-Math.max(0,r.x-.5)*6+dT;
+    var r=wxAt(c[1],c[2],st),a=c[3][((m0%12)+12)%12],z=c[3][((m0+1)%12+12)%12],mm=c[3].reduce(function(s,v){return s+v;},0)/12,
+      T=mm+(a+(z-a)*fm-mm)*st.sk+r.d*14-Math.max(0,r.x-.5)*6+dT;
     var L=wxLabel(r.x,T);
     return '<div class="hrow"><i class="q '+L[1]+'"></i><span>'+esc(c[0])+'</span><b>'+esc(L[0])+' · '+Math.round(T)+' °C</b></div>';
   }).join('')+stormRows(st);var wr=$('wxRows');if(wr.__h!==html){wr.__h=html;wr.innerHTML=html;}

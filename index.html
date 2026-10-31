@@ -1548,7 +1548,7 @@ function realXY(b){if(b.au&&realOk(b)&&b.mod.orbit===1&&!(gravityOn&&b.grav))ret
 function updateLive(){
   var el=$('live'),d=focus.def;
   renderHab(focus);renderWeather(focus);renderPlanetWx(focus);$('ecl').hidden=!(focus.def.id==='earth'||focus.def.id==='moon');
-  $('craftTour').hidden=!d.craft;$('goSurf').hidden=!!(d.star||d.craft||d.comet||isGone(focus));$('goSurf').textContent=(focus.hab&&focus.hab.gas)?'Bulut tepesinden bak':'Yüzeyden bak';
+  $('craftTour').hidden=!d.craft;if(d.craft&&focus.craftC){var tdt=new Date(J2000+(focus.craftC.t0)*864e5);$('craftTour').textContent='Görevi fırlatıştan izle · tarih '+new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'short',year:'numeric'}).format(tdt)+' olur';}$('goSurf').hidden=!!(d.star||d.craft||d.comet||isGone(focus));$('goSurf').textContent=(focus.hab&&focus.hab.gas)?'Bulut tepesinden bak':'Yüzeyden bak';
   if((d.parent&&!d.craft)||d.star){el.hidden=true;return;}
   el.hidden=false;
   var k1=$('l1k'),v1=$('l1v'),k2=$('l2k'),v2=$('l2v');
@@ -3563,7 +3563,7 @@ function startTour(){
   updateBodies(j);simDays+=j;wxT=simDays;BODIES.forEach(function(x){x.tday=simDays;});updateBodies(0);
   speedIdx=c.tour;speed.value=c.tour;setSpeed();playing=true;setPlayIcon();reverse=false;$('rev').setAttribute('aria-pressed','false');
   focusBody(b.def.id,{dist:c.special==='iss'?2:(c.special==='l2'?12:60*DS)});
-  toast(b.def.name+' görev turu başladı · hız '+SPEEDS[c.tour].t,5000);
+  toast(b.def.name+' görev turu: tarih fırlatışa ('+new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(new Date(J2000+c.t0*864e5))+') alındı, hız '+SPEEDS[c.tour].t+'. Bugüne dönmek için “Şimdiye dön”.',7000);
 }
 $('craftTour').addEventListener('click',startTour);
 

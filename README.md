@@ -64,6 +64,7 @@
 | ✴️ **Gökyüzü** | 5.000+ parlak yıldız (Hipparcos / Yale), takımyıldızlar ve doğru yere yerleştirilmiş Samanyolu panoraması. Andromeda ve Macellan Bulutları da gerçek yerlerinde. |
 | 🛰️ **Uzay araçları** | ISS, James Webb, Voyager 1, New Horizons ve Parker Solar Probe. Derin uzay araçları güzergâh noktaları arasında yaklaşık hesaplanır. ISS'in yörüngesi şematiktir (51,6° eğimli, 92,7 dakikalık daire); anlık gerçek konumu gösterilmez. |
 | 📏 **Ölçek** | Varsayılan görünümde mesafeler ve boyutlar okunabilsin diye sıkıştırılmıştır. Gerçek oranlar için Görünüm menüsünden "Gerçek ölçek"i seç. |
+| ☄️ **Küçük cisimler** | Halley ve 67P/Çuryumov–Gerasimenko kuyruklu yıldızları kendi yörüngelerinde gezer; günberiye yaklaşınca iyon ve toz kuyruğu çıkar, günötede kuyruk kaybolur. Apophis ve Bennu asteroitleri, asteroit kuşakları ve Plüton da var. Apophis'in 13 Nisan 2029'da Dünya'ya yaklaşan geçişi takvimde işaretlidir. Meteor yağmurları (Perseidler gibi) kaynak cisimleriyle bağlantılı gösterilir. |
 | ⭐ **Diğer yıldızlar** | Proxima Centauri, Alfa Centauri, TRAPPIST-1 ve yedi gezegeni, 55 Cancri'nin lav dünyası, iki güneşli Kepler-16. |
 
 ## 🧪 Laboratuvar: "Ya olsaydı?"
@@ -103,7 +104,9 @@ cd Celestia
 python3 -m http.server 8000
 ```
 
-Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok; her şey tek bir `index.html` dosyasında.
+Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok; uygulamanın kodu tek bir `index.html` dosyasında, dokular `tex/` klasöründe.
+
+> three.js ve astronomy-engine CDN'den, Onest yazı tipi Google Fonts'tan yüklenir; bu yüzden ilk açılışta internet bağlantısı gerekir. Kütüphaneler ya da WebGL yüklenemezse uygulama boş ekran yerine bir hata ekranı gösterir.
 
 > Dosyayı doğrudan çift tıklayıp `file://` ile açarsan tarayıcı güvenliği dokuların yüklenmesini engeller. Uygulama yine çalışır, ama kodla üretilen yedek dokulara geçer.
 
@@ -120,13 +123,21 @@ Geliştirme sırasında açılan diğer dallar (`gercek-olcek`, `laboratuvar-kar
 
 ## 🧪 Test
 
-`test/` klasöründe, uygulamayı başsız bir tarayıcıda açıp birleşmeleri, çarpışmaları, geri sarmayı, sıfırlamayı, paylaşma kodunu, meteor yağmurunu ve fırtına takibini gerçek zamanlı deneyen senaryolar var. Değişiklikten sonra çalıştır:
+`test/` klasöründe, uygulamayı başsız bir tarayıcıda açıp birleşmeleri, çarpışmaları, geri sarmayı, sıfırlamayı, paylaşma kodunu, meteor yağmurunu, fırtına takibini ve iklim modelini (eğiklik, CO₂, tektonik termostat) gerçek zamanlı deneyen senaryolar var. Değişiklikten sonra çalıştır:
 
 ```bash
 cd test && npm install && npm test
 ```
 
-`npm test` senaryoları dört mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın, Gerçek ölçek) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js` (Gerçek ölçek için `DS=R`). Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir.
+`npm test` senaryoları dört mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın, Gerçek ölçek) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js` (Gerçek ölçek için `DS=R`). Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir. Playwright'ın indirdiği tarayıcı yerine kendi Chromium'unu kullanmak için `CHROMIUM=/yol/chromium` ver.
+
+Ayrı bir de savunma testi var (`npm test` bunu çalıştırmaz):
+
+```bash
+cd test && node savunma.js
+```
+
+Sayfa kabuğunu (doctype, meta etiketleri), paylaşma kodunun güvenliğini (`__proto__` gibi sahte anahtarlar), ölçek değişince durumun korunmasını, three.js ya da WebGL yokken hata ekranını ve kuyruklu yıldız kuyruklarını denetler.
 
 ## 🛠️ İçinde neler var
 
@@ -134,6 +145,7 @@ cd test && npm install && npm test
 - **astronomy-engine 2.1.19:** gök mekaniği hesapları
 - **Elle yazılmış GLSL gölgelendiriciler:** Güneş granülasyonu, hareketli bulutlar ve kasırgalar, lav, analitik kraterler, halka ve tutulma gölgeleri, ışın izlemeli kara delik (kütleçekimsel mercek, Doppler ve kütleçekimsel kırmızıya kayma)
 - **Leapfrog integratörü:** gezegenler arası kütleçekim ve çarpışma fiziği
+- **Onest:** arayüz yazı tipi (Google Fonts)
 
 ## 📜 Kaynaklar ve lisanslar
 

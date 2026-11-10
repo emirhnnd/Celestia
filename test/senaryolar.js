@@ -93,6 +93,14 @@ module.exports=async(page,E,shot)=>{
   await T('yildiz-kepler',async()=>{await fresh(page);await E("addStar({name:'Y',type:0,size:1,a:171,m:1},false)");await page.waitForTimeout(1200);
     return await E("(function(){var b=focus,a=invOrbit(b.def.r);return [+(starP(b)/365.25).toFixed(3),+(Math.pow(a,1.5)/Math.SQRT2).toFixed(3),+a.toFixed(2),b.def.stats.map(function(x){return x[1]}).join('|')]})()");},
     r=>Math.abs(r[0]-r[1])<r[1]*.01&&r[2]>1&&/ AU/.test(r[3])&&!/birim/.test(r[3]));
+  /* hazır deneyler: arama kutusunda listelenir; "sera etkisi" CO₂'yi 8 katına çıkarıp sıcaklık grafiğini açar, sıcaklık yükselir;
+     "Dünya, Mars'ın yerinde" 1,5 AU'ya Dünya benzeri gezegen koyar (donar) */
+  await T('hazir-deney',async()=>{await fresh(page);await E("openCmd()");await page.waitForTimeout(300);
+    const g=await E("document.querySelector('#cmdList .cmdg').textContent");await E("closeCmd();PRESETS[1][4]()");await page.waitForTimeout(6000);
+    const a=await E("(function(){var v=GR.v.temp||[];return [focus.def.id,focus.hab.co2,GR.open,GR.key,v.length,v[v.length-1]-v[0]]})()");
+    await fresh(page);await E("PRESETS[2][4]()");await page.waitForTimeout(3500);
+    return [g,a,await E("[focus.def.name,focus.def.a,customs.length,focus.cl.Ts-273.15<-20]")];},
+    r=>{const a=P(r[1]),b=P(r[2]);return r[0]==='Hazır deneyler'&&a[0]==='earth'&&a[1]===3&&a[2]===true&&a[3]==='temp'&&a[4]>=3&&a[5]>1&&same(b,['Dünya 2',1.5,1,true]);});
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

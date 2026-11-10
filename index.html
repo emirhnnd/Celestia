@@ -1909,6 +1909,24 @@ var ACTIONS=[
  ['❓','Yardım','Kontroller ve ipuçları','yardim nasil',function(){clk('tHelp');}]
 ];
 var POPULAR=[0,1,10,11,7,8,2,12];
+/* ---------- hazır deneyler ----------
+   Tek tıkla kurulan senaryolar: araçları açmakla yetinmez, deneyi kurar, ilgili cisme odaklanır ve sonucu izlemek için grafiği açar.
+   Her biri kullanıcının elle yapabileceği adımları aynı düğme ve kaydırıcılar üzerinden uygular (geri alma kaydı ve sınırlar aynen geçerli). */
+function slideTo(id,v){var e=$(id);if(!e)return;e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));}
+function watchGraph(key,msg){openSide();showTab('info');GR.key=key;grSetOpen(true);if(!playing)clk('play');if(msg)toast(msg,3200);}
+function alive(id){var b=byId[id];return b&&!isGone(b)&&!b.engulfed?b:null;}
+function needBodies(ids){var miss=ids.filter(function(i){return !alive(i);});if(miss.length){toast('Bu deney için sistemi sıfırlaman gerek.',3200);return false;}return true;}
+var PRESETS=[
+ ['🌖','Ay nasıl oluştu?','Mars büyüklüğünde bir gezegen Dünya\'ya çarpar; enkazın yörüngeye savrulmasını izle','ay olusumu theia dev carpisma hazir deney',function(){
+    if(!needBodies(['mars','earth']))return;focusBody('mars');setTimeout(function(){launchPair(byId.mars,byId.earth);watchGraph('dist','Mars Dünya\'ya gidiyor: çarpışmayı izle');},250);}],
+ ['🔥','Kontrolden çıkan sera etkisi','Dünya\'nın CO₂\'si 8 katına çıkar; sıcaklık eğrisinin tırmanışını izle','sera etkisi co2 karbondioksit kuresel isinma iklim hazir deney',function(){
+    if(!needBodies(['earth']))return;focusBody('earth');setTimeout(function(){slideTo('cCo2',3);watchGraph('temp','CO₂ ×8: sıcaklık eğrisini izle');},250);}],
+ ['❄️','Dünya, Mars\'ın yerinde olsaydı','Mars\'ın uzaklığına Dünya benzeri bir gezegen koyar; yaşanabilir kalır mı?','dunya mars uzaklik yasanabilir kusak ikinci dunya hazir deney',function(){
+    var n0=customs.length;openSide();showTab('lab');showLabTab('ekle');addPick('p:earth');$('nName').value='Dünya 2';$('nName').dataset.user='1';slideTo('nSize',1);slideTo('nDist',1.5);clk('nAdd');
+    setTimeout(function(){if(customs.length>n0)watchGraph('temp','1,5 AU\'da bir Dünya: sıcaklığı izle');},400);}],
+ ['🌗','Ay çok yaklaşırsa','Ay\'ı Roche sınırının içine indirir; gelgit kuvveti onu parçalayıp halkaya çevirir','ay roche siniri gelgit parcalanma halka hazir deney',function(){
+    if(!needBodies(['earth','moon']))return;focusBody('moon');setTimeout(function(){labGo('moonSec');setTimeout(function(){slideTo('sMoonD',.02);if(!playing)clk('play');},120);},250);}]
+];
 var CMD={items:[],sel:0};
 function openCmd(){$('cmdk').hidden=false;$('cmdIn').value='';renderCmd('');setTimeout(function(){$('cmdIn').focus();},20);}
 function closeCmd(){$('cmdk').hidden=true;}
@@ -1917,8 +1935,10 @@ function renderCmd(q){
   var t=trn(q).trim(),tk=t?t.split(/\s+/):[],out=[],html='';
   function hit(str){str=trn(str);return tk.every(function(w){return str.indexOf(w)>=0;});}
   var acts=t?ACTIONS.filter(function(a){return hit(a[1]+' '+a[2]+' '+a[3]);}):POPULAR.map(function(i){return ACTIONS[i];});
+  var pres=t?PRESETS.filter(function(a){return hit(a[1]+' '+a[2]+' '+a[3]);}):PRESETS;
   var bods=BODIES.filter(function(b){return !b.sysHide&&!isGone(b)&&!b.engulfed&&(t?hit(b.def.name+' '+(b.def.kind||'')):(!b.def.parent&&!b.def.minor));});
   var cities=t?CITIES.map(function(c,i){return [c,i];}).filter(function(x){return hit(x[0][0]+' sehir gokyuzu');}):[];
+  if(pres.length){html+='<div class="cmdg">Hazır deneyler</div>';pres.forEach(function(a){out.push(a[4]);html+='<button class="cmdi" data-i="'+(out.length-1)+'"><span class="ic">'+a[0]+'</span><span>'+esc(a[1])+'<small>'+esc(a[2])+'</small></span></button>';});}
   if(acts.length){html+='<div class="cmdg">'+(t?'Eylemler':'Popüler deneyler')+'</div>';acts.slice(0,t?12:8).forEach(function(a){out.push(a[4]);html+='<button class="cmdi" data-i="'+(out.length-1)+'"><span class="ic">'+a[0]+'</span><span>'+esc(a[1])+'<small>'+esc(a[2])+'</small></span></button>';});}
   if(cities.length){html+='<div class="cmdg">Şehirden gökyüzü</div>';cities.forEach(function(x){out.push(function(){cityIdx=x[1];try{localStorage.setItem('se_city',cityIdx);}catch(e){}$('surfCity').value=cityIdx;focusBody('earth');setTimeout(function(){enterSurface(byId.earth);},300);});html+='<button class="cmdi" data-i="'+(out.length-1)+'"><span class="ic">🏙️</span><span>'+esc(x[0][0])+'<small>Bu şehirden şu anki gökyüzü</small></span></button>';});}
   if(bods.length){html+='<div class="cmdg">Gök cisimleri</div>';bods.slice(0,t?14:12).forEach(function(b){out.push(function(){focusBody(b.def.id);});html+='<button class="cmdi" data-i="'+(out.length-1)+'">'+bodyIcon(b)+'<span>'+esc(b.def.name)+'<small>'+esc(b.def.kind||'')+'</small></span></button>';});}

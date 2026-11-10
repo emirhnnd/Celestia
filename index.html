@@ -625,6 +625,10 @@ var DEFS=[
   stats:[['Çap','~490 m'],['Yörünge','1,2 yıl'],['Örnek','2023\'te Dünya\'ya getirildi']]}
 ];
 /* gerçek ölçekte elle verilmiş yarıçaplar gerçek değerlerine çekilir (km) */
+/* kuyruklu yıldız çekirdekleri ve asteroitler her ölçekte görünsün diye büyütülmüş çizilir (Halley gerçekte ~11 km).
+   Bilgi panelinde kaç kat büyütüldüğü yazar: çizilen yarıçap Dünya'nın çizimine (1,6 birim = 6.371 km) oranlanır; gerçek ölçekte bu doğrudan km oranıdır */
+(function(){var SMALLKM={halley:5.5,encke:2.4,cg67p:1.9,swifttuttle:13,apophis:.17,bennu:.245};
+  DEFS.forEach(function(d){var km=SMALLKM[d.id];if(km&&d.stats)d.stats.push(['Ekranda',katTxt(d.vr/1.6*6371/km)]);});})();
 if(REAL){var RKM={sun:696000,moon:1737.4,io:1821.6,europa:1560.8,ganymede:2634.1,callisto:2410.3,titan:2574.7,pluto:1188.3};DEFS.forEach(function(d){if(RKM[d.id])d.vr=vr(RKM[d.id]);});}
 var SUNVR=REAL?vr(696000):9;
 DEFS.forEach(function(d){ if(d.a) d.r=orbitR(d.a); });
@@ -1248,16 +1252,26 @@ function rsKm(){var r=2.95*sunMass;return (r<10?r.toFixed(1):Math.round(r).toLoc
 function eatTxt(){if(!EATEN)return 'Henüz yok';var e=EATEN<10?EATEN.toFixed(2).replace('.',','):Math.round(EATEN).toLocaleString('tr-TR');var pc=EATEN/333000*100;return e+' Dünya kütlesi (+%'+(pc<.01?pc.toFixed(4):pc.toFixed(2)).replace('.',',')+')';}
 function mStr(){return (sunMass<10?sunMass.toFixed(EATEN>0?4:(sunMass<1?2:1)):Math.round(sunMass).toLocaleString('tr-TR')).replace('.',',')+' Güneş';}
 /* nötron yıldızı gerçekte ~20 km: Dünya ile aynı ölçekte çizilse hiç görünmezdi. Ekrandaki büyütmeyi Dünya'nın ekrandaki boyutuna göre hesaplar */
-function nsScaleTxt(b){var e=byId.earth;if(!e||!b)return 'Görünsün diye büyütüldü';var k=effVr(b)/effVr(e)*6371/10;return 'Görünsün diye ~'+(k>=1000?Math.round(k/1000).toLocaleString('tr-TR')+' bin':Math.round(k))+' kat büyütüldü';}
+/* ekrandaki yarıçapın (sahne birimi) gerçek yarıçapa (km) oranı: ölçü Dünya'nın ekrandaki boyutudur (gerçek ölçekte bu doğrudan km oranıdır) */
+function drawK(u,km){var e=byId.earth;return e&&u>0&&km>0?u/effVr(e)*6371/km:0;}
+function katTxt(k){return 'Görünsün diye ~'+(k>=1000?Math.round(k/1000).toLocaleString('tr-TR')+' bin':Math.round(k))+' kat büyütüldü';}
+function bigTxt(u,km){var k=drawK(u,km);return k?katTxt(k):'Görünsün diye büyütüldü';}
+/* yalnızca belirgin büyütme varsa satır ekler (sıkıştırılmış ölçeklerde beyaz cüce zaten Dünya boyutunda çizilir) */
+function bigRow(u,km){return drawK(u,km)>=1.5?[['Ekranda',bigTxt(u,km)]]:[];}
+/* Güneş tür değiştirirken boyutu yavaşça geçer: etiket geçişin ortasındaki anlık boyutu değil, varacağı boyutu yazar */
+function finalVr(b){return b===sunBody&&!SYS?b.def.vr*b.mod.size*starTarget():effVr(b);}
+function nsScaleTxt(b){return bigTxt(b?finalVr(b):0,10);}
+/* kara delikte ekrandaki gölge, gerçek gölgeyle karşılaştırılır: gölge yarıçapı olay ufkunun ~2,6 katı (2,95 km × kütle × 2,6) */
+function bhScaleTxt(b){return bigTxt(finalVr(b)*bhK(b),2.95*2.6*stMass(b));}
 function starInfo(){
   if(focus!==sunBody||SYS||sunType===0)return null;var T=SUN_TYPES[sunType];
   var I={
    1:{n:'Güneş (kırmızı cüce)',d:'Güneş kırmızı cüce olsaydı: yarı boyutunda, ışığının yalnızca yaklaşık binde 4\'ünü veren sönük, turuncu-kırmızı bir yıldız. Kırmızı cüceler trilyonlarca yıl yaşar ve evrendeki yıldızların çoğu böyledir. Güçlü parlamaları yakın gezegenlerin atmosferini aşındırabilir.',s:[['Çap','~700.000 km (0,5 Güneş)'],['Parlaklık','Güneş\'in %0,4\'ü'],['Yüzey','~3.000 °C'],['Ömür','1 trilyon yıldan uzun']]},
    2:{n:'Güneş (mavi dev)',d:'Güneş mavi dev olsaydı: çok daha büyük, çok daha sıcak ve yüzlerce kat parlak olurdu. Bu yıldızlar yakıtlarını birkaç on milyon yılda tüketir ve süpernova olarak patlar. Yaydıkları güçlü UV, yakın gezegenlerde yaşamı zorlaştırır.',s:[['Çap','~3,3 milyon km (2,4 Güneş, modelde)'],['Parlaklık','~600 Güneş'],['Yüzey','~20.000 °C'],['Ömür','~10–50 milyon yıl']]},
    3:{n:'Güneş (kırmızı dev)',d:'Güneş yaklaşık 5 milyar yıl sonra çekirdeğindeki hidrojen bitince şişip kırmızı dev olacak. Merkür ve Venüs\'ü yutacak; Dünya\'nın yutulup yutulmayacağı tartışmalı. Yüzeyi soğur ama toplam parlaklığı binlerce kat artar.',s:[['Çap','Gerçekte ~200 Güneş (modelde küçültüldü)'],['Parlaklık','~2.000 Güneş'],['Yüzey','~3.000 °C'],['Evre','Kırmızı dev']]},
-   4:{n:'Güneş (beyaz cüce)',d:'Güneş\'in son hâli: kırmızı dev, dış katmanlarını gezegenimsi bulutsu olarak savurur; geriye Dünya boyutunda, son derece yoğun sıcak bir çekirdek kalır. İçinde füzyon yoktur, milyarlarca yıl boyunca yavaşça soğur.',s:[['Çap','~12.000 km (Dünya kadar)'],['Kütle',mStr()+' × 0,55'],['Yoğunluk','Bir çay kaşığı ~5 ton'],['Yüzey','~25.000 °C (başlangıçta)']]},
+   4:{n:'Güneş (beyaz cüce)',d:'Güneş\'in son hâli: kırmızı dev, dış katmanlarını gezegenimsi bulutsu olarak savurur; geriye Dünya boyutunda, son derece yoğun sıcak bir çekirdek kalır. İçinde füzyon yoktur, milyarlarca yıl boyunca yavaşça soğur.',s:[['Çap','~12.000 km (Dünya kadar)']].concat(bigRow(finalVr(sunBody),6000),[['Kütle',mStr()+' × 0,55'],['Yoğunluk','Bir çay kaşığı ~5 ton'],['Yüzey','~25.000 °C (başlangıçta)']])},
    5:{n:'Pulsar (eski Güneş)',d:'Süpernovadan geriye kalan çökmüş çekirdek: Güneş kadar madde 20 km\'lik bir küreye sıkıştı. Hızla dönüyor; manyetik kutuplarından çıkan iki ışın deniz feneri gibi uzayı süpürüyor. Işın bize her değdiğinde bir atım görülür; seste de bu atımlar tık tık duyulur. Gerçekte Güneş süpernova olamaz, en az 8 Güneş kütlesi gerekir. Ekrandaki ışın hüzmeleri ve manyetik alan çizgileri görselleştirmedir: gerçekte göze görünmezler, hüzmeler yalnızca radyo ve X-ışını atımı olarak ölçülür.',s:[['Çap','~20 km'],['Ekranda',nsScaleTxt(sunBody)],['Dönüş','Modelde saniyede '+PULS_HZ+' tur (Vela pulsarı 11, en hızlıları 700+)'],['Yoğunluk','Bir çay kaşığı ~1 milyar ton'],['Manyetik alan','Dünya\'nınkinin ~1 trilyon katı'],['Yüzey','~1 milyon °C']]},
-   6:{n:'Kara delik (eski Güneş)',d:'Bu kütledeki bir kara deliğin olay ufkundan ışık bile kaçamaz. Yeni oluşan kara delikte henüz yutacak gaz yoktur: yalnızca karanlık bir gölge ve çevresinde bükülen ışığın ince halkası (foton halkası) görünür. Bir gezegen ya da yıldız yutarsa madde disk oluşturup milyonlarca dereceye ısınır ve parlar; diskin bize doğru dönen tarafı daha parlak ve mavimsi görünür (Doppler etkisi), gölgenin üstündeki ve altındaki yaylar diskin arka tarafından gelen ışığın kütleçekimiyle bükülmesidir (kütleçekimsel mercek). Kütleyi artırırsan olay ufku da büyür.',s:[['Kütle',mStr()],['Olay ufku yarıçapı',rsKm()+' (2,95 km × kütle)'],['Gölge çapı','Olay ufkunun ~5,2 katı'],['Yuttuğu kütle',eatTxt()],['Disk','Madde yutulunca parlar, sonra söner'],['Işık','Yok; yalnızca bükülmüş halka ve (varsa) disk parlar']]}
+   6:{n:'Kara delik (eski Güneş)',d:'Bu kütledeki bir kara deliğin olay ufkundan ışık bile kaçamaz. Yeni oluşan kara delikte henüz yutacak gaz yoktur: yalnızca karanlık bir gölge ve çevresinde bükülen ışığın ince halkası (foton halkası) görünür. Bir gezegen ya da yıldız yutarsa madde disk oluşturup milyonlarca dereceye ısınır ve parlar; diskin bize doğru dönen tarafı daha parlak ve mavimsi görünür (Doppler etkisi), gölgenin üstündeki ve altındaki yaylar diskin arka tarafından gelen ışığın kütleçekimiyle bükülmesidir (kütleçekimsel mercek). Kütleyi artırırsan olay ufku da büyür.',s:[['Kütle',mStr()],['Olay ufku yarıçapı',rsKm()+' (2,95 km × kütle)'],['Gölge çapı','Olay ufkunun ~5,2 katı'],['Ekranda',bhScaleTxt(sunBody)],['Yuttuğu kütle',eatTxt()],['Disk','Madde yutulunca parlar, sonra söner'],['Işık','Yok; yalnızca bükülmüş halka ve (varsa) disk parlar']]}
    ,7:{n:'Tip Ia süpernova kalıntısı',d:'Beyaz cüce olan Güneş kütle sınırını aşıp tamamen patladı; geriye yıldız kalmadı, yalnızca genişleyen sıcak gaz kabuğu var. Bu patlamalar her seferinde neredeyse aynı parlaklıkta olduğu için gökbilimciler onları evrenin genişlemesini ölçmede "standart mum" olarak kullanır.',s:[['Kalıntı','Yok (yıldız tamamen parçalandı)'],['Saçılan madde','~1,4 Güneş kütlesi'],['Ürettiği demir','~0,6 Güneş kütlesi'],['Parlaklık (zirvede)','~5 milyar Güneş']]}
   }[sunType];
   return I?{name:I.n,kind:'Yıldız kalıntısı · '+T.stage,desc:I.d,stats:I.s}:null;
@@ -2240,7 +2254,7 @@ function addStar(o,silent){
   var h1='#'+('000000'+T.hi.toString(16)).slice(-6),h2='#'+('000000'+T.lo.toString(16)).slice(-6);
   var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:SUNVR*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
     desc:'Güneş\'in çevresinde dönen ikinci bir yıldız. Işığı tüm gezegenleri aydınlatır; Yerçekimi simülasyonu açıkken yörüngeleri de bozar.',
-    stats:[['Tür',T.name],['Çap',Math.round(1392700*o.size).toLocaleString('tr-TR')+' km'],['Güneş\'e uzaklık',Math.round(o.a)+' birim']]};
+    stats:[['Tür',T.name],o.type===4?['Çap','~12.000 km (Dünya kadar)']:['Çap',Math.round(1392700*o.size*T.sc).toLocaleString('tr-TR')+' km'+(o.type===3?' (modelde; gerçek kırmızı devler çok daha büyük)':'')]].concat(o.type===4?bigRow(SUNVR*o.size*T.sc,6000):[],[['Güneş\'e uzaklık',Math.round(o.a)+' birim']])};
   buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(byId[id]&&o.type===5)byId[id].nsOld=true;if(byId[id]&&o.type===6)byId[id].bhOld=true;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
   customs.push({kind:'star',id:id,name:def.name,type:o.type,size:o.size,a:o.a,L0:L0,m:o.m||null});
   if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi');}
@@ -3345,7 +3359,7 @@ function parkerAU(t){
 function addCraft(){
   if(!AE)return;
   CRAFT_DEFS.forEach(function(c){
-    var def={id:c.id,name:c.name,kind:'Uzay aracı',craft:true,minor:true,vr:.12,tex:'smallMoon',tw:64,rotH:1e6,tilt:0,dot:[c.col,'#555'],desc:c.desc,stats:c.stats};
+    var def={id:c.id,name:c.name,kind:'Uzay aracı',craft:true,minor:true,vr:.12,tex:'smallMoon',tw:64,rotH:1e6,tilt:0,dot:[c.col,'#555'],desc:c.desc,stats:c.stats.concat([['Ekranda','Görünsün diye çok büyütüldü (gerçekte metrelerle ölçülür)']])};
     if(c.special==='iss'){def.parent='earth';def.orbit=byId.earth.def.vr*1.07;def.P=92.7/1440;def.incl=51.6;def.kind='Uzay istasyonu · Dünya yörüngesi';}
     var b=buildBody(def);b.mesh.visible=false;b.craftC=c;if(b.atmoMesh)b.atmoMesh.visible=false;
     var m=craftModel(c.model);b.tilt.add(m);b.model=m;
@@ -3404,12 +3418,15 @@ var MOONR={moon:[60.3,2.88],io:[5.9,1.76],europa:[9.4,1.84],ganymede:[15,2.2],ca
 var gSlow=1,slowWarned=0;
 function baseMass(b){var d=b.def;if(MASS[d.id]!=null)return MASS[d.id];var R=Math.pow(d.vr/1.6,2),gas=d.habType==='gas';return R*R*R*(gas?.24:1);}
 function bodyMass(b){if(b.mass==null)b.mass=baseMass(b);return b.mass*Math.pow(b.mod.size,3);}
+var EQR={earth:6378.1/6371,jupiter:71492/69911,saturn:60268/58232};
 function moonRR(b){var m=MOONR[b.def.id];return m?m[0]:(b.def.orbit/(b.parent?b.parent.def.vr:1))*8;}
 function moonRoche(b){var m=MOONR[b.def.id];return m?m[1]:2.44;}
 function moonVisR(b){
   var d=b.def,p=b.parent,rr0=moonRR(b),rr=b.mod.rr||rr0,R0=p.def.vr;
-  /* gerçek ölçekte uydu uzaklığı gezegen yarıçapı cinsinden gerçek değer (Ay: 60,3 Dünya yarıçapı) */
-  if(REAL)return effVr(p)*rr;
+  /* gerçek ölçekte uydu uzaklığı gezegen yarıçapı cinsinden gerçek değer (Ay: 60,3 Dünya yarıçapı).
+     MOONR oranları gezegenin ekvator yarıçapına göredir (Io: 5,9 Jüpiter yarıçapı = 421.700 km), sahnedeki küre ise ortalama yarıçapla çizilir;
+     ekvator/ortalama oranıyla çarpılmazsa Jüpiter uyduları %2, Titan %3 fazla yakın duruyordu */
+  if(REAL)return effVr(p)*rr*(EQR[p.def.id]||1);
   return effVr(p)+(d.orbit-R0)*(rr-1)/(rr0-1);
 }
 function moonPScale(b){var rr0=moonRR(b),rr=b.mod.rr||rr0;return Math.pow(rr/rr0,1.5);}
@@ -4833,8 +4850,12 @@ function setStarOn(b,i){
   if(b.def.stats){if(!b.def.stats0)b.def.stats0=b.def.stats.map(function(r){return r.slice();});if(!b.def.desc0)b.def.desc0=b.def.desc;
     var st=b.def.stats0.map(function(r){return r.slice();});st[0][1]=T.name;
     if(i===5){st[1]=['Çap','~20 km'];st.splice(2,0,['Ekranda',nsScaleTxt(b)]);b.def.desc='Süpernovadan geriye kalan çökmüş çekirdek: yaklaşık 1,4 Güneş kütlesi 20 km\'lik bir küreye sıkışmış; bir çay kaşığı malzemesi milyarlarca ton. Yüzeyi yaklaşık 1 milyon °C, en sıcak yerleri manyetik kutuplar. Ekrandaki ışın hüzmeleri ve manyetik alan çizgileri görselleştirmedir: gerçekte göze görünmezler, hüzmeler yalnızca radyo ve X-ışını atımı olarak ölçülür.';}
-    else if(i===6){st[1]=['Olay ufku','~'+Math.round(3*stMass(b))+' km yarıçap'];st.splice(2,0,['Ekranda','Görünsün diye büyütüldü']);b.def.desc=b.def.desc0;}
-    else b.def.desc=b.def.desc0;
+    else if(i===6){st[1]=['Olay ufku','~'+Math.round(3*stMass(b))+' km yarıçap'];st.splice(2,0,['Ekranda',bhScaleTxt(b)]);b.def.desc=b.def.desc0;}
+    else{b.def.desc=b.def.desc0;
+      /* eklenen yıldızın "Çap" satırı tür değişince de çizilen boyutu göstersin (eskiden hep sarı cüce çapı yazıyordu); beyaz cücede gerçek çap + büyütme notu */
+      if(b.def.custom&&st[1]&&st[1][0]==='Çap'){
+        if(i===4){st[1]=['Çap','~12.000 km (Dünya kadar)'];var br=bigRow(effVr(b),6000);if(br.length)st.splice(2,0,br[0]);}
+        else st[1]=['Çap',Math.round(1392700*b.def.vr/SUNVR*b.mod.size*T.sc).toLocaleString('tr-TR')+' km'+(i===3?' (modelde; gerçek kırmızı devler çok daha büyük)':'')];}}
     b.def.stats=st;}b.def.kind=i>=5?'Yıldız kalıntısı · yarattığın':'Yıldız · yarattığın';
   customs.forEach(function(c){if(c.id===b.id)c.type=i;});saveCustom();if(b.renamed){b.renamed=false;if(typeof rebuildLists==='function')rebuildLists();}refreshStarDot(b);
   if(focus===b){updateInfo();syncLab();}

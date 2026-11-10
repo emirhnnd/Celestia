@@ -1994,20 +1994,26 @@ var FRAME_DT=.016,SIMDT=0,SDT=0,TIMERS=[];
 /* zamanla ilerleyen her animasyon (çöküş, fırlatma, TDE, süpernova…) bu saati kullanır: zaman durunca onlar da durur */
 function after(s,fn){TIMERS.push({t:s,fn:fn});}
 function stepTimers(dt){if(!TIMERS.length||dt<=0)return;var due=[];TIMERS=TIMERS.filter(function(T){T.t-=dt;if(T.t<=0){due.push(T.fn);return false;}return true;});due.forEach(function(f){try{f();}catch(e){console.error(e);}});}
+/* bir alt sistemdeki hata döngüyü durdurmasın: sonraki kare en başta istenir, simülasyon ve çizim ayrı ayrı korunur.
+   Aynı hata her karede tekrarlanırsa konsol dolmasın diye yalnızca ilki ve sonra seyrek aralıklarla yazılır */
+var frameErrN=0;
+function frameErr(where,e){frameErrN++;if(frameErrN===1||frameErrN%600===0)console.error('Kare hatası ('+where+', '+frameErrN+'. kez):',e);}
 function frame(now){
+  requestAnimationFrame(frame);
   var rdt=(now-last)/1000,dt=Math.min(.1,rdt);last=now;FRAME_DT=dt;SIMDT=playing&&!reverse?dt:0;SDT=playing?(reverse?-dt:dt):0;
+  try{
   if(rdt<.5){perfEma+=(rdt-perfEma)*.05;perfT+=rdt;
     if(perfT>2){perfT=0;
       if(perfEma>.026&&curDpr>.75){curDpr=Math.max(.75,curDpr-.25);renderer.setPixelRatio(curDpr);renderer.setSize(W,H,false);}
       else if(perfEma<.0155&&curDpr<maxDpr){curDpr=Math.min(maxDpr,curDpr+.25);renderer.setPixelRatio(curDpr);renderer.setSize(W,H,false);}}}
-  if(SLOWMO>0)SLOWMO-=dt;
+  /* ağır çekim yalnızca zaman akarken tükenir: çarpışma anında duraklatılınca kaybolmasın */
+  if(playing&&SLOWMO>0)SLOWMO-=dt;
   var dDays=playing?dt*SPEEDS[speedIdx].d*(reverse?-1:1)*(SLOWMO>0?.12:1):0;if(gravityOn){dDays=clamp(dDays,-7,7);gSlow+=(gSlowNext-gSlow)*(gSlowNext<gSlow?.5:.05);dDays*=gSlow;if(gSlowNext<.3&&performance.now()-slowWarned>8000){slowWarned=performance.now();toast('Çarpışma yaklaşıyor: zaman yavaşlatıldı');}gSlowNext=1;}simDays+=dDays;
   if(!wxT)wxT=simDays;wxT+=clamp(dDays,-15*dt,15*dt);
   updateBodies(dDays);timeline(dDays);if(SKYG){SKYG.position.copy(camera.position);
     /* gökyüzü küresi saydam olduğu için opak cisimlerden sonra çizilir; gerçek ölçekte cisimler küreden uzakta kalınca onları örtüyordu. Küre görüş uzaklığının sınırına büyütülür */
     if(REAL)SKYG.scale.setScalar(camera.far*.85/5200);}scene.updateMatrixWorld(true);
   updateSolarFx(now,SIMDT);updateFxList(SIMDT);updateExotic(SIMDT);stepDarts(SIMDT);stepTimers(SIMDT);updateStarWinds(SIMDT);tripDraw(dt);drawTDE(SDT);updateWeather();updatePlanetWx();updateEclipse();updateSkyLabels();
-  var nr=clamp(nearestSurface()*.25,.1,4);if(Math.abs(nr-camera.near)>.02){camera.near=nr;camera.updateProjectionMatrix();}
   BODIES.forEach(function(b){
     if(!b.glow1)return;var T=SUN_TYPES[b.starType];if(b.sunU)b.sunU.time.value=now*.001;
     if(b.def.id==='sun'&&!EXO.col&&!b.morphing){var tg=starTarget();b.typeScale+=(tg-b.typeScale)*Math.min(1,dt*1.8);b.tilt.scale.setScalar(b.mod.size*b.typeScale*(sunType===6&&!SYS?bhMassK():1));b.vr=effVr(b);}
@@ -2015,12 +2021,17 @@ function frame(now){
     b.glow1.scale.setScalar(gs*(1+Math.sin(now*.0011)*.03));b.glow2.scale.setScalar(gs*2.9*(1+Math.sin(now*.0007+1)*.04));
   });
   updateShadows();updateCometFx();
-  updateCamera(dt);updateLabels();
+  }catch(e){frameErr('simülasyon',e);}
+  try{
+  updateCamera(dt);
+  /* yakın kırpma düzlemi kameranın bu karedeki konumuna göre: eskiden bir önceki konuma göre hesaplanıyordu, hızlı geçişte yüzey bir kare kesiliyordu */
+  var nr=clamp(nearestSurface()*.25,.1,4);if(Math.abs(nr-camera.near)>.02){camera.near=nr;camera.updateProjectionMatrix();}
+  updateLabels();
   liveT-=dt;if(liveT<=0){updateLive();liveT=.3;}
   dateT-=dt;if(dateT<=0){updateDate();dateT=.08;}
   miniT-=dt;if(miniT<=0){drawMini();miniT=.1;}
   renderFrame();
-  requestAnimationFrame(frame);
+  }catch(e){frameErr('çizim',e);}
 }
 
 /* ---------- zaman kontrolleri ---------- */
@@ -2355,7 +2366,9 @@ function addCustom(o,silent){
   }else customs.push({id:id,name:o.name,type:o.type,color:o.color,size:o.size,a:a,ring:!!o.ring,moons:o.moons,seed:seed,L0:def.L0,tilt:def.tilt,rotH:def.rotH});
 }
 function saveCustom(){try{localStorage.setItem('gsg-custom-v1',JSON.stringify(customs));}catch(_){}}
-function loadCustom(){try{var s=localStorage.getItem('gsg-custom-v1');if(s){JSON.parse(s).slice(0,12).forEach(function(o){var q=sane(o);if(!q)return;if(q.kind==='star')addStar(q,true);else addCustom(q,true);});}}catch(_){customs=[];}}
+/* her kayıt ayrı korunur: eskiden biri hata verince öncekiler sahnede kalıyor ama liste sıfırlanıyordu, bir sonraki kayıtta silinirlerdi */
+function loadCustom(){var arr;try{var s=localStorage.getItem('gsg-custom-v1');arr=s?JSON.parse(s):null;}catch(_){arr=null;}if(!Array.isArray(arr))return;
+  arr.slice(0,12).forEach(function(o){try{var q=sane(o);if(!q)return;if(q.kind==='star')addStar(q,true);else addCustom(q,true);}catch(e){console.error('Kayıtlı cisim yüklenemedi:',e);}});}
 function readForm(){
   var nm=($('nName').value||'').trim()||'Nova';
   return {name:nm.slice(0,18),type:$('nType').value,color:$('nColor').value,size:+$('nSize').value,a:+$('nDist').value,ring:$('nRing').checked,moons:+$('nMoons').value};
@@ -5867,24 +5880,31 @@ function restoreCarry(){
     toast(o.ev?'Ölçek değişti. Ayarların korundu; çarpışma ve yer çekimi sıfırlandı.':'Ölçek değişti. Ayarların korundu.',3500);
   }catch(_){}
 }
+/* açılış adımları ayrı ayrı korunur: biri hata verse de geri kalanlar çalışır, yükleme ekranı kapanır ve döngü başlar
+   (eskiden tek bir hata kullanıcıyı mesajsız biçimde yükleme ekranında bırakıyordu) */
 function init(){
-  addSky();addBelt();
-  DEFS.forEach(buildBody);
-  initReal();
-  addCraft();
-  loadRealEarth();loadRealPlanets();loadRealSky();
-  loadCustom();
-  buildStarBtns();
-  rebuildLists();
-  setupMini();resize();
-  focus=byId.sun;
-  focusBody('sun',{dist:OVD()});
-  trans=null;target.set(0,0,0);dist=OVD();
-  setStar(0);setSpeed();setPlayIcon();updateHint();updateDate();updateLive();fillOuts();$('oGSpin').textContent=fmtX(1);
+  var bootFail=0;
+  function step(f){try{f();}catch(e){bootFail++;console.error('Açılış adımı başarısız:',e);}}
+  step(addSky);step(addBelt);
+  DEFS.forEach(function(d){step(function(){buildBody(d);});});
+  step(initReal);
+  step(addCraft);
+  step(loadRealEarth);step(loadRealPlanets);step(loadRealSky);
+  step(loadCustom);
+  step(buildStarBtns);
+  step(rebuildLists);
+  step(function(){setupMini();resize();});
+  step(function(){
+    focus=byId.sun;
+    focusBody('sun',{dist:OVD()});
+    trans=null;target.set(0,0,0);dist=OVD();
+  });
+  step(function(){setStar(0);setSpeed();setPlayIcon();updateHint();updateDate();updateLive();fillOuts();$('oGSpin').textContent=fmtX(1);});
   camera.position.set(0,0,0);
-  restoreCarry();
+  step(restoreCarry);
   if(!AE)toast('Gök mekaniği kütüphanesi yüklenemedi: konumlar yaklaşık, gerçek tutulma tarihleri bulunamaz.',6000);
-  if(!seen())$('coach').hidden=false;
+  else if(bootFail)toast('Bazı bölümler yüklenemedi; sayfayı yenilemeyi dene.',4000);
+  step(function(){if(!seen())$('coach').hidden=false;});
   requestAnimationFrame(function(t){last=t;requestAnimationFrame(frame);});
   setTimeout(function(){$('boot').classList.add('gone');},250);
 }

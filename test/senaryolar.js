@@ -101,6 +101,11 @@ module.exports=async(page,E,shot)=>{
     await fresh(page);await E("PRESETS[2][4]()");await page.waitForTimeout(3500);
     return [g,a,await E("[focus.def.name,focus.def.a,customs.length,focus.cl.Ts-273.15<-20]")];},
     r=>{const a=P(r[1]),b=P(r[2]);return r[0]==='Hazır deneyler'&&a[0]==='earth'&&a[1]===3&&a[2]===true&&a[3]==='temp'&&a[4]>=3&&a[5]>1&&same(b,['Dünya 2',1.5,1,true]);});
+  /* kuyruklu yıldız Kepler'e uyar: gerçek ölçekte Halley'in konumdan ölçülen hızı, yörünge enerjisinden beklenen hıza (vis-viva) eşit olmalı.
+     Sıkıştırılmış ölçeklerde elips sahne biriminde çizildiği için yalnızca uzaklığın günberi-günöte aralığında kaldığına bakılır */
+  await T('kuyruklu-hiz',async()=>{await fresh(page);await E("focusBody('halley')");await page.waitForTimeout(4000);
+    return await E("(function(){var b=focus,cm=b.def.cm,r=invOrbit(b.pos.distanceTo(sunBody.pos));return [REAL,+r.toFixed(2),GR.spd==null?null:+GR.spd.toFixed(3),+(29.78*Math.sqrt(Math.max(0,2/r-2/(cm.q+cm.Q)))).toFixed(3),cm.q,cm.Q]})()");},
+    r=>r[1]>=r[4]*.98&&r[1]<=r[5]*1.02&&(!r[0]||(r[2]!=null&&Math.abs(r[2]-r[3])<r[3]*.05)));
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

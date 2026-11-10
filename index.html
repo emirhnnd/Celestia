@@ -973,7 +973,12 @@ function cmSetup(def){
   def.cmE=E;return E;
 }
 var COMET=null;
-function cometPos(M,out,C){C=C||COMET;var E=M%TAU;if(E<0)E+=TAU;var Mm=E;for(var i=0;i<7;i++)E=Mm+C.e*Math.sin(E);out.x=C.a*(Math.cos(E)-C.e);out.z=C.b*Math.sin(E);return E;}
+/* Kepler denklemi (M = E − e·sin E) Newton yöntemiyle çözülür. Eskiden 7 adımlık sabit nokta yinelemesi vardı: basıklık 1'e yakınken
+   (Halley: 0,967) yakınsamıyor, kuyruklu yıldız yörüngesinde yanlış yerde duruyor ve yanlış hızla ilerliyordu (Halley günöte yakınında
+   olması gerekenin yarısından yavaştı). Basık yörüngede başlangıç π alınır: Newton oradan her zaman yakınsar. */
+function cometPos(M,out,C){C=C||COMET;var Mm=M%TAU;if(Mm<0)Mm+=TAU;var e=C.e,E=e<.8?Mm:Math.PI;
+  for(var i=0;i<40;i++){var d=(E-e*Math.sin(E)-Mm)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-12)break;}
+  out.x=C.a*(Math.cos(E)-C.e);out.z=C.b*Math.sin(E);return E;}
 function getCometPlane(def){var C=cmSetup(def);if(!C.plane){var g=new THREE.Group();g.rotation.order='YXZ';g.rotation.y=C.ry;g.rotation.x=C.rx;scene.add(g);C.plane=g;}return C.plane;}
 /* Kuyruklu yıldız efekti: kuyruklar ve jetler tamamen GPU'da hesaplanır (CPU'da parçacık döngüsü yok).
    Her parçacık çekirdekten uzağa doğru akar: iyon kuyruğu hızlı, dalgalı ve mavi; toz kuyruğu yavaş, yörüngenin arkasına doğru kıvrık ve sarımsı. */

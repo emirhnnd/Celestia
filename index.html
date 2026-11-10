@@ -1166,7 +1166,9 @@ function buildBody(def){
   return b;
 }
 function disposeBody(b){
-  b.pivot.parent.remove(b.pivot);if(b.line&&b.line.parent)b.line.parent.remove(b.line);
+  b.pivot.parent.remove(b.pivot);
+  /* yörünge çizgisi cismin alt ağacında değildir (sahneye ya da gezegene bağlı): geometrisi ve malzemesi ayrıca bırakılır; eskiden her silmede bir geometri sızıyordu */
+  if(b.line){if(b.line.parent)b.line.parent.remove(b.line);if(b.line.geometry)b.line.geometry.dispose();if(b.line.material)b.line.material.dispose();}
   b.pivot.traverse(function(o){if(o.geoHi)o.geometry=o.geoHi;if(o.geometry)o.geometry.dispose();if(o.material){var m=o.material;['map','bumpMap','emissiveMap'].forEach(function(k){if(m[k])m[k].dispose();});m.dispose();}});
   if(b.label.parentNode)b.label.parentNode.removeChild(b.label);
   var i=BODIES.indexOf(b);if(i>=0)BODIES.splice(i,1);delete byId[b.id];
@@ -5664,6 +5666,8 @@ function restoreCarry(){
 /* açılış adımları ayrı ayrı korunur: biri hata verse de geri kalanlar çalışır, yükleme ekranı kapanır ve döngü başlar
    (eskiden tek bir hata kullanıcıyı mesajsız biçimde yükleme ekranında bırakıyordu) */
 function init(){
+  /* kütüphane ya da veri dosyası yüklenemediyse hata ekranı gösterilmiştir: yarım bir sahneyle açılıp o ekranı kapatma */
+  if($('boot').classList.contains('err'))return;
   var bootFail=0;
   function step(f){try{f();}catch(e){bootFail++;console.error('Açılış adımı başarısız:',e);}}
   step(addSky);step(addBelt);

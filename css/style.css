@@ -253,6 +253,8 @@ textarea{width:100%;min-height:60px;resize:vertical;padding:9px 11px;border-radi
 .lb button:hover{background:rgba(255,255,255,.12)}
 .lb.moon button{font-size:10.5px;font-weight:500;color:#aab2c8}
 .lb.on button{color:var(--accent)}
+/* dokunmatik ekranda etiketin dokunma alanı görünen yazıdan büyük (yaklaşık 36 piksel yükseklik); görünüm değişmez */
+@media (pointer:coarse){.lb button::after{content:"";position:absolute;inset:-9px -4px}}
 
 #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--dockh,120px) + 6px);font-size:12px;color:var(--dim);text-shadow:0 1px 4px #000;pointer-events:none;white-space:nowrap;text-align:center;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis;animation:hintOut 1s 9s forwards}
 @keyframes hintOut{to{opacity:0}}

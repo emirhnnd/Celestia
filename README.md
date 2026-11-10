@@ -145,7 +145,7 @@ npm test
 
 Tek bir senaryoyu denemek için `ONLY` ortam değişkenine adını ver (virgülle birden fazla yazılabilir); PowerShell'de `$env:ONLY='enkaz'; node tum.js 1`.
 
-Savunma testleri sayfa kabuğunu (doctype, meta etiketleri), paylaşma kodunun güvenliğini (`__proto__` gibi sahte anahtarlar), ölçek değişince durumun korunmasını, three.js ya da WebGL yokken hata ekranını ve kuyruklu yıldız kuyruklarını denetler.
+Savunma testleri sayfa kabuğunu (doctype, meta etiketleri), paylaşma kodunun güvenliğini (`__proto__` gibi sahte anahtarlar), ölçek değişince durumun korunmasını, three.js ya da WebGL yokken hata ekranını ve kuyruklu yıldız kuyruklarını denetler. Ayrıca telefon ekranını (390×844, taşma, dokunma alanları, grafik), bir alt sistem hata verdiğinde simülasyonun sürmesini, bozuk kayıtla ya da eksik veri dosyasıyla açılışı ve cisim ekleyip silince grafik belleğinin sızmamasını sınar.
 
 ## 🛠️ İçinde neler var
 

@@ -106,6 +106,19 @@ module.exports=async(page,E,shot)=>{
   await T('kuyruklu-hiz',async()=>{await fresh(page);await E("focusBody('halley')");await page.waitForTimeout(4000);
     return await E("(function(){var b=focus,cm=b.def.cm,r=invOrbit(b.pos.distanceTo(sunBody.pos));return [REAL,+r.toFixed(2),GR.spd==null?null:+GR.spd.toFixed(3),+(29.78*Math.sqrt(Math.max(0,2/r-2/(cm.q+cm.Q)))).toFixed(3),cm.q,cm.Q]})()");},
     r=>r[1]>=r[4]*.98&&r[1]<=r[5]*1.02&&(!r[0]||(r[2]!=null&&Math.abs(r[2]-r[3])<r[3]*.05)));
+  /* gerçek ölçekte Ay'ın uzaklığı gerçek: ay içinde yerberi (~357 bin km) ile yeröte (~406 bin km) arasında değişir; diğer ölçeklerde sabittir */
+  await T('ay-uzaklik',async()=>{await fresh(page);await E("window.__md=[];window.__iv=setInterval(function(){window.__md.push(byId.moon.pos.distanceTo(byId.earth.pos)*KM_U)},100)");await page.waitForTimeout(9000);
+    return await E("(function(){clearInterval(window.__iv);var a=window.__md;return [REAL,a.length,Math.round(Math.min.apply(null,a)),Math.round(Math.max.apply(null,a))]})()");},
+    r=>r[1]>=10&&(r[0]?(r[2]>354000&&r[2]<372000&&r[3]>398000&&r[3]<409000):(r[3]-r[2]<=1)));
+  /* gerçek ölçekte kırmızı dev ~200 Güneş yarıçapı: Merkür ve Venüs'ü yutar, Dünya dışarıda kalır; beyaz cüce ~6.000 km yarıçap.
+     Boyut geçişi kare hızına bağlı olduğu için oturana kadar beklenir */
+  await T('dev-cuce',async()=>{await fresh(page);const real=await E("REAL");
+    const until=async(expr,ms)=>{const t0=Date.now();while(Date.now()-t0<ms){if(await E(expr))return true;await page.waitForTimeout(1000);}return false;};
+    await E("setStar(3)");const a=real?await until("Math.abs(effVr(sunBody)*KM_U/696000-200)<8&&byId.venus.engulfed",60000):(await page.waitForTimeout(3000),true);
+    const g=await E("[+(effVr(sunBody)*KM_U/696000).toFixed(0),!!byId.mercury.engulfed,!!byId.venus.engulfed,!!byId.earth.engulfed]");
+    await E("setStar(4)");const b=real?await until("Math.abs(effVr(sunBody)*KM_U-6000)<300",60000):(await page.waitForTimeout(3000),true);
+    return [real,a,g,b,await E("Math.round(effVr(sunBody)*KM_U)")];},
+    r=>{if(!r[0])return true;const g=P(r[2]);return r[1]===true&&g[1]===true&&g[2]===true&&g[3]===false&&r[3]===true;});
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

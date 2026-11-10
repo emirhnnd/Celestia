@@ -459,7 +459,7 @@ function buildBody(def){
   var pivot=new THREE.Group();b.pivot=pivot;
   (b.parent?b.parent.pivot:(def.comet?getCometPlane(def):scene)).add(pivot);
   var tilt=new THREE.Group();tilt.rotation.z=(def.tilt||0)*D2R;pivot.add(tilt);b.tilt=tilt;
-  b.typeScale=isStar?(def.id==='sun'?SUN_TYPES[0].sc:SUN_TYPES[b.starType].sc):PS;tilt.scale.setScalar(b.typeScale);
+  b.typeScale=isStar?(def.id==='sun'?SUN_TYPES[0].sc:typeSc(b,b.starType)):PS;tilt.scale.setScalar(b.typeScale);
   var mesh,mat,U=null;
   if(!isStar&&!def.comet){U=newShU();b.shU=U;}
   if(isStar){mat=sunMaterial(b.starType);b.sunU=mat.uniforms;}

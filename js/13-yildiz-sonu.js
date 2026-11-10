@@ -164,7 +164,7 @@ function setStarOn(b,i){
       /* eklenen yıldızın "Çap" satırı tür değişince de çizilen boyutu göstersin (eskiden hep sarı cüce çapı yazıyordu); beyaz cücede gerçek çap + büyütme notu */
       if(b.def.custom&&st[1]&&st[1][0]==='Çap'){
         if(i===4){st[1]=['Çap','~12.000 km (Dünya kadar)'];var br=bigRow(effVr(b),6000);if(br.length)st.splice(2,0,br[0]);}
-        else st[1]=['Çap',Math.round(1392700*b.def.vr/SUNVR*b.mod.size*T.sc).toLocaleString('tr-TR')+' km'+(i===3?' (modelde; gerçek kırmızı devler çok daha büyük)':'')];}}
+        else st[1]=['Çap',Math.round(1392700*b.def.vr/SUNVR*b.mod.size*typeSc(b,i)).toLocaleString('tr-TR')+' km'+(i===3&&!REAL?' (modelde; gerçek kırmızı devler çok daha büyük)':'')];}}
     b.def.stats=st;}b.def.kind=i>=5?'Yıldız kalıntısı · yarattığın':'Yıldız · yarattığın';
   customs.forEach(function(c){if(c.id===b.id)c.type=i;});saveCustom();if(b.renamed){b.renamed=false;if(typeof rebuildLists==='function')rebuildLists();}refreshStarDot(b);
   if(focus===b){updateInfo();syncLab();}

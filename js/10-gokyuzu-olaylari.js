@@ -199,11 +199,15 @@ function aeEcl(id,days){
 }
 function aeMoon(days){try{var v=AE.GeoMoon(aeDate(days)),e=AE.Ecliptic(v).vec;return aeV.set(e.x,e.y,e.z);}catch(err){return null;}}
 function realOk(b){return AE&&!b.def.custom&&(AE_BODY[b.def.id]||b.def.id==='moon')&&!(b.parent&&b.parent.def.custom);}
+/* Ay'ın ortalama uzaklığı (AU): moonVisR'nin gerçek ölçekte verdiği değerle aynı tanım (60,3 × Dünya'nın ekvator yarıçapı) */
+function moonMeanAU(){return MOONR.moon[0]*6378.1/149597870.7;}
 function toScene(e,out){var r=e.length(),R=orbitR(r)/r;return out.set(e.x*R,e.z*R,-e.y*R);}
 function placeReal(b){
   var d=b.def;
   if(d.id==='moon'){
-    var m=aeMoon(b.tday);if(!m)return false;var L=m.length(),R=moonVisR(b)/L;b.pivot.position.set(m.x*R,m.z*R,-m.y*R);b.ang=Math.atan2(m.y,m.x);b.moonKm=L*149597870.7;return true;
+    /* gerçek ölçekte Ay'ın uzaklığı da gerçektir: ay içinde ~356–407 bin km arasında değişir (yerberi–yeröte). Uydunun uzaklık ayarı ya da gezegenin
+       boyutu değiştirilmişse gerçek uzaklık aynı oranda ölçeklenir. Diğer ölçeklerde uzaklık sabittir, yalnızca yön gerçektir */
+    var m=aeMoon(b.tday);if(!m)return false;var L=m.length(),R=REAL?moonVisR(b)/moonMeanAU():moonVisR(b)/L;b.pivot.position.set(m.x*R,m.z*R,-m.y*R);b.ang=Math.atan2(m.y,m.x);b.moonKm=L*149597870.7;return true;
   }
   var e=aeEcl(d.id,b.tday);if(!e)return false;
   b.au=b.au||new THREE.Vector3();b.au.copy(e);toScene(e,b.pivot.position);b.ang=Math.atan2(e.y,e.x);return true;
@@ -213,7 +217,7 @@ function realOrbitLine(b){
   var d=b.def,N=d.id==='pluto'||d.id==='neptune'?360:256,P=d.id==='moon'?27.32:d.P,pts=[],t0=simDays;
   for(var k=0;k<=N;k++){
     var e=d.id==='moon'?aeMoon(t0+k/N*P):aeEcl(d.id,t0+k/N*P);if(!e)return;
-    if(d.id==='moon'){var L=e.length(),R=d.orbit/L;pts.push(new THREE.Vector3(e.x*R,e.z*R,-e.y*R));}
+    if(d.id==='moon'){var L=e.length(),R=REAL?d.orbit/moonMeanAU():d.orbit/L;pts.push(new THREE.Vector3(e.x*R,e.z*R,-e.y*R));}
     else pts.push(toScene(e,new THREE.Vector3()));
   }
   b.line.geometry.dispose();b.line.geometry=new THREE.BufferGeometry().setFromPoints(pts);b.line.rotation.set(0,0,0);

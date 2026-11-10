@@ -19,7 +19,7 @@ async function open(b, { noThree = false, noGL = false, ds = '2.5', keepStorage 
       if (!fs.existsSync(f)) return r.fulfill({ status: 404, body: '' });
       let body = fs.readFileSync(f);
       if (p === 'index.html') body = body.toString().replace("'use strict';", "'use strict';window.__E=function(s){return eval(s)};");
-      const ct = p.endsWith('.html') ? 'text/html' : p.endsWith('.png') ? 'image/png' : p.endsWith('.jpg') ? 'image/jpeg' : 'application/octet-stream';
+      const ct = p.endsWith('.html') ? 'text/html' : p.endsWith('.png') ? 'image/png' : p.endsWith('.jpg') ? 'image/jpeg' : p.endsWith('.css') ? 'text/css' : p.endsWith('.js') ? 'text/javascript' : 'application/octet-stream';
       return r.fulfill({ body, contentType: ct });
     }
     return r.fulfill({ status: 404, body: '' });

@@ -150,8 +150,12 @@ var fmt=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDi
 /* ---------- canlı grafik ----------
    Seçili cismin bir değerini (Güneş'e uzaklık, hız, yüzey sıcaklığı, yaşanabilirlik) simülasyon zamanına göre çizer:
    "Dünya'yı Güneş'e yaklaştırdım, sıcaklık nasıl değişti?" sorusunun cevabı bir eğri olur.
-   Örnekler yalnızca zaman ilerlerken alınır; tampon dolunca seyreltilir, böylece cisme odaklanıldığından beri olan her şey görünür. */
-var GR={open:false,key:'dist',N:240,id:null,t:[],v:{},step:0,lp:new THREE.Vector3(),lt:null,spd:null,drawn:''};
+   Örnekler yalnızca zaman ilerlerken alınır; tampon dolunca seyreltilir, böylece cisme odaklanıldığından beri olan her şey görünür.
+   - Başlangıç değeri kesikli çizgiyle durur ve altta "başlangıç → şimdi" yazar (önce / sonra karşılaştırması).
+   - Bir cisim sabitlenebilir: başka cisme geçince ikisi aynı grafikte çizilir (sabitlenen kesikli).
+   - Toplanan veri CSV olarak indirilebilir.
+   GR, odaklanılan cismin serisidir; GR.pin sabitlenen cismin serisi (aynı alanlar: id, t, v, step, lp, lt, spd). */
+var GR={open:false,key:'dist',N:240,id:null,name:'',t:[],v:{},step:0,lp:new THREE.Vector3(),lt:null,spd:null,drawn:'',pin:null};
 var GR_M=[
   {k:'dist',n:'Uzaklık',u:' AU',d:2,ok:function(b){return !b.def.parent&&b!==sunBody;}},
   {k:'spd',n:'Hız',u:' km/s',d:1,ok:function(b){return !b.def.parent&&b!==sunBody;}},
@@ -162,43 +166,51 @@ function grFmt(m,x){if(x==null||!isFinite(x))return '–';var a=Math.abs(x),d=m.
 /* Güneş'e göre konum, AU cinsinden: sahnedeki yön × o uzaklığın karşılık geldiği AU (sıkıştırılmış ölçeklerde de gerçek değer çıkar) */
 var _gp=new THREE.Vector3();
 function grPosAU(b,out){out.copy(b.pos).sub(sunBody.pos);var L=out.length();return L>0?out.multiplyScalar(invOrbit(L)/L):out;}
-function grReset(){GR.t.length=0;GR.v={};GR.step=0;GR.lt=null;GR.spd=null;GR.id=focus?focus.def.id:null;}
+function serClear(s,b){s.t=[];s.v={};s.step=0;s.lt=null;s.spd=null;s.id=b?b.def.id:null;s.name=b?b.def.name:'';}
+function grReset(){serClear(GR,focus);}
 /* hız her karede izlenir: örnekleme aralığı (0,3 sn) hızlı zaman akışında bir yörüngenin büyük kısmını atlayabilir, kirişten hız ölçülmez */
-function grTrack(){
-  var b=focus;if(!b||b===sunBody||b.def.parent||isGone(b)){GR.lt=null;return;}
-  if(GR.id!==b.def.id)grReset();
+function serTrack(s,b){
+  if(!b||b===sunBody||b.def.parent||isGone(b)){s.lt=null;return;}
   grPosAU(b,_gp);
-  if(GR.lt!=null){var dtD=simDays-GR.lt;
-    if(dtD>1e-9){var c=_gp.dot(GR.lp)/Math.max(1e-12,_gp.length()*GR.lp.length());
+  if(s.lt!=null){var dtD=simDays-s.lt;
+    if(dtD>1e-9){var c=_gp.dot(s.lp)/Math.max(1e-12,_gp.length()*s.lp.length());
       /* bir karede 0,35 radyandan fazla dönülmüşse kiriş hatası büyür: son geçerli değer korunur */
-      if(c>.94)GR.spd=_gp.distanceTo(GR.lp)/dtD*1731.457;}
-    else if(dtD<0)GR.spd=null;}
-  GR.lp.copy(_gp);GR.lt=simDays;}
-function grValue(b,k){
+      if(c>.94)s.spd=_gp.distanceTo(s.lp)/dtD*1731.457;}
+    else if(dtD<0)s.spd=null;}
+  s.lp.copy(_gp);s.lt=simDays;}
+function grTrack(){
+  var b=focus;if(b&&GR.id!==b.def.id&&b!==sunBody&&!b.def.parent&&!isGone(b))grReset();
+  serTrack(GR,b);
+  var p=GR.pin;if(p&&p.id!==GR.id)serTrack(p,byId[p.id]);}
+function serValue(s,b,k){
   if(k==='dist')return invOrbit(b.pos.distanceTo(sunBody.pos));
   if(k==='spd'){
     /* kuyruklu yıldızda hız, yörünge enerjisinden (vis-viva): v = 29,78 km/s × √(M☉ (2/r − 1/a)). Sıkıştırılmış ölçeklerde elips sahne biriminde
        çizildiği için konum farkından ölçülen hız gerçek değeri vermez */
     var cm=b.def.comet&&b.def.cm;if(cm&&cm.q&&cm.Q){var r=clamp(invOrbit(b.pos.distanceTo(sunBody.pos)),cm.q,cm.Q);return 29.78*Math.sqrt(Math.max(.05,sunMass)*Math.max(0,2/r-2/(cm.q+cm.Q)));}
-    return GR.spd;}
+    return s.spd;}
   if(k==='temp')return b.cl.Ts-273.15;
   if(k==='hab')return habScore(b);
   return null;}
+function grValue(b,k){return serValue(GR,b,k);}
+/* seriye bir örnek ekler; zaman geri sarıldıysa seri baştan başlar */
+function serPush(s,b,ms){
+  var n=s.t.length,last=n?s.t[n-1]:null;
+  if(last!=null&&simDays<last-1e-9){serClear(s,b);last=null;}
+  if(last!=null&&simDays-last<=s.step)return;
+  s.t.push(simDays);ms.forEach(function(m){(s.v[m.k]||(s.v[m.k]=[])).push(serValue(s,b,m.k));});
+  if(s.t.length>=GR.N){ /* tampon doldu: her iki örnekten birini at, örnekleme aralığını iki katına çıkar */
+    var keep=function(a){return a.filter(function(_,i){return i%2===0;});};
+    s.step=Math.max(s.step*2,(s.t[s.t.length-1]-s.t[0])/GR.N*2);s.t=keep(s.t);Object.keys(s.v).forEach(function(k){s.v[k]=keep(s.v[k]);});}}
 function grSample(){
-  var box=$('gr'),b=focus,ms=grMetrics(b);
+  var box=$('gr'),b=focus,ms=grMetrics(b),p=GR.pin;
+  /* sabitlenen cisim, ona bakılmıyorken de örneklenir; yok olduysa sabitleme kalkar */
+  if(p&&p.id!==(b&&b.def.id)){var pb=byId[p.id],pm=grMetrics(pb);if(pm.length)serPush(p,pb,pm);else{GR.pin=null;GR.drawn='';}}
   if(!ms.length||mode==='surface'){box.hidden=true;return;}
   box.hidden=false;
   if(GR.id!==b.def.id)grReset();
   if(!ms.some(function(m){return m.k===GR.key;}))GR.key=ms[0].k;
-  var n=GR.t.length,last=n?GR.t[n-1]:null;
-  /* zaman geri sarıldıysa eğri anlamını yitirir: baştan başla */
-  if(last!=null&&simDays<last-1e-9){grReset();n=0;last=null;}
-  if(last==null||simDays-last>GR.step){
-    GR.t.push(simDays);ms.forEach(function(m){(GR.v[m.k]||(GR.v[m.k]=[])).push(grValue(b,m.k));});
-    if(GR.t.length>=GR.N){ /* tampon doldu: her iki örnekten birini at, örnekleme aralığını iki katına çıkar */
-      var keep=function(a){return a.filter(function(_,i){return i%2===0;});};
-      GR.step=Math.max(GR.step*2,(GR.t[GR.t.length-1]-GR.t[0])/GR.N*2);GR.t=keep(GR.t);Object.keys(GR.v).forEach(function(k){GR.v[k]=keep(GR.v[k]);});}
-  }
+  serPush(GR,b,ms);
   grTabs(ms);grDraw(ms);}
 function grTabs(ms){
   var sig=ms.map(function(m){return m.k;}).join(',')+'|'+GR.key;if(sig===GR.tabSig)return;GR.tabSig=sig;
@@ -206,34 +218,66 @@ function grTabs(ms){
   ms.forEach(function(m){var bt=document.createElement('button');bt.type='button';bt.className='grtab';bt.textContent=m.n;bt.setAttribute('aria-pressed',m.k===GR.key?'true':'false');
     bt.addEventListener('click',function(){GR.key=m.k;try{localStorage.setItem('gsg-graph-key',m.k);}catch(_){}GR.drawn='';grSample();});box.appendChild(bt);});}
 function grSpanTxt(d){return d<=0?'':d<1?'son '+Math.max(1,Math.round(d*24))+' saat':d<730?'son '+Math.round(d)+' gün':'son '+(d/365.25).toLocaleString('tr-TR',{maximumFractionDigits:1})+' yıl';}
+function serPts(s,k){var V=s.v[k]||[],T=s.t,o=[];for(var i=0;i<T.length;i++)if(V[i]!=null&&isFinite(V[i]))o.push([T[i],V[i]]);return o;}
 function grDraw(ms){
-  var m=ms.filter(function(x){return x.k===GR.key;})[0],V=GR.v[GR.key]||[],T=GR.t,n=T.length,cur=grValue(focus,GR.key);
+  var m=ms.filter(function(x){return x.k===GR.key;})[0],n=GR.t.length,cur=grValue(focus,GR.key),p=GR.pin;
   $('grNow').textContent=m.n+' · '+grFmt(m,cur);
   if(!GR.open)return;
+  /* sabitleme düğmesi ve açıklama satırı */
+  var same=p&&p.id===GR.id,pinBtn=$('grPin');pinBtn.textContent=same?'Sabitlemeyi kaldır':p?p.name+' sabit · kaldır':'Karşılaştırmak için sabitle';pinBtn.setAttribute('aria-pressed',p?'true':'false');
+  var ppts=p&&!same?serPts(p,GR.key):[],leg=$('grLeg');
+  if(p&&!same){leg.hidden=false;leg.innerHTML='<span class="grl"><i></i>'+esc(GR.name)+'</span><span class="grl dash"><i></i>'+esc(p.name)+(ppts.length<2?' (bu değer onda yok)':'')+'</span>';}
+  else if(same){leg.hidden=false;leg.textContent='Sabitlendi: başka bir cisme geçince ikisi birlikte çizilir.';}
+  else leg.hidden=true;
   var cv=$('grCv'),w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;
   var dpr=Math.min(2,window.devicePixelRatio||1);if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);GR.drawn='';}
-  var sig=GR.key+'|'+n+'|'+(n?T[n-1]:0)+'|'+cv.width;if(sig===GR.drawn)return;GR.drawn=sig;
+  var sig=GR.key+'|'+n+'|'+(n?GR.t[n-1]:0)+'|'+cv.width+'|'+(p?p.id+p.t.length:'');if(sig===GR.drawn)return;GR.drawn=sig;
   var g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
-  var pts=[];for(var i=0;i<n;i++)if(V[i]!=null&&isFinite(V[i]))pts.push([T[i],V[i]]);
-  var cs=getComputedStyle(document.documentElement),cLine=cs.getPropertyValue('--soft').trim()||'#c4c9d8',cDim=cs.getPropertyValue('--line').trim()||'rgba(214,222,255,.11)',cAcc=cs.getPropertyValue('--accent').trim()||'#f2b84b';
+  var pts=serPts(GR,GR.key);
+  var cs=getComputedStyle(document.documentElement),cLine=cs.getPropertyValue('--soft').trim()||'#c4c9d8',cDim=cs.getPropertyValue('--line').trim()||'rgba(214,222,255,.11)',cAcc=cs.getPropertyValue('--accent').trim()||'#f2b84b',cMute=cs.getPropertyValue('--dim').trim()||'#8a90a2';
   /* taban ve tavan çizgisi */
   g.strokeStyle=cDim;g.lineWidth=1;g.beginPath();g.moveTo(0,.5);g.lineTo(w,.5);g.moveTo(0,h-.5);g.lineTo(w,h-.5);g.stroke();
-  if(pts.length<2){$('grMin').textContent='';$('grMax').textContent='';$('grSpan').textContent=playing?'Veri toplanıyor…':'Zaman durdu: oynatınca çizilir';
+  if(pts.length<2){$('grMin').textContent='';$('grMax').textContent='';$('grDelta').textContent='';$('grSpan').textContent=playing?'Veri toplanıyor…':'Zaman durdu: oynatınca çizilir';
     cv.setAttribute('aria-label',m.n+' grafiği: henüz yeterli veri yok');return;}
-  var lo=Infinity,hi=-Infinity;pts.forEach(function(p){if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];});
+  var t0=pts[0][0],t1=pts[pts.length-1][0];
+  /* sabitlenen seriden yalnızca aynı zaman aralığına düşen kısım çizilir */
+  ppts=ppts.filter(function(q){return q[0]>=t0-1e-9&&q[0]<=t1+1e-9;});
+  var lo=Infinity,hi=-Infinity;pts.concat(ppts).forEach(function(q){if(q[1]<lo)lo=q[1];if(q[1]>hi)hi=q[1];});
   /* düz çizgi ekranın ortasında dursun; küçük dalgalanma abartılmasın */
   var span=hi-lo,minSpan=Math.max(Math.abs(hi),Math.abs(lo))*.02+(m.k==='temp'?1:m.k==='hab'?1:1e-4);if(span<minSpan){var mid=(hi+lo)/2;lo=mid-minSpan/2;hi=mid+minSpan/2;span=minSpan;}
-  var t0=pts[0][0],t1=pts[pts.length-1][0],dt=Math.max(1e-9,t1-t0),pad=7,X=function(t){return (t-t0)/dt*(w-pad-2)+1;},Y=function(v){return h-pad-(v-lo)/span*(h-2*pad);};
-  g.beginPath();pts.forEach(function(p,i){if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});
-  g.strokeStyle=cLine;g.lineWidth=1.6;g.lineJoin='round';g.stroke();
+  var dt=Math.max(1e-9,t1-t0),pad=7,X=function(t){return (t-t0)/dt*(w-pad-2)+1;},Y=function(v){return h-pad-(v-lo)/span*(h-2*pad);};
+  /* başlangıç değeri: ince kesikli yatay çizgi */
+  var v0=pts[0][1],vN=pts[pts.length-1][1];
+  g.save();g.setLineDash([2,4]);g.strokeStyle=cMute;g.lineWidth=1;g.beginPath();g.moveTo(0,Y(v0));g.lineTo(w,Y(v0));g.stroke();g.restore();
+  var path=function(P){g.beginPath();P.forEach(function(q,i){if(i)g.lineTo(X(q[0]),Y(q[1]));else g.moveTo(X(q[0]),Y(q[1]));});};
+  if(ppts.length>1){g.save();g.setLineDash([6,4]);path(ppts);g.strokeStyle=cMute;g.lineWidth=1.5;g.lineJoin='round';g.stroke();g.restore();}
+  path(pts);g.strokeStyle=cLine;g.lineWidth=1.6;g.lineJoin='round';g.stroke();
   /* "şu an" noktası: tek vurgu rengi */
-  var lx=X(t1),ly=Y(pts[pts.length-1][1]);g.fillStyle=cAcc;g.beginPath();g.arc(lx,ly,3.2,0,TAU);g.fill();
+  g.fillStyle=cAcc;g.beginPath();g.arc(X(t1),Y(vN),3.2,0,TAU);g.fill();
   $('grMin').textContent='en az '+grFmt(m,lo);$('grMax').textContent='en çok '+grFmt(m,hi);$('grSpan').textContent=grSpanTxt(dt);
-  cv.setAttribute('aria-label',m.n+' grafiği, '+grSpanTxt(dt)+': en az '+grFmt(m,lo)+', en çok '+grFmt(m,hi)+', şu an '+grFmt(m,cur));}
+  var dv=vN-v0,dd=m.k==='dist'?2:m.d,dAbs=Math.abs(dv).toLocaleString('tr-TR',{minimumFractionDigits:dd,maximumFractionDigits:dd}),dTxt=+dAbs.replace(/\./g,'').replace(',','.')===0?'değişmedi':(dv>0?'+':'−')+dAbs+m.u;
+  $('grDelta').textContent='Başlangıç '+grFmt(m,v0)+' → şimdi '+grFmt(m,vN)+' ('+dTxt+')';
+  cv.setAttribute('aria-label',m.n+' grafiği, '+grSpanTxt(dt)+': başlangıç '+grFmt(m,v0)+', en az '+grFmt(m,lo)+', en çok '+grFmt(m,hi)+', şu an '+grFmt(m,cur)+(ppts.length>1?'; karşılaştırılan: '+p.name:''));}
 function grSetOpen(o){GR.open=o;$('grBody').hidden=!o;$('grTog').setAttribute('aria-expanded',o?'true':'false');GR.drawn='';try{localStorage.setItem('gsg-graph',o?'1':'0');}catch(_){}if(o&&focus)grSample();}
+/* sabitle / kaldır: sabitlenen seri, o ana kadar toplanan veriyle başlar */
+function grPinToggle(){
+  if(GR.pin){GR.pin=null;}
+  else if(GR.id){var v={};Object.keys(GR.v).forEach(function(k){v[k]=GR.v[k].slice();});GR.pin={id:GR.id,name:GR.name,t:GR.t.slice(),v:v,step:GR.step,lp:GR.lp.clone(),lt:GR.lt,spd:GR.spd};}
+  GR.drawn='';grSample();}
+/* CSV: Türkçe Excel'in beklediği biçim (noktalı virgül ayırıcı, ondalık virgül, UTF-8 imi). Her satır bir örnek */
+function grCsvText(){
+  var num=function(x){return x==null||!isFinite(x)?'':String(Math.round(x*1e4)/1e4).replace('.',',');};
+  var block=function(s){var ks=GR_M.filter(function(m){return s.v[m.k];}),rows=[['Cisim','Tarih','Gün'].concat(ks.map(function(m){return m.n+(m.u?' ('+m.u.trim()+')':m.pre?' ('+m.pre+')':'');})).join(';')];
+    s.t.forEach(function(t,i){rows.push([s.name,new Date(J2000+t*864e5).toISOString().slice(0,10),num(t-s.t[0])].concat(ks.map(function(m){return num(s.v[m.k][i]);})).join(';'));});return rows.join('\r\n');};
+  var out=block(GR);if(GR.pin&&GR.pin.id!==GR.id&&GR.pin.t.length)out+='\r\n\r\n'+block(GR.pin);return out;}
+function grCsv(){
+  if(!GR.t.length){toast('Henüz veri yok: zamanı oynat.',2600);return;}
+  var blob=new Blob(['﻿'+grCsvText()],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),url=URL.createObjectURL(blob);
+  a.href=url;a.download='celestia-'+GR.id+'-grafik.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
 (function(){try{GR.open=localStorage.getItem('gsg-graph')==='1';var k=localStorage.getItem('gsg-graph-key');if(k&&GR_M.some(function(m){return m.k===k;}))GR.key=k;}catch(_){}
   $('grBody').hidden=!GR.open;$('grTog').setAttribute('aria-expanded',GR.open?'true':'false');
-  $('grTog').addEventListener('click',function(){grSetOpen(!GR.open);});})();
+  $('grTog').addEventListener('click',function(){grSetOpen(!GR.open);});
+  $('grPin').addEventListener('click',grPinToggle);$('grCsv').addEventListener('click',grCsv);})();
 
 var liveT=0;
 function realXY(b){if(b.au&&realOk(b)&&b.mod.orbit===1&&!(gravityOn&&b.grav))return [b.au.x,-b.au.y];var a=b.def.a||invOrbit(b.pos.length());return [a*Math.cos(b.ang),-a*Math.sin(b.ang)];}

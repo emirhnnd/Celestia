@@ -83,8 +83,11 @@
           <div id="grBody" hidden>
             <div class="grtabs" id="grTabs" role="group" aria-label="Grafikte gösterilen değer"></div>
             <canvas id="grCv" role="img" aria-label="Seçili değerin zamana göre grafiği"></canvas>
+            <div class="grleg" id="grLeg" hidden></div>
             <div class="grfoot"><span id="grMin"></span><span id="grSpan"></span><span id="grMax"></span></div>
-            <p class="note" id="grNote">Değerler simülasyon zamanı ilerledikçe kaydedilir. Başka bir cisme geçince ya da zaman geri sarılınca grafik baştan başlar.</p>
+            <p class="grdelta" id="grDelta"></p>
+            <div class="btnrow"><button type="button" class="btn" id="grPin" aria-pressed="false">Karşılaştırmak için sabitle</button><button type="button" class="btn" id="grCsv">Veriyi indir (CSV)</button></div>
+            <p class="note" id="grNote">Değerler simülasyon zamanı ilerledikçe kaydedilir. Başka bir cisme geçince ya da zaman geri sarılınca grafik baştan başlar; sabitlenen cisim kaydedilmeye devam eder.</p>
           </div>
         </div>
         <div id="hab" hidden>
@@ -204,6 +207,11 @@
           <div class="frow"><label for="lTarget">Hedef</label><select id="lTarget"></select></div>
           <div class="btnrow"><button class="btn" id="lGo">Seçili cismi hedefe fırlat</button></div>
           <div class="rrow"><label for="sMass">Yıldız kütlesi (Güneş = 1)</label><input type="range" id="sMass" min="0" max="1" step=".001" value=".25"><output id="oMass"></output></div>
+          <div id="cons" hidden>
+            <div class="consrow"><span>Enerji sapması</span><output id="consE">–</output></div>
+            <div class="consrow"><span>Açısal momentum sapması</span><output id="consL">–</output></div>
+            <p class="note" id="consNote"></p>
+          </div>
           <p class="note">Açıkken gezegenler sabit çember yerine gerçek yerçekimiyle hareket eder ve iz bırakır. Kütleyi değiştir ya da ikinci yıldız ekle: yörüngeler bozulur, gezegenler fırlayabilir veya Güneş'e düşebilir.</p>
         </section>
 

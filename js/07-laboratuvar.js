@@ -359,6 +359,36 @@ function stepGravity(dDays){
     b.pivot.position.set(b.gx,b.gy,b.gz);b.ang=Math.atan2(-b.gz,b.gx);if(dDays===0)return;pushTrail(b);
   });
 }
+/* ---------- korunum göstergesi ----------
+   Kütleçekim modunda toplam mekanik enerji ve açısal momentumun, mod açıldığından beri ne kadar saptığını gösterir: simülasyonun
+   doğruluğunu ölçmenin yolu. Bütünleyicinin kullandığı kuvvetlerle aynı potansiyel kullanılır (Güneş terimi cismin kendi GM'siyle ve
+   yumuşatmayla, gezegen çiftleri Dünya'nın GM'sine oranla). Cisim sayısı ya da yıldız kütlesi değişince ölçüm baştan başlar.
+   Ölçülmediği durumlar: ek yıldız varken (yıldızlar hazır yörüngede döner, sisteme dışarıdan enerji verir) ve bir cisim hedefe fırlatılmışken
+   ya da yutulurken (o cisim kuvvetle değil yönlendirmeyle hareket eder). */
+var CONS={E0:null,L0:null,sig:'',dE:null,dL:null,why:''};
+function consBodies(){return BODIES.filter(function(b){return b.grav&&b.trailLine&&!b.sysHide&&!b.dart&&!b.destroyed&&!b.engulfed&&b.gx!=null;});}
+function consCalc(gb){
+  var GMref=byId.earth&&byId.earth.GM?byId.earth.GM:1,E=0,Lx=0,Ly=0,Lz=0,i,j;
+  for(i=0;i<gb.length;i++){var b=gb[i],m=bodyMass(b),r2=b.gx*b.gx+b.gy*b.gy+b.gz*b.gz+1;
+    E+=m*(.5*(b.gvx*b.gvx+b.gvy*b.gvy+b.gvz*b.gvz)-b.GM*sunMass/Math.sqrt(r2));
+    Lx+=m*(b.gy*b.gvz-b.gz*b.gvy);Ly+=m*(b.gz*b.gvx-b.gx*b.gvz);Lz+=m*(b.gx*b.gvy-b.gy*b.gvx);
+    for(j=i+1;j<gb.length;j++){var o=gb[j],ex=o.gx-b.gx,ey=o.gy-b.gy,ez=o.gz-b.gz;E-=GMref*m*bodyMass(o)/333000/Math.sqrt(ex*ex+ey*ey+ez*ez+.5);}}
+  return {E:E,L:Math.sqrt(Lx*Lx+Ly*Ly+Lz*Lz)};}
+function consUpdate(){
+  var box=$('cons');if(!box)return;
+  if(!gravityOn){box.hidden=true;CONS.sig='';CONS.dE=CONS.dL=null;return;}
+  box.hidden=false;var gb=consBodies(),why='';
+  if(BODIES.some(function(b){return b.def.star&&b!==sunBody&&!isGone(b)&&!b.sysHide;}))why='Ek yıldız varken ölçülmez: yıldız hazır yörüngesinde döner ve sisteme enerji verir.';
+  else if(gb.some(function(b){return b.homing||b.tdeNow||b.fallNow;}))why='Fırlatma ya da yutulma sürerken ölçülmez.';
+  else if(!gb.length)why='Ölçülecek gezegen kalmadı.';
+  CONS.why=why;
+  if(why){CONS.sig='';CONS.dE=CONS.dL=null;$('consE').textContent='–';$('consL').textContent='–';$('consNote').textContent=why;return;}
+  var sig=gb.map(function(b){return b.def.id+':'+b.mod.size;}).join(',')+'|'+sunMass+'|'+sunType,c=consCalc(gb);
+  if(sig!==CONS.sig){CONS.sig=sig;CONS.E0=c.E;CONS.L0=c.L;}
+  CONS.dE=CONS.E0?(c.E-CONS.E0)/Math.abs(CONS.E0)*100:0;CONS.dL=CONS.L0?(c.L-CONS.L0)/Math.abs(CONS.L0)*100:0;
+  var f=function(x){var a=Math.abs(x);return a<1e-4?'%0,0001\'den az':(x<0?'−':'+')+'%'+a.toLocaleString('tr-TR',{minimumFractionDigits:a<.1?4:2,maximumFractionDigits:a<.1?4:2});};
+  $('consE').textContent=f(CONS.dE);$('consL').textContent=f(CONS.dL);
+  $('consNote').textContent='Mod açıldığından beri toplam enerji ve açısal momentumun değişimi. Sıfıra ne kadar yakınsa hesap o kadar doğru; cisim sayısı ya da yıldız kütlesi değişince ölçüm baştan başlar.';}
 function setGravity(on){
   gravityOn=on;var gb=$('gravBtn');gb.setAttribute('aria-pressed',on);gb.textContent=on?'Açık':'Kapalı';gb.classList.toggle('on',on);
   BODIES.forEach(function(b){

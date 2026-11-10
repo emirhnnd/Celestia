@@ -282,7 +282,7 @@ function frame(now){
   if(Math.abs(nr-camera.near)>Math.min(.02,nr*.1)){camera.near=nr;camera.updateProjectionMatrix();}
   updateLabels();
   grTrack();
-  liveT-=dt;if(liveT<=0){updateLive();grSample();liveT=.3;}
+  liveT-=dt;if(liveT<=0){updateLive();grSample();consUpdate();liveT=.3;}
   dateT-=dt;if(dateT<=0){updateDate();dateT=.08;}
   miniT-=dt;if(miniT<=0){drawMini();miniT=.1;}
   renderFrame();

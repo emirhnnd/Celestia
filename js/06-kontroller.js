@@ -152,7 +152,13 @@ var PRESETS=[
     var n0=customs.length;openSide();showTab('lab');showLabTab('ekle');addPick('p:earth');$('nName').value='Dünya 2';$('nName').dataset.user='1';slideTo('nSize',1);slideTo('nDist',1.5);clk('nAdd');
     setTimeout(function(){if(customs.length>n0)watchGraph('temp','1,5 AU\'da bir Dünya: sıcaklığı izle');},400);}],
  ['🌗','Ay çok yaklaşırsa','Ay\'ı Roche sınırının içine indirir; gelgit kuvveti onu parçalayıp halkaya çevirir','ay roche siniri gelgit parcalanma halka hazir deney',function(){
-    if(!needBodies(['earth','moon']))return;focusBody('moon');setTimeout(function(){labGo('moonSec');setTimeout(function(){slideTo('sMoonD',.02);if(!playing)clk('play');},120);},250);}]
+    if(!needBodies(['earth','moon']))return;focusBody('moon');setTimeout(function(){labGo('moonSec');setTimeout(function(){slideTo('sMoonD',.02);if(!playing)clk('play');},120);},250);}],
+ ['⚖️','Güneş iki kat ağır olsaydı','Kütleçekimini açıp Güneş\'in kütlesini 2 katına çıkarır; gezegenler içeri çekilir, yörüngeler basıklaşır','gunes kutlesi iki kat agir kutlecekim yorunge hazir deney',function(){
+    if(!needBodies(['earth']))return;focusBody('earth');setTimeout(function(){if(!gravityOn)clk('gravBtn');slideTo('sMass',sliderFromMass(2));watchGraph('dist','Güneş ×2: Dünya\'nın uzaklığını izle');},250);}],
+ ['💨','Güneş kütlesinin yarısını kaybederse','Kütle yarının altına inince çekim gezegenleri tutamaz: yörüngeden kaçışı izle','gunes kutle kaybi kacis hizi gezegen kacar kutlecekim hazir deney',function(){
+    if(!needBodies(['earth']))return;focusBody('earth');setTimeout(function(){if(!gravityOn)clk('gravBtn');slideTo('sMass',sliderFromMass(.45));watchGraph('dist','Güneş ×0,45: Dünya uzaklaşıyor');},250);}],
+ ['🧲','Dünya manyetik alanını kaybederse','Manyetik kalkan kapanır; Güneş rüzgârı atmosferi aşındırır. Yaşanabilirlik puanını izle','manyetik alan kalkan gunes ruzgari atmosfer kaybi yasanabilirlik hazir deney',function(){
+    if(!needBodies(['earth']))return;focusBody('earth');setTimeout(function(){slideTo('cMag',0);watchGraph('hab','Manyetik alan kapalı: yaşanabilirliği izle');},250);}]
 ];
 var CMD={items:[],sel:0};
 function openCmd(){$('cmdk').hidden=false;$('cmdIn').value='';renderCmd('');setTimeout(function(){$('cmdIn').focus();},20);}

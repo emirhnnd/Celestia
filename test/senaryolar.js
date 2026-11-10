@@ -119,6 +119,23 @@ module.exports=async(page,E,shot)=>{
     await E("setStar(4)");const b=real?await until("Math.abs(effVr(sunBody)*KM_U-6000)<300",60000):(await page.waitForTimeout(3000),true);
     return [real,a,g,b,await E("Math.round(effVr(sunBody)*KM_U)")];},
     r=>{if(!r[0])return true;const g=P(r[2]);return r[1]===true&&g[1]===true&&g[2]===true&&g[3]===false&&r[3]===true;});
+  /* grafik eklemeleri: sabitlenen cisim (Merkür) başka cisme (Venüs) geçilince de kaydedilir ve ikisi birlikte çizilir;
+     "başlangıç → şimdi" satırı yazılır; CSV başlık satırı ve iki cismin verisini içerir */
+  await T('grafik-ek',async()=>{await fresh(page);await E("focusBody('mercury');grSetOpen(true)");await page.waitForTimeout(3500);await E("grPinToggle()");await page.waitForTimeout(400);
+    await E("focusBody('venus')");await page.waitForTimeout(5000);
+    return await E("(function(){var c=grCsvText().split('\\r\\n');return [GR.id,GR.pin&&GR.pin.id,GR.pin.t.length>GR.t.length,document.getElementById('grLeg').textContent,document.getElementById('grDelta').textContent.slice(0,9),c[0],c.some(function(l){return l.indexOf('Merkür;')===0}),c.some(function(l){return l.indexOf('Venüs;')===0})]})()");},
+    r=>r[0]==='venus'&&r[1]==='mercury'&&r[2]===true&&/Venüs/.test(r[3])&&/Merkür/.test(r[3])&&r[4]==='Başlangıç'&&/^Cisim;Tarih;Gün;Uzaklık \(AU\)/.test(r[5])&&r[6]===true&&r[7]===true);
+  /* korunum göstergesi: kütleçekim modunda toplam enerji ve açısal momentum sapması yüzde birin yüzde birinden küçük kalmalı;
+     ek yıldız eklenince ölçüm durur ve nedeni yazılır */
+  await T('korunum',async()=>{await fresh(page);await E("clk('gravBtn')");await page.waitForTimeout(7000);
+    const a=await E("[gravityOn,document.getElementById('cons').hidden,CONS.dE,CONS.dL]");
+    await E("addStar({name:'Y',type:0,size:1,a:300,m:1},false)");await page.waitForTimeout(1500);
+    return [a,await E("[CONS.dE,CONS.why.length>0,document.getElementById('consE').textContent]")];},
+    r=>{const a=P(r[0]),b=P(r[1]);return a[0]===true&&a[1]===false&&typeof a[2]==='number'&&Math.abs(a[2])<.01&&Math.abs(a[3])<.01&&b[0]===null&&b[1]===true&&b[2]==='–';});
+  /* yeni hazır deneyler: "Güneş kütlesinin yarısını kaybederse" kütleçekimini açar, kütleyi 0,45'e indirir; Dünya uzaklaşır */
+  await T('hazir-deney-2',async()=>{await fresh(page);const n=await E("PRESETS.length");await E("PRESETS[5][4]()");await page.waitForTimeout(9000);
+    return [n,await E("(function(){var v=(GR.v.dist||[]).filter(function(x){return x!=null});return [focus.def.id,gravityOn,+sunMass.toFixed(2),GR.key,v[v.length-1]-v[0]]})()")];},
+    r=>{const a=P(r[1]);return r[0]===7&&a[0]==='earth'&&a[1]===true&&a[2]===.45&&a[3]==='dist'&&a[4]>.03;});
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

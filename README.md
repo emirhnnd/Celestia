@@ -108,7 +108,17 @@ cd Celestia
 python3 -m http.server 8000
 ```
 
-Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok; uygulamanın kodu `index.html` dosyasında, stiller `css/` klasöründe, gömülü veriler (yıldız kataloğu, Dünya kara maskesi) `data/` klasöründe, dokular `tex/` klasöründe.
+Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok. Dosya düzeni:
+
+| Yer | İçerik |
+|---|---|
+| `index.html` | Sayfa iskeleti (arayüzün HTML'i) |
+| `css/style.css` | Stiller |
+| `js/` | Uygulama kodu, konuya göre 15 dosya (`01-temel.js` … `15-baslat.js`) |
+| `data/` | Gömülü veriler: yıldız kataloğu, Dünya kara maskesi |
+| `tex/` | Dokular |
+
+`js/` altındaki dosyalar `index.html`'deki sırayla yüklenir ve aynı kapsamı paylaşır: bir dosyada tanımlanan ad sonrakilerde de geçerlidir. Yeni kod eklerken iki kural var: yüklenirken çalışan kod yalnızca kendinden önceki dosyalardaki adlara dokunabilir; yükleme sırasında ertelenecek iş `setTimeout` yerine `afterLoad(...)` ile sıraya konur.
 
 > three.js ve astronomy-engine CDN'den, Onest yazı tipi Google Fonts'tan yüklenir; bu yüzden ilk açılışta internet bağlantısı gerekir. Kütüphaneler ya da WebGL yüklenemezse uygulama boş ekran yerine bir hata ekranı gösterir.
 

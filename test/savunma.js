@@ -8,8 +8,8 @@ let fails = 0;
 const ok = (name, cond, extra) => { console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra !== undefined ? ' => ' + JSON.stringify(extra) : '')); if (!cond) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-/* vp: ekran boyutu (telefon testi); noData: data/ dosyaları yüklenmez; seed: açılıştan önce localStorage'a yazılacak anahtarlar */
-async function open(b, { noThree = false, noGL = false, ds = '2.5', keepStorage = false, vp = null, noData = false, seed = null } = {}) {
+/* slowJs: her uygulama dosyası bu kadar ms gecikir; vp: ekran boyutu (telefon testi); noData: data/ dosyaları yüklenmez; seed: açılıştan önce localStorage'a yazılacak anahtarlar */
+async function open(b, { noThree = false, noGL = false, ds = '2.5', keepStorage = false, vp = null, noData = false, seed = null, slowJs = 0 } = {}) {
   const page = await b.newPage(vp ? { viewport: { width: vp[0], height: vp[1] }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.route('**/*', async r => {
@@ -19,9 +19,13 @@ async function open(b, { noThree = false, noGL = false, ds = '2.5', keepStorage 
     if (u.startsWith('http://app/')) {
       const p = decodeURIComponent(u.slice(11).split('?')[0]) || 'index.html', f = path.join(REPO, p);
       if (noData && p.startsWith('data/')) return r.abort();
+      /* yavaş ağ: uygulama dosyaları aralıklı gelir; tarayıcı iki dosya arasında zamanlayıcı ve olayları çalıştırır */
+      if (slowJs && p.startsWith('js/')) await wait(slowJs);
       if (!fs.existsSync(f)) return r.fulfill({ status: 404, body: '' });
       let body = fs.readFileSync(f);
-      if (p === 'index.html') body = body.toString().replace("'use strict';", "'use strict';window.__E=function(s){return eval(s)};");
+      /* test kancası: uygulamanın ilk dosyası yüklenirken eklenir (sayfanın hazır olduğunu da bu gösterir). Dolaylı eval genel kapsamda çalışır:
+         uygulamanın üst düzey adlarının hepsi oradadır */
+      if (p === 'js/01-temel.js') body = body.toString().replace("'use strict';", "'use strict';window.__E=function(s){return (0,eval)(s)};");
       const ct = p.endsWith('.html') ? 'text/html' : p.endsWith('.png') ? 'image/png' : p.endsWith('.jpg') ? 'image/jpeg' : p.endsWith('.css') ? 'text/css' : p.endsWith('.js') ? 'text/javascript' : 'application/octet-stream';
       return r.fulfill({ body, contentType: ct });
     }
@@ -201,6 +205,16 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   ok('silinen cismin ' + nG + ' geometrisinin hepsi bırakıldı (yörünge çizgisi dahil)', nG >= 3 && left === '[]', left);
   ok('12 ekle-sil sonrası sahne ve cisim listesi büyümedi', m1[2] - m0[2] <= 1 && m1[3] === m0[3], { once: m0, sonra: m1 });
   ok('bellek testi: sayfa hatası yok', t.errs.length === 0 && (await t.E('frameErrN')) === 0, t.errs);
+  await t.page.close();
+
+  /* 12) yavaş ağ: uygulama 15 dosyadan yüklenir; dosyalar aralıklı gelse de (araya zamanlayıcı, tuş ve boyut olayları girse de)
+        yükleme sırasında henüz gelmemiş bir dosyadaki ada dokunulmaz */
+  t = await open(b, { slowJs: 120 });
+  for (let i = 0; i < 8; i++) { await wait(180); await t.page.keyboard.press('Escape').catch(() => { }); await t.page.setViewportSize({ width: 1280 - (i % 2) * 40, height: 800 }).catch(() => { }); }
+  await ready(t);
+  ok('yavaş ağ: sayfa hatasız açıldı', t.errs.length === 0 && (await t.E('frameErrN')) === 0, t.errs);
+  ok('yavaş ağ: ertelenen kurulum çalıştı (ekleme kataloğu dolu)', (await t.page.evaluate(() => document.getElementById('addCat').children.length)) > 3);
+  ok('yavaş ağ: simülasyon çalışıyor', (await t.E("simDays>0&&BODIES.length>20")) === true);
   await t.page.close();
 
   await b.close();

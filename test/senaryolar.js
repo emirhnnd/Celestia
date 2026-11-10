@@ -79,6 +79,11 @@ module.exports=async(page,E,shot)=>{
     const thermo=async(tect)=>E("(function(){var e=byId.earth,h=e.hab;h.co2=-3;h.tect="+tect+";h.cs=0;for(var k=0;k<4;k++){for(var i=0;i<400;i++){e.cl.sd=simDays-2e5;e.cl.rt-=5e6;computeClimate(e);}}var r=+(e.cl.Ts-273.15).toFixed(1);h.co2=0;h.tect=1;h.cs=0;return r})()");
     const withT=await thermo(1),noT=await thermo(0);
     return {mevsimFarki:[s0,s23,s90],artiyor:s0<s23&&s23<s90,varsayilanHabTsMil:def,iki_katCO2_K:dco2,termostatC:{tektonikli:withT,tektoniksiz:noT},termostatSaglikli:withT>noT+1};},r=>{const d=P(r.varsayilanHabTsMil);return r.artiyor&&r.termostatSaglikli&&r.iki_katCO2_K>=2&&r.iki_katCO2_K<=4.5&&d[0]>=90&&d[1]>=13&&d[1]<=18;});
+  /* gerçek ölçekte nötron yıldızı 10 km, 10 Güneş kütleli kara deliğin gölgesi 76,7 km (2,95 × 10 × 2,6), Io Jüpiter'e 421.700 km;
+     diğer ölçeklerde nötron yıldızı ve kara delik görünsün diye büyütülmüş kalır */
+  await T('kompakt-boyut',async()=>{await fresh(page);await E("addStar({name:'N',type:5,size:1,a:300,m:1.4},false)");await page.waitForTimeout(800);await E("addStar({name:'K',type:6,size:1,a:400,m:10},false)");await page.waitForTimeout(2000);
+    return await E("(function(){var f=function(n){return BODIES.filter(function(b){return b.def.name===n})[0]},n=f('N'),k=f('K');return [REAL,+(effVr(n)*KM_U).toFixed(1),+(k.exo.sh*KM_U).toFixed(1),+(byId.io.pos.distanceTo(byId.jupiter.pos)*KM_U).toFixed(0)]})()");},
+    r=>r[0]?(Math.abs(r[1]-10)<.2&&Math.abs(r[2]-76.7)<1&&Math.abs(r[3]-421700)<4300):(r[1]>1000&&r[2]>1000));
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

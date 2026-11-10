@@ -1217,6 +1217,15 @@ var sunType=0;
 
 function systemOf(b){return b.parent?b.parent:b;}
 function effVr(b){return b.def.vr*b.mod.size*(b.typeScale||1);}
+/* Gerçek ölçekte nötron yıldızı ve kara delik gerçek boyutunda çizilir: nötron yıldızı 10 km yarıçap; kara deliğin gölgesi olay ufkunun
+   2,6 katı, olay ufku kütleyle doğru orantılı (2,95 km × Güneş kütlesi). Çoğu zaman pikselden küçük kalırlar: yerlerini işaret noktası
+   gösterir, yaklaşınca gerçek küre görünür. Diğer ölçeklerde görünsün diye büyütülmüş hâlleri (SUN_TYPES.sc) kullanılır.
+   Başka yıldız sistemine geçildiğinde (SYS) Güneş'in yerindeki yıldız o sistemin ölçeğini kullanır. */
+var NS_KM=10,BH_SH_KM=2.95*2.6;
+function realCompact(b,i){return REAL&&(i===5||i===6)&&!(b===sunBody&&SYS);}
+function typeSc(b,i){if(!realCompact(b,i))return SUN_TYPES[i].sc;var km=i===5?NS_KM:BH_SH_KM*Math.max(.2,stMass(b));return km/KM_U/(b.def.vr*((b.mod&&b.mod.size)||1));}
+/* eklenen nötron yıldızı ve kara delikte boyut her karede güncellenir: kara delik madde yuttukça büyür, boyut kaydırıcısı gerçek boyutu değiştirmez */
+function realSizeSync(b,i){if(!realCompact(b,i)||b===sunBody||b.morphing||b.exoCol)return;var ts=typeSc(b,i);if(ts!==b.typeScale){b.typeScale=ts;b.tilt.scale.setScalar(b.mod.size*ts);b.vr=effVr(b);}}
 function focusBody(id,opts){
   var b=byId[id];if(!b)return;opts=opts||{};
   if(mode==='surface')exitSurface(true);
@@ -1255,7 +1264,7 @@ function mStr(){return (sunMass<10?sunMass.toFixed(EATEN>0?4:(sunMass<1?2:1)):Ma
 /* ekrandaki yarıçapın (sahne birimi) gerçek yarıçapa (km) oranı: ölçü Dünya'nın ekrandaki boyutudur (gerçek ölçekte bu doğrudan km oranıdır) */
 function drawK(u,km){var e=byId.earth;return e&&u>0&&km>0?u/effVr(e)*6371/km:0;}
 function katTxt(k){return 'Görünsün diye ~'+(k>=1000?Math.round(k/1000).toLocaleString('tr-TR')+' bin':Math.round(k))+' kat büyütüldü';}
-function bigTxt(u,km){var k=drawK(u,km);return k?katTxt(k):'Görünsün diye büyütüldü';}
+function bigTxt(u,km){var k=drawK(u,km);return !k?'Görünsün diye büyütüldü':k<1.5?'Gerçek boyutunda (yakınlaşınca görünür)':katTxt(k);}
 /* yalnızca belirgin büyütme varsa satır ekler (sıkıştırılmış ölçeklerde beyaz cüce zaten Dünya boyutunda çizilir) */
 function bigRow(u,km){return drawK(u,km)>=1.5?[['Ekranda',bigTxt(u,km)]]:[];}
 /* Güneş tür değiştirirken boyutu yavaşça geçer: etiket geçişin ortasındaki anlık boyutu değil, varacağı boyutu yazar */
@@ -1323,7 +1332,8 @@ function updateLive(){
 var pointers=new Map(),moved=0,lastPinch=0,keys={};
 function pinchD(){var a=Array.from(pointers.values());return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1;}
 function solidR(b){var r=effVr(b);if(b===sunBody&&sunType===6&&!SYS)r*=bhMassK()*2.6;else if(b.exo&&b.exo.disk)r*=2.6;if(b.wob)r*=1.25;if(b.atmoMesh)r*=1.04;return r;}
-function minDist(){return solidR(focus)*(focus.parent?2.2:1.7);}
+/* gerçek ölçekte en küçük cisimlerde kamera yakın kırpma düzleminin (en az 0,01 birim ≈ 40 km) içine girmesin */
+function minDist(){var m=solidR(focus)*(focus.parent?2.2:1.7);return REAL?Math.max(m,.03):m;}
 var DCAM=true;
 function dartCam(){if(!DCAM||!focus)return null;var A=null;for(var i=0;i<BODIES.length;i++){var b=BODIES[i];if(b.dart&&b.dart.cam&&(b.dart.t===focus||b===focus)&&!isGone(b)&&!isGone(b.dart.t)){A=b;break;}}if(!A)return null;
   var t=A.dart.t,c=_dcC.copy(A.pos).add(t.pos).multiplyScalar(.5),r=A.pos.distanceTo(t.pos)*.5+Math.max(solidR(A),solidR(t));return {c:c,r:r};}
@@ -1385,7 +1395,8 @@ function pick(cx,cy){
 function nearestSurface(){
   var best=1e9;
   BODIES.forEach(function(b){var d=camera.position.distanceTo(b.pos)-effVr(b);if(d<best)best=d;});
-  return clamp(best,.4,1500*DS);
+  /* gerçek ölçekte 10 km'lik bir cisme yaklaşabilmek için alt sınır daha küçük */
+  return clamp(best,REAL?.04:.4,1500*DS);
 }
 var tp={x:0,z:0};
 /* ek yıldızın Güneş'e göre yörünge dönemi Kepler'e göre toplam kütleden: P = 2π√(r³ / G(M☉+m)). Ölçek, Dünya'nın 365 günlük yılından.
@@ -1642,7 +1653,9 @@ function frame(now){
   updateSolarFx(now,SIMDT);updateFxList(SIMDT);updateExotic(SIMDT);stepDarts(SIMDT);stepTimers(SIMDT);updateStarWinds(SIMDT);tripDraw(dt);drawTDE(SDT);updateWeather();updatePlanetWx();updateEclipse();updateSkyLabels();
   BODIES.forEach(function(b){
     if(!b.glow1)return;var T=SUN_TYPES[b.starType];if(b.sunU)b.sunU.time.value=now*.001;
-    if(b.def.id==='sun'&&!EXO.col&&!b.morphing){var tg=starTarget();b.typeScale+=(tg-b.typeScale)*Math.min(1,dt*1.8);b.tilt.scale.setScalar(b.mod.size*b.typeScale*(sunType===6&&!SYS?bhMassK():1));b.vr=effVr(b);}
+    if(b.def.id==='sun'&&!EXO.col&&!b.morphing){var tg=starTarget(),kt=Math.min(1,dt*1.8),rt=tg/Math.max(b.typeScale,1e-12);
+      /* gerçek ölçekte yıldız ile kalıntısı arasında on binlerce kat fark var: doğrusal geçiş hedefe çok geç varır, oransal (logaritmik) geçiş birkaç saniyede oturur */
+      if(REAL&&rt>0)b.typeScale*=Math.pow(rt,kt);else b.typeScale+=(tg-b.typeScale)*kt;b.tilt.scale.setScalar(b.mod.size*b.typeScale*(sunType===6&&!SYS?bhMassK():1));b.vr=effVr(b);}
     var gs=7.33*effVr(b)*T.gm;
     b.glow1.scale.setScalar(gs*(1+Math.sin(now*.0011)*.03));b.glow2.scale.setScalar(gs*2.9*(1+Math.sin(now*.0007+1)*.04));
   });
@@ -1651,7 +1664,8 @@ function frame(now){
   try{
   updateCamera(dt);
   /* yakın kırpma düzlemi kameranın bu karedeki konumuna göre: eskiden bir önceki konuma göre hesaplanıyordu, hızlı geçişte yüzey bir kare kesiliyordu */
-  var nr=clamp(nearestSurface()*.25,.1,4);if(Math.abs(nr-camera.near)>.02){camera.near=nr;camera.updateProjectionMatrix();}
+  var nr=clamp(nearestSurface()*.25,REAL?.01:.1,4);/* eşik orantılı: sabit 0,02 eşiği, gerçek ölçekte 0,01–0,03 aralığındaki değişiklikleri yok sayıp cismi kırpma düzleminin arkasında bırakıyordu */
+  if(Math.abs(nr-camera.near)>Math.min(.02,nr*.1)){camera.near=nr;camera.updateProjectionMatrix();}
   updateLabels();
   liveT-=dt;if(liveT<=0){updateLive();liveT=.3;}
   dateT-=dt;if(dateT<=0){updateDate();dateT=.08;}
@@ -2319,7 +2333,7 @@ var starAge=4.57;
 function starL(){if(SYS)return SYS.L;var L=sunType===0?1/(1+.4*(1-starAge/4.57)):SUN_TYPES[sunType].L;return L*Math.pow(sunBody.mod.size,2);}
 function starTarget(){
   if(SYS)return SYS.sc;
-  if(sunType!==0)return SUN_TYPES[sunType].sc;
+  if(sunType!==0)return typeSc(sunBody,sunType);
   return starAge<=4.57?.87+.13*starAge/4.57:1+.6*(starAge-4.57)/5.63;
 }
 function ageOut(){$('oAge').textContent=starAge.toFixed(1).replace('.',',')+' Mr';}
@@ -3863,7 +3877,7 @@ var MORPH=[];
 function starLight(b){return b===sunBody?sunLight:b.light;}
 function lookOf(b){var l=starLight(b);return {lo:b.sunU.lo.value.clone(),hi:b.sunU.hi.value.clone(),gl:b.glow1.material.color.clone(),lc:l?l.color.clone():null,I:l?l.intensity:0,sc:b.typeScale,sz:b.mod.size};}
 function morphClear(b){MORPH=MORPH.filter(function(m){return m.b!==b;});b.morphing=false;}
-function morphAdd(b,from,ty,dur,sz1){morphClear(b);b.morphing=true;MORPH.push({b:b,f:from,T:SUN_TYPES[ty],t:0,d:Math.max(.1,dur),sz1:sz1!=null?sz1:from.sz});}
+function morphAdd(b,from,ty,dur,sz1){morphClear(b);b.morphing=true;MORPH.push({b:b,f:from,T:SUN_TYPES[ty],ty:ty,t:0,d:Math.max(.1,dur),sz1:sz1!=null?sz1:from.sz});}
 var _mc=new THREE.Color();
 function morphStep(dt){
   for(var i=MORPH.length-1;i>=0;i--){var m=MORPH[i],b=m.b;if(isGone(b)||!b.sunU){MORPH.splice(i,1);continue;}
@@ -3871,7 +3885,7 @@ function morphStep(dt){
     b.sunU.lo.value.lerpColors(f.lo,_mc.setHex(T.lo),e);b.sunU.hi.value.lerpColors(f.hi,_mc.setHex(T.hi),e);
     b.glow1.material.color.lerpColors(f.gl,_mc.setHex(T.glow),e);b.glow2.material.color.copy(b.glow1.material.color);
     if(l&&f.lc){l.color.lerpColors(f.lc,_mc.setHex(T.light),e);if(!b.exo||!b.exo.beams)l.intensity=f.I+((b===sunBody?T.I:T.I*.7)-f.I)*e;}
-    b.typeScale=f.sc+(T.sc-f.sc)*e;b.mod.size=f.sz+(m.sz1-f.sz)*e;
+    b.typeScale=f.sc+(typeSc(b,m.ty)-f.sc)*e;b.mod.size=f.sz+(m.sz1-f.sz)*e;
     b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
     if(q>=1){MORPH.splice(i,1);b.morphing=false;if(b!==sunBody)applySize(b);}}
 }
@@ -4797,8 +4811,9 @@ function magLines(r0){
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
   var m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x7fc8ff,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false}));m.frustumCulled=false;return m;
 }
-function makePulsar(R,parent,noNeb){
-  var r0=R*SUN_TYPES[5].sc,o={},bg=new THREE.Group(),L=R*30,mt=beamMat(.75,r0*1.6),pg=new THREE.PlaneGeometry(2,1,1,1);pg.translate(0,.5,0);
+function makePulsar(R,parent,noNeb,r0x){
+  /* r0x: gerçek ölçekte yıldızın gerçek yarıçapı; hüzme boyu yıldıza oranı aynı kalacak biçimde kısalır */
+  var r0=r0x||R*SUN_TYPES[5].sc,o={},bg=new THREE.Group(),L=r0/SUN_TYPES[5].sc*30,mt=beamMat(.75,r0*1.6),pg=new THREE.PlaneGeometry(2,1,1,1);pg.translate(0,.5,0);
   [1,-1].forEach(function(sg){var st=new THREE.Mesh(pg,mt);st.scale.y=L;if(sg<0)st.rotation.z=Math.PI;st.renderOrder=3;st.frustumCulled=false;bg.add(st);});
   var ml=magLines(r0);bg.add(ml);o.mag=ml;
   var arm=new THREE.Group();arm.rotation.z=PULS_TILT;arm.add(bg);o.arm=arm;
@@ -4814,7 +4829,7 @@ function makeBH(R,parent){
 }
 function applyExotic(i){
   removeExotic();var R=sunBody.def.vr;if(i<6)EXO.col=null;
-  if(i===5){var o=makePulsar(R,sunBody.pivot);for(var k in o)EXO[k]=o[k];sunBody.sunMat=sunBody.mesh.material;sunBody.mesh.material=nsMat();if(FX&&FX.g)FX.g.visible=false;}
+  if(i===5){var o=makePulsar(R,sunBody.pivot,false,realCompact(sunBody,5)?NS_KM/KM_U:0);for(var k in o)EXO[k]=o[k];sunBody.sunMat=sunBody.mesh.material;sunBody.mesh.material=nsMat();if(FX&&FX.g)FX.g.visible=false;}
   else if(i===6){
     sunBody.sunMat=sunBody.mesh.material;sunBody.mesh.material=new THREE.MeshBasicMaterial({color:0x000000});
     sunBody.glow1.visible=sunBody.glow2.visible=false;if(FX&&FX.g)FX.g.visible=false;
@@ -4843,8 +4858,8 @@ function setStarOn(b,i){
   b.sunU.lo.value.setHex(T.lo);b.sunU.hi.value.setHex(T.hi);b.sunU.spots.value=(i>=4||i===2)?0:1;
   b.glow1.material.color.setHex(T.glow);b.glow2.material.color.setHex(T.glow);
   if(b.light){b.light.color.setHex(T.light);b.light.intensity=T.I*.7;}
-  b.typeScale=T.sc;b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
-  if(i===5){b.exo=makePulsar(b.def.vr,b.pivot,b.nsOld);b.nsOld=false;b.sunMat=b.mesh.material;b.mesh.material=nsMat();}
+  b.typeScale=typeSc(b,i);b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
+  if(i===5){b.exo=makePulsar(b.def.vr,b.pivot,b.nsOld,realCompact(b,5)?NS_KM/KM_U:0);b.nsOld=false;b.sunMat=b.mesh.material;b.mesh.material=nsMat();}
   else if(i===6){b.sunMat=b.mesh.material;b.mesh.material=new THREE.MeshBasicMaterial({color:0x000000});b.glow1.visible=b.glow2.visible=false;b.exo=makeBH(b.def.vr,b.pivot);b.exo.fuel=b.bhOld?0:2;b.bhOld=false;}
   if(b.def.stats&&b.def.stats[0])b.def.stats[0][1]=T.name;
   if(b.def.stats){if(!b.def.stats0)b.def.stats0=b.def.stats.map(function(r){return r.slice();});if(!b.def.desc0)b.def.desc0=b.def.desc;
@@ -4888,9 +4903,9 @@ function starBH(t){
 }
 var _v1=new THREE.Vector3(),_v2=new THREE.Vector3(),_v3=new THREE.Vector3(),_q1=new THREE.Quaternion();
 /* gerçekte olay ufku kütleyle doğru orantılı (1000 Güneş kütlesi = 2950 km, yine de Güneş'ten 240 kat küçük). Ekranda görünsün diye büyütülmüş ama kütleyle yavaşça büyür: 1000 kat kütle yıldızdan büyük bir delik demek değildir */
-function bhMassK(){var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M,.16);}
+function bhMassK(){if(REAL&&!SYS)return 1;/* gerçek ölçekte kütle zaten boyutun içinde (typeSc) */var M=Math.max(.2,sunMass);return M<1?Math.cbrt(M):Math.pow(M,.16);}
 /* ufuk yarıçapı kütleyle büyür: Güneş'te yavaşça (bhMassK), diğer kara deliklerde oluştuğu andaki kütleye göre */
-function bhK(b){if(b===sunBody)return bhMassK();var o=b.exo;if(!o)return 1;var m=Math.max(.2,stMass(b));if(!o.m0)o.m0=m;return Math.pow(m/o.m0,.16);}
+function bhK(b){if(b===sunBody)return bhMassK();if(REAL)return 1;var o=b.exo;if(!o)return 1;var m=Math.max(.2,stMass(b));if(!o.m0)o.m0=m;return Math.pow(m/o.m0,.16);}
 /* disk parlaklığı: Güneş kara deliği de eklenen kara delikler de aynı kural. fuel = yakın zamanda yutulan madde; zamanla diske düşüp söner.
    dimK: kilonova sonrası gibi sönük enkaz halkası. Logaritmik: büyük bir yutma diski parlatır ama ekranı beyaza boğmaz. */
 /* disk yalnızca madde varken parlar: yalnız bir kara deliğin çevresinde yutacak gaz yoktur, yalnızca gölge ve foton halkası görünür.
@@ -4898,6 +4913,7 @@ function bhK(b){if(b===sunBody)return bhMassK();var o=b.exo;if(!o)return 1;var m
 function diskFuelStep(o,dt){o.fuel=(o.fuel||0)*Math.exp(-Math.abs(dt)*(o.fuel>1?.12:.06));if(o.fuel<.003)o.fuel=0;var f=o.fuel;if(o.disk&&o.disk.material.uniforms.b)o.disk.material.uniforms.b.value=Math.pow(Math.min(1,f),.8)+Math.log(1+Math.max(0,f-1))*.6;}
 function bhExo(t){return t===sunBody?EXO:t.exo;}
 function bhStep(o,body,dt){
+  realSizeSync(body,6);
   var kM=bhK(body),sh=effVr(body)*kM;
   /* birleşme sonrası "ringdown": yeni olay ufku şekil değiştirip birkaç salınımda sönerek küresel hale gelir */
   if(o.rd!=null){o.rd+=Math.abs(dt);sh*=1+.2*Math.exp(-o.rd/.9)*Math.sin(o.rd*TAU*3.2);if(o.rd>6)o.rd=null;}
@@ -4934,7 +4950,9 @@ function lensMat(st){
     fragmentShader:'precision highp float;uniform sampler2D tCol;uniform sampler2D tDep;uniform sampler2D tSky;uniform float hasDep;uniform float skyOp;uniform mat4 invProj;uniform mat4 camW;uniform mat4 vp;'+
     'uniform vec3 camPos;uniform vec3 bh;uniform vec3 dN;uniform float rs;uniform float rIn;uniform float rOut;uniform float rInt;uniform float tm;uniform float dB;uniform float n1;uniform float f1;varying vec2 vUv;'+
     LENS_GLSL_NOISE+
-    'vec3 rayDir(vec2 uv){vec4 c=invProj*vec4(uv*2.0-1.0,1.0,1.0);return normalize((camW*vec4(normalize(c.xyz/c.w),0.0)).xyz);}'+
+    /* piksel ışını yakın düzlemdeki noktadan (z=-1) çözülür: uzak düzlemde (z=1) w = 1/uzak olur ve uzak/yakın oranı çok büyükken
+       (gerçek ölçekte 10⁸) tek duyarlıklı çıkarmada sıfıra yuvarlanır; ışın yönü bozulup ekran kararıyordu */
+    'vec3 rayDir(vec2 uv){vec4 c=invProj*vec4(uv*2.0-1.0,-1.0,1.0);return normalize((camW*vec4(normalize(c.xyz/c.w),0.0)).xyz);}'+
     'vec3 sky(vec3 d){float u=fract(atan(d.z,-d.x)/6.2831853);float v=1.0-acos(clamp(d.y,-1.0,1.0))/3.1415927;return texture2D(tSky,vec2(u,v)).rgb*skyOp;}'+
     'float linD(float d){float z=d*2.0-1.0;return 2.0*n1*f1/(f1+n1-z*(f1-n1));}'+
     /* bükülmüş ışının sahnede neye çarptığını bul: önce sonsuzdaki yönü ekrana yansıt, oradaki derinlikten cismin konumunu al,
@@ -4993,7 +5011,7 @@ function lensInit(){
   }catch(e){console.error(e);LENS.fail=true;return false;}
 }
 /* ekranda en büyük görünen kara delik merceklenir (aynı anda ikisini ışın izlemek telefonlarda ağır kaçar); diğerleri eski disk modeliyle çizilir */
-var _lv=new THREE.Vector3(),_lw=new THREE.Vector3(),_lsz=new THREE.Vector2();
+var _lv=new THREE.Vector3(),_lw=new THREE.Vector3(),_lsz=new THREE.Vector2(),_lm=new THREE.Matrix4();
 function lensPick(){
   if(!LENS.on||LENS.fail||mode==='surface')return null;
   var best=null,bk=0;
@@ -5029,8 +5047,11 @@ function renderFrame(){
     renderer.setRenderTarget(LENS.rt);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);
     var U=LENS.quad.material.uniforms;
     U.tCol.value=LENS.rt.texture;U.tDep.value=LENS.rt.depthTexture||null;U.n1.value=camera.near;U.f1.value=camera.far;
-    U.invProj.value.copy(camera.projectionMatrixInverse);U.camW.value.copy(camera.matrixWorld);U.vp.value.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
-    U.camPos.value.copy(camera.position);U.bh.value.copy(_lv);U.rs.value=rs;o.disk.getWorldDirection(U.dN.value);U.dN.value.normalize();
+    /* gölgelendiriciye konumlar kameraya göre verilir (kamera = orijin): tek duyarlıklı sayılarda dünya koordinatı birkaç AU uzakta ~16 km hata yapar,
+       gerçek boyutlu (onlarca km) bir kara delikte görüntü titrerdi. Fark çift duyarlıkta burada alınır */
+    U.invProj.value.copy(camera.projectionMatrixInverse);U.camW.value.copy(camera.matrixWorld);
+    _lm.copy(camera.matrixWorld).setPosition(0,0,0).invert();U.vp.value.multiplyMatrices(camera.projectionMatrix,_lm);
+    U.camPos.value.set(0,0,0);U.bh.value.copy(_lv).sub(camera.position);U.rs.value=rs;o.disk.getWorldDirection(U.dN.value);U.dN.value.normalize();
     U.tm.value=o.disk.material.uniforms.t.value;U.dB.value=o.disk.material.uniforms.b.value;
     if(SKYG&&SKYG.mw){U.tSky.value=SKYG.mw.material.map;U.skyOp.value=SKYG.mw.material.opacity*(SKYG.mw.visible?1:0);}
     /* 2) ışın izleme */
@@ -5052,6 +5073,7 @@ function renderFrame(){
   LENS.cur=L;
 }
 function pulsarStep(o,body,dt){
+  realSizeSync(body,5);
   var ph0=o.ph;o.ph+=Math.min(dt,.1)*TAU*PULS_HZ;o.beams.rotation.y=o.ph;
   var v=_v1.copy(camera.position).sub(body.pos).normalize(),th=Math.acos(clamp(v.y,-1,1)),az=Math.atan2(-v.z,v.x);
   var mN=Math.exp(-Math.pow((th-PULS_TILT)/.6,2)),mS=Math.exp(-Math.pow((th-(Math.PI-PULS_TILT))/.6,2));
@@ -5242,7 +5264,7 @@ function colStep(b,C,dt){
     toast(colMsg(b,C),13000);toastLock=performance.now()+11000;if(typeof audWhoosh==='function')audWhoosh();
   }
   var D=C.mode==='ns'?1.2:C.mode==='failed'?4.5:3.6,f=Math.min(1,(t-TB)/D),e=f*f*(3-2*f);
-  b.typeScale=C.s0+(SUN_TYPES[6].sc-C.s0)*e;b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
+  b.typeScale=C.s0+(typeSc(b,6)-C.s0)*e;b.tilt.scale.setScalar(b.mod.size*b.typeScale);b.vr=effVr(b);
   if(C.mode==='failed')light(I0*(1+.9*Math.sin(Math.PI*Math.min(1,f*2.2)))*(1-e));
   else if(!(sun&&EXO.sn&&EXO.sn.t<2))light(I0*(1-e)+(f<.1?(1-f/.1)*I0*3:0));
   if(C.jets){var L=OVD()*(.02+.33*Math.pow(Math.min(1,(t-TB)/2.2),.7)),m=C.jets.userData.m;C.jets.scale.setScalar(L);m.uniforms.op.value=Math.min(1,(t-TB)/.25)*Math.pow(1-f,.6)*1.1;m.uniforms.t.value=t;}

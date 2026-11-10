@@ -78,8 +78,8 @@
 - **Zamanı geri sar.** Çarpışmaları ve felaketleri geri alabilirsin; ileri oynatınca aynen yeniden yaşanırlar.
 - **Kendi gezegenini yarat.** Ekle kataloğundan gezegen, yıldız, nötron yıldızı ya da kara delik seç; yalnızca o cismin ayarları çıkar. Sistemi bir kodla arkadaşına gönderebilirsin.
 - **Gerçek ölçek.** Üstteki Görünüm menüsündeki mesafe ayarında "Gerçek ölçek"i seç: boyutlar ve uzaklıklar gerçek oranlarında olur. Gezegenlerin çoğu pikselden küçüktür; yerlerini küçük bir nokta gösterir, yaklaşınca gerçek küre görünür.
-  - Gerçek ölçekte doğru olanlar: Güneş, gezegenler ve uyduların yarıçapları; gezegenlerin Güneş'e, uyduların gezegenlerine uzaklığı.
-  - İstisnalar (görünsün diye büyütülmüş çizilir, bilgi panelinde "Ekranda" satırı kaç kat olduğunu yazar): nötron yıldızları ve kara delikler (binlerce kat), beyaz cüce, kuyruklu yıldız çekirdekleri, asteroitler ve uzay araçları. Kırmızı dev ise gerçekte olduğundan küçük çizilir.
+  - Gerçek ölçekte doğru olanlar: Güneş, gezegenler ve uyduların yarıçapları; gezegenlerin Güneş'e, uyduların gezegenlerine uzaklığı; nötron yıldızları (10 km yarıçap) ve kara delikler (olay ufku 2,95 km × Güneş kütlesi, gölge bunun 2,6 katı). Nötron yıldızı ve kara delik bu ölçekte çoğu zaman bir işaret noktasıdır; küreyi, diski ve ışık bükülmesini görmek için cisme odaklanıp iyice yaklaşmak gerekir. Yutulma ve çarpışma mesafeleri de gerçek boyuta göre hesaplanır.
+  - İstisnalar (görünsün diye büyütülmüş çizilir, bilgi panelinde "Ekranda" satırı kaç kat olduğunu yazar): beyaz cüce, kuyruklu yıldız çekirdekleri, asteroitler ve uzay araçları. Kırmızı dev ise gerçekte olduğundan küçük çizilir. Diğer ölçeklerde nötron yıldızı ve kara delik de büyütülmüştür.
 - **Gelgit kilidi, yüzey görünümü, ölçek yolculuğu.** Bir gezegenin yüzeyinden gökyüzüne bakabilir ya da Güneş'ten en yakın yıldızlara kadar uçabilirsin.
 
 ## 🎧 Ekstralar

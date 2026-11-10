@@ -78,6 +78,15 @@
         <p id="iDesc"></p>
         <div class="qrow" id="quick"></div>
         <dl id="stats"></dl>
+        <div id="gr" hidden>
+          <button type="button" class="grhead" id="grTog" aria-expanded="false" aria-controls="grBody"><span class="tag">Grafik</span><span id="grNow"></span><span class="grchev" aria-hidden="true"></span></button>
+          <div id="grBody" hidden>
+            <div class="grtabs" id="grTabs" role="group" aria-label="Grafikte gösterilen değer"></div>
+            <canvas id="grCv" role="img" aria-label="Seçili değerin zamana göre grafiği"></canvas>
+            <div class="grfoot"><span id="grMin"></span><span id="grSpan"></span><span id="grMax"></span></div>
+            <p class="note" id="grNote">Değerler simülasyon zamanı ilerledikçe kaydedilir. Başka bir cisme geçince ya da zaman geri sarılınca grafik baştan başlar.</p>
+          </div>
+        </div>
         <div id="hab" hidden>
           <div class="tag">Yaşanabilirlik endeksi</div>
           <div class="habtop"><b id="habPct"></b><span id="habTxt"></span></div>
@@ -1299,6 +1308,94 @@ function lightTime(au){
   return Math.floor(m)+' dk '+Math.round((m%1)*60)+' sn';
 }
 var fmt=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
+/* ---------- canlı grafik ----------
+   Seçili cismin bir değerini (Güneş'e uzaklık, hız, yüzey sıcaklığı, yaşanabilirlik) simülasyon zamanına göre çizer:
+   "Dünya'yı Güneş'e yaklaştırdım, sıcaklık nasıl değişti?" sorusunun cevabı bir eğri olur.
+   Örnekler yalnızca zaman ilerlerken alınır; tampon dolunca seyreltilir, böylece cisme odaklanıldığından beri olan her şey görünür. */
+var GR={open:false,key:'dist',N:240,id:null,t:[],v:{},step:0,lp:new THREE.Vector3(),lt:null,spd:null,drawn:''};
+var GR_M=[
+  {k:'dist',n:'Uzaklık',u:' AU',d:2,ok:function(b){return !b.def.parent&&b!==sunBody;}},
+  {k:'spd',n:'Hız',u:' km/s',d:1,ok:function(b){return !b.def.parent&&b!==sunBody;}},
+  {k:'temp',n:'Sıcaklık',u:' °C',d:0,ok:function(b){return !!(b.cl&&b.hab);}},
+  {k:'hab',n:'Yaşanabilirlik',u:'',pre:'%',d:0,ok:function(b){return !!(b.cl&&b.hab&&!b.hab.gas);}}];
+function grMetrics(b){return b&&!isGone(b)?GR_M.filter(function(m){return m.ok(b);}):[];}
+function grFmt(m,x){if(x==null||!isFinite(x))return '–';var a=Math.abs(x),d=m.k==='dist'?(a>=100?0:a>=10?1:2):m.k==='hab'&&a<1?1:m.d;return (m.pre||'')+x.toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d})+m.u;}
+/* Güneş'e göre konum, AU cinsinden: sahnedeki yön × o uzaklığın karşılık geldiği AU (sıkıştırılmış ölçeklerde de gerçek değer çıkar) */
+var _gp=new THREE.Vector3();
+function grPosAU(b,out){out.copy(b.pos).sub(sunBody.pos);var L=out.length();return L>0?out.multiplyScalar(invOrbit(L)/L):out;}
+function grReset(){GR.t.length=0;GR.v={};GR.step=0;GR.lt=null;GR.spd=null;GR.id=focus?focus.def.id:null;}
+/* hız her karede izlenir: örnekleme aralığı (0,3 sn) hızlı zaman akışında bir yörüngenin büyük kısmını atlayabilir, kirişten hız ölçülmez */
+function grTrack(){
+  var b=focus;if(!b||b===sunBody||b.def.parent||isGone(b)){GR.lt=null;return;}
+  if(GR.id!==b.def.id)grReset();
+  grPosAU(b,_gp);
+  if(GR.lt!=null){var dtD=simDays-GR.lt;
+    if(dtD>1e-9){var c=_gp.dot(GR.lp)/Math.max(1e-12,_gp.length()*GR.lp.length());
+      /* bir karede 0,35 radyandan fazla dönülmüşse kiriş hatası büyür: son geçerli değer korunur */
+      if(c>.94)GR.spd=_gp.distanceTo(GR.lp)/dtD*1731.457;}
+    else if(dtD<0)GR.spd=null;}
+  GR.lp.copy(_gp);GR.lt=simDays;}
+function grValue(b,k){
+  if(k==='dist')return invOrbit(b.pos.distanceTo(sunBody.pos));
+  if(k==='spd'){
+    /* kuyruklu yıldızda hız, yörünge enerjisinden (vis-viva): v = 29,78 km/s × √(M☉ (2/r − 1/a)). Sıkıştırılmış ölçeklerde elips sahne biriminde
+       çizildiği için konum farkından ölçülen hız gerçek değeri vermez */
+    var cm=b.def.comet&&b.def.cm;if(cm&&cm.q&&cm.Q){var r=clamp(invOrbit(b.pos.distanceTo(sunBody.pos)),cm.q,cm.Q);return 29.78*Math.sqrt(Math.max(.05,sunMass)*Math.max(0,2/r-2/(cm.q+cm.Q)));}
+    return GR.spd;}
+  if(k==='temp')return b.cl.Ts-273.15;
+  if(k==='hab')return habScore(b);
+  return null;}
+function grSample(){
+  var box=$('gr'),b=focus,ms=grMetrics(b);
+  if(!ms.length||mode==='surface'){box.hidden=true;return;}
+  box.hidden=false;
+  if(GR.id!==b.def.id)grReset();
+  if(!ms.some(function(m){return m.k===GR.key;}))GR.key=ms[0].k;
+  var n=GR.t.length,last=n?GR.t[n-1]:null;
+  /* zaman geri sarıldıysa eğri anlamını yitirir: baştan başla */
+  if(last!=null&&simDays<last-1e-9){grReset();n=0;last=null;}
+  if(last==null||simDays-last>GR.step){
+    GR.t.push(simDays);ms.forEach(function(m){(GR.v[m.k]||(GR.v[m.k]=[])).push(grValue(b,m.k));});
+    if(GR.t.length>=GR.N){ /* tampon doldu: her iki örnekten birini at, örnekleme aralığını iki katına çıkar */
+      var keep=function(a){return a.filter(function(_,i){return i%2===0;});};
+      GR.step=Math.max(GR.step*2,(GR.t[GR.t.length-1]-GR.t[0])/GR.N*2);GR.t=keep(GR.t);Object.keys(GR.v).forEach(function(k){GR.v[k]=keep(GR.v[k]);});}
+  }
+  grTabs(ms);grDraw(ms);}
+function grTabs(ms){
+  var sig=ms.map(function(m){return m.k;}).join(',')+'|'+GR.key;if(sig===GR.tabSig)return;GR.tabSig=sig;
+  var box=$('grTabs');box.textContent='';
+  ms.forEach(function(m){var bt=document.createElement('button');bt.type='button';bt.className='grtab';bt.textContent=m.n;bt.setAttribute('aria-pressed',m.k===GR.key?'true':'false');
+    bt.addEventListener('click',function(){GR.key=m.k;try{localStorage.setItem('gsg-graph-key',m.k);}catch(_){}GR.drawn='';grSample();});box.appendChild(bt);});}
+function grSpanTxt(d){return d<=0?'':d<1?'son '+Math.max(1,Math.round(d*24))+' saat':d<730?'son '+Math.round(d)+' gün':'son '+(d/365.25).toLocaleString('tr-TR',{maximumFractionDigits:1})+' yıl';}
+function grDraw(ms){
+  var m=ms.filter(function(x){return x.k===GR.key;})[0],V=GR.v[GR.key]||[],T=GR.t,n=T.length,cur=grValue(focus,GR.key);
+  $('grNow').textContent=m.n+' · '+grFmt(m,cur);
+  if(!GR.open)return;
+  var cv=$('grCv'),w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;
+  var dpr=Math.min(2,window.devicePixelRatio||1);if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);GR.drawn='';}
+  var sig=GR.key+'|'+n+'|'+(n?T[n-1]:0)+'|'+cv.width;if(sig===GR.drawn)return;GR.drawn=sig;
+  var g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  var pts=[];for(var i=0;i<n;i++)if(V[i]!=null&&isFinite(V[i]))pts.push([T[i],V[i]]);
+  var cs=getComputedStyle(document.documentElement),cLine=cs.getPropertyValue('--soft').trim()||'#c4c9d8',cDim=cs.getPropertyValue('--line').trim()||'rgba(214,222,255,.11)',cAcc=cs.getPropertyValue('--accent').trim()||'#f2b84b';
+  /* taban ve tavan çizgisi */
+  g.strokeStyle=cDim;g.lineWidth=1;g.beginPath();g.moveTo(0,.5);g.lineTo(w,.5);g.moveTo(0,h-.5);g.lineTo(w,h-.5);g.stroke();
+  if(pts.length<2){$('grMin').textContent='';$('grMax').textContent='';$('grSpan').textContent=playing?'Veri toplanıyor…':'Zaman durdu: oynatınca çizilir';
+    cv.setAttribute('aria-label',m.n+' grafiği: henüz yeterli veri yok');return;}
+  var lo=Infinity,hi=-Infinity;pts.forEach(function(p){if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];});
+  /* düz çizgi ekranın ortasında dursun; küçük dalgalanma abartılmasın */
+  var span=hi-lo,minSpan=Math.max(Math.abs(hi),Math.abs(lo))*.02+(m.k==='temp'?1:m.k==='hab'?1:1e-4);if(span<minSpan){var mid=(hi+lo)/2;lo=mid-minSpan/2;hi=mid+minSpan/2;span=minSpan;}
+  var t0=pts[0][0],t1=pts[pts.length-1][0],dt=Math.max(1e-9,t1-t0),pad=7,X=function(t){return (t-t0)/dt*(w-pad-2)+1;},Y=function(v){return h-pad-(v-lo)/span*(h-2*pad);};
+  g.beginPath();pts.forEach(function(p,i){if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});
+  g.strokeStyle=cLine;g.lineWidth=1.6;g.lineJoin='round';g.stroke();
+  /* "şu an" noktası: tek vurgu rengi */
+  var lx=X(t1),ly=Y(pts[pts.length-1][1]);g.fillStyle=cAcc;g.beginPath();g.arc(lx,ly,3.2,0,TAU);g.fill();
+  $('grMin').textContent='en az '+grFmt(m,lo);$('grMax').textContent='en çok '+grFmt(m,hi);$('grSpan').textContent=grSpanTxt(dt);
+  cv.setAttribute('aria-label',m.n+' grafiği, '+grSpanTxt(dt)+': en az '+grFmt(m,lo)+', en çok '+grFmt(m,hi)+', şu an '+grFmt(m,cur));}
+function grSetOpen(o){GR.open=o;$('grBody').hidden=!o;$('grTog').setAttribute('aria-expanded',o?'true':'false');GR.drawn='';try{localStorage.setItem('gsg-graph',o?'1':'0');}catch(_){}if(o&&focus)grSample();}
+(function(){try{GR.open=localStorage.getItem('gsg-graph')==='1';var k=localStorage.getItem('gsg-graph-key');if(k&&GR_M.some(function(m){return m.k===k;}))GR.key=k;}catch(_){}
+  $('grBody').hidden=!GR.open;$('grTog').setAttribute('aria-expanded',GR.open?'true':'false');
+  $('grTog').addEventListener('click',function(){grSetOpen(!GR.open);});})();
+
 var liveT=0;
 function realXY(b){if(b.au&&realOk(b)&&b.mod.orbit===1&&!(gravityOn&&b.grav))return [b.au.x,-b.au.y];var a=b.def.a||invOrbit(b.pos.length());return [a*Math.cos(b.ang),-a*Math.sin(b.ang)];}
 function updateLive(){
@@ -1401,7 +1498,10 @@ function nearestSurface(){
 var tp={x:0,z:0};
 /* ek yıldızın Güneş'e göre yörünge dönemi Kepler'e göre toplam kütleden: P = 2π√(r³ / G(M☉+m)). Ölçek, Dünya'nın 365 günlük yılından.
    (Önceden kütleden bağımsız 2500 gündü: 100 Güneş kütleli kara delik de Güneş benzeri bir yıldız gibi yavaşça dönüyordu.) */
-function starP(b){var rE=orbitR(1),r=b.def.r||rE;return 365.25*Math.pow(r/rE,1.5)/Math.sqrt(Math.max(.05,sunMass)+Math.max(.01,stMass(b)));}
+/* Uzaklık, sahnedeki yarıçapın karşılık geldiği AU'dan alınır (invOrbit): sıkıştırılmış ölçeklerde gezegenler de böyle çizilir, yani Satürn'ün
+   çizildiği uzaklığa konan Güneş kütleli yıldız Satürn'ün yılının 1/√2'si kadar sürede döner. Eskiden sahne yarıçaplarının oranı kullanılıyordu:
+   aynı yıldız Satürn'den altı kat hızlı dönüyordu. Gerçek ölçekte iki hesap aynıdır. */
+function starP(b){var a=Math.max(.05,invOrbit(b.def.r||orbitR(1)));return 365.25*Math.pow(a,1.5)/Math.sqrt(Math.max(.05,sunMass)+Math.max(.01,stMass(b)));}
 /* ortak kütle merkezi (barimerkez): Güneş ve ek yıldızlar onun etrafında döner. Ek yıldızın yörüngesi Güneş'e göre hesaplanır (göreli yörünge),
    sonra herkes kütle merkezi sabit kalacak şekilde kaydırılır: Güneş −Σmᵢrᵢ/M kadar, yıldızlar da aynı miktarda. 50 Güneş kütleli bir kara delik
    eklenince Güneş (gezegenleriyle birlikte) onun çevresinde büyük bir yörüngede dolanır; Güneş benzeri ikinci yıldızda ikisi de ortadaki noktanın etrafında döner. */
@@ -1667,7 +1767,8 @@ function frame(now){
   var nr=clamp(nearestSurface()*.25,REAL?.01:.1,4);/* eşik orantılı: sabit 0,02 eşiği, gerçek ölçekte 0,01–0,03 aralığındaki değişiklikleri yok sayıp cismi kırpma düzleminin arkasında bırakıyordu */
   if(Math.abs(nr-camera.near)>Math.min(.02,nr*.1)){camera.near=nr;camera.updateProjectionMatrix();}
   updateLabels();
-  liveT-=dt;if(liveT<=0){updateLive();liveT=.3;}
+  grTrack();
+  liveT-=dt;if(liveT<=0){updateLive();grSample();liveT=.3;}
   dateT-=dt;if(dateT<=0){updateDate();dateT=.08;}
   miniT-=dt;if(miniT<=0){drawMini();miniT=.1;}
   renderFrame();
@@ -2026,7 +2127,7 @@ $('nRand').addEventListener('click',function(){
   $('nRing').checked=t==='gas'&&Math.random()<.6;$('nMoons').value=String(Math.floor(Math.random()*4));
   fillOuts();addCustom(readForm());
 });
-function fillOuts(){$('onSize').textContent=(+$('nSize').value).toFixed(1).replace('.',',')+'×';$('onDist').textContent=(+$('nDist').value).toFixed(1).replace('.',',')+' AU';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';$('oxDist').textContent=Math.round($('xDist').value)+' br';$('oMass').textContent=fmtX(massFromSlider(+$('sMass').value));if($('oaMass'))$('oaMass').textContent=String(addMassVal()).replace('.',',')+' M☉';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';if(typeof addZoneUpd==='function')addZoneUpd();}
+function fillOuts(){$('onSize').textContent=(+$('nSize').value).toFixed(1).replace('.',',')+'×';$('onDist').textContent=(+$('nDist').value).toFixed(1).replace('.',',')+' AU';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';$('oxDist').textContent=fmtAU(invOrbit(+$('xDist').value*DS))+' AU';$('oMass').textContent=fmtX(massFromSlider(+$('sMass').value));if($('oaMass'))$('oaMass').textContent=String(addMassVal()).replace('.',',')+' M☉';$('oxSize').textContent=(+$('xSize').value).toFixed(2).replace('.',',')+'×';if(typeof addZoneUpd==='function')addZoneUpd();}
 $('xSize').addEventListener('input',function(){fillOuts();});$('xDist').addEventListener('input',function(){fillOuts();});
 $('nSize').addEventListener('input',fillOuts);$('nDist').addEventListener('input',fillOuts);
 $('nType').addEventListener('change',function(){$('nColor').value=TYPE_COLORS[this.value][0];});
@@ -2268,7 +2369,7 @@ function addStar(o,silent){
   var h1='#'+('000000'+T.hi.toString(16)).slice(-6),h2='#'+('000000'+T.lo.toString(16)).slice(-6);
   var def={id:id,custom:true,star:true,name:o.name||(T.name+' B'),kind:'Yıldız · yarattığın',r:o.a*DS,P:2500,L0:L0,vr:SUNVR*o.size,starType:o.type,rotH:600,tilt:0,dot:[h1,h2],
     desc:'Güneş\'in çevresinde dönen ikinci bir yıldız. Işığı tüm gezegenleri aydınlatır; Yerçekimi simülasyonu açıkken yörüngeleri de bozar.',
-    stats:[['Tür',T.name],o.type===4?['Çap','~12.000 km (Dünya kadar)']:['Çap',Math.round(1392700*o.size*T.sc).toLocaleString('tr-TR')+' km'+(o.type===3?' (modelde; gerçek kırmızı devler çok daha büyük)':'')]].concat(o.type===4?bigRow(SUNVR*o.size*T.sc,6000):[],[['Güneş\'e uzaklık',Math.round(o.a)+' birim']])};
+    stats:[['Tür',T.name],o.type===4?['Çap','~12.000 km (Dünya kadar)']:['Çap',Math.round(1392700*o.size*T.sc).toLocaleString('tr-TR')+' km'+(o.type===3?' (modelde; gerçek kırmızı devler çok daha büyük)':'')]].concat(o.type===4?bigRow(SUNVR*o.size*T.sc,6000):[],[['Güneş\'e uzaklık',fmtAU(invOrbit(o.a*DS))+' AU']])};
   buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(byId[id]&&o.type===5)byId[id].nsOld=true;if(byId[id]&&o.type===6)byId[id].bhOld=true;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
   customs.push({kind:'star',id:id,name:def.name,type:o.type,size:o.size,a:o.a,L0:L0,m:o.m||null});
   if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi');}

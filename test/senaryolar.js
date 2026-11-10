@@ -84,6 +84,15 @@ module.exports=async(page,E,shot)=>{
   await T('kompakt-boyut',async()=>{await fresh(page);await E("addStar({name:'N',type:5,size:1,a:300,m:1.4},false)");await page.waitForTimeout(800);await E("addStar({name:'K',type:6,size:1,a:400,m:10},false)");await page.waitForTimeout(2000);
     return await E("(function(){var f=function(n){return BODIES.filter(function(b){return b.def.name===n})[0]},n=f('N'),k=f('K');return [REAL,+(effVr(n)*KM_U).toFixed(1),+(k.exo.sh*KM_U).toFixed(1),+(byId.io.pos.distanceTo(byId.jupiter.pos)*KM_U).toFixed(0)]})()");},
     r=>r[0]?(Math.abs(r[1]-10)<.2&&Math.abs(r[2]-76.7)<1&&Math.abs(r[3]-421700)<4300):(r[1]>1000&&r[2]>1000));
+  /* canlı grafik: Dünya'ya odaklanınca örnek toplanır; uzaklık ~1 AU, hız ~30 km/s çıkmalı. Güneş'te grafik gizlenir */
+  await T('grafik',async()=>{await fresh(page);await E("focusBody('earth');grSetOpen(true)");await page.waitForTimeout(5000);
+    const r=await E("(function(){var d=GR.v.dist||[],s=(GR.v.spd||[]).filter(function(x){return x!=null});return [GR.t.length,d[d.length-1],s[s.length-1],document.getElementById('gr').hidden,document.getElementById('grNow').textContent]})()");
+    await E("focusBody('sun')");await page.waitForTimeout(900);return [r,await E("document.getElementById('gr').hidden")];},
+    r=>{const a=P(r[0]);return a[0]>=3&&a[1]>.97&&a[1]<1.03&&a[2]>28.5&&a[2]<31&&a[3]===false&&/AU/.test(a[4])&&r[1]===true;});
+  /* eklenen yıldızın yılı Kepler'e uyar: P = a^1,5 / √(toplam kütle); a, sahnedeki uzaklığın karşılık geldiği AU. Uzaklık AU olarak yazılır */
+  await T('yildiz-kepler',async()=>{await fresh(page);await E("addStar({name:'Y',type:0,size:1,a:171,m:1},false)");await page.waitForTimeout(1200);
+    return await E("(function(){var b=focus,a=invOrbit(b.def.r);return [+(starP(b)/365.25).toFixed(3),+(Math.pow(a,1.5)/Math.SQRT2).toFixed(3),+a.toFixed(2),b.def.stats.map(function(x){return x[1]}).join('|')]})()");},
+    r=>Math.abs(r[0]-r[1])<r[1]*.01&&r[2]>1&&/ AU/.test(r[3])&&!/birim/.test(r[3]));
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

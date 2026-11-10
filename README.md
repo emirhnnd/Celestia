@@ -104,7 +104,7 @@ cd Celestia
 python3 -m http.server 8000
 ```
 
-Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok; uygulamanın kodu tek bir `index.html` dosyasında, dokular `tex/` klasöründe.
+Sonra tarayıcıda **http://localhost:8000** adresini aç. Derleme yok, `npm install` yok; uygulamanın kodu `index.html` dosyasında, stiller `css/` klasöründe, gömülü veriler (yıldız kataloğu, Dünya kara maskesi) `data/` klasöründe, dokular `tex/` klasöründe.
 
 > three.js ve astronomy-engine CDN'den, Onest yazı tipi Google Fonts'tan yüklenir; bu yüzden ilk açılışta internet bağlantısı gerekir. Kütüphaneler ya da WebGL yüklenemezse uygulama boş ekran yerine bir hata ekranı gösterir.
 
@@ -126,18 +126,22 @@ Geliştirme sırasında açılan diğer dallar (`gercek-olcek`, `laboratuvar-kar
 `test/` klasöründe, uygulamayı başsız bir tarayıcıda açıp birleşmeleri, çarpışmaları, geri sarmayı, sıfırlamayı, paylaşma kodunu, meteor yağmurunu, fırtına takibini ve iklim modelini (eğiklik, CO₂, tektonik termostat) gerçek zamanlı deneyen senaryolar var. Değişiklikten sonra çalıştır:
 
 ```bash
-cd test && npm install && npm test
+cd test
+npm install
+npm test
 ```
 
-`npm test` senaryoları dört mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın, Gerçek ölçek) sırayla çalıştırır; tek birini denemek için `DS=6 node run.js senaryolar.js` (Gerçek ölçek için `DS=R`). Her senaryonun sonucu ve sayfada çıkan hatalar yazdırılır; ekran görüntüleri `test/shots/` klasörüne kaydedilir. Playwright'ın indirdiği tarayıcı yerine kendi Chromium'unu kullanmak için `CHROMIUM=/yol/chromium` ver.
+`npm test` senaryoları dört mesafe seçeneğinde (Kompakt, Geniş, Gerçekçiye yakın, Gerçek ölçek) sırayla çalıştırır, ardından savunma testlerini çalıştırır. Windows, macOS ve Linux'ta aynı komut çalışır. Her senaryo beklenen sonuçla karşılaştırılır ve `GEÇTİ` ya da `KALDI` yazar; bir senaryo beklenen sonuç çıkmazsa, sayfada hata oluşursa ya da kare döngüsünde hata yakalanırsa kalır. En sonda özet yazılır; her şey geçtiyse çıkış kodu 0'dır. Ekran görüntüleri `test/shots/` klasörüne kaydedilir. Playwright'ın indirdiği tarayıcı yerine kendi Chromium'unu kullanmak için `CHROMIUM` ortam değişkenine tarayıcının yolunu ver.
 
-Ayrı bir de savunma testi var (`npm test` bunu çalıştırmaz):
+| Komut | Ne çalıştırır |
+|---|---|
+| `npm test` | Dört ölçekte senaryolar + savunma testleri (uzun sürer) |
+| `node tum.js 2.5` | Yalnızca bir ölçek: `1`, `2.5`, `6` ya da `R` |
+| `node tum.js savunma` | Yalnızca savunma testleri |
 
-```bash
-cd test && node savunma.js
-```
+Tek bir senaryoyu denemek için `ONLY` ortam değişkenine adını ver (virgülle birden fazla yazılabilir); PowerShell'de `$env:ONLY='enkaz'; node tum.js 1`.
 
-Sayfa kabuğunu (doctype, meta etiketleri), paylaşma kodunun güvenliğini (`__proto__` gibi sahte anahtarlar), ölçek değişince durumun korunmasını, three.js ya da WebGL yokken hata ekranını ve kuyruklu yıldız kuyruklarını denetler.
+Savunma testleri sayfa kabuğunu (doctype, meta etiketleri), paylaşma kodunun güvenliğini (`__proto__` gibi sahte anahtarlar), ölçek değişince durumun korunmasını, three.js ya da WebGL yokken hata ekranını ve kuyruklu yıldız kuyruklarını denetler.
 
 ## 🛠️ İçinde neler var
 

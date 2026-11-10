@@ -59,6 +59,7 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   ok('geçerli kayıt yine uygulandı (Dünya boyutu 1,5×)', await t.E("byId.earth.mod.size") === 1.5);
   ok('sahte tür gezegen eklemedi', await t.E("BODIES.filter(function(b){return b.def.custom}).length") === 0);
   ok('sayfa hatası yok (paylaşma)', t.errs.length === 0, t.errs);
+  ok('kare döngüsünde yakalanan hata yok (paylaşma)', (await t.E('frameErrN')) === 0);
 
   if (process.env.ONLY === 'proto') { await b.close(); console.log(fails ? 'başarısız' : 'Hepsi geçti'); process.exit(fails ? 1 : 0); }
 
@@ -110,6 +111,7 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   const bb = JSON.parse(await t.E("(function(){var g=byId.cg67p.mesh.geometry;g.computeBoundingBox();var b=g.boundingBox;return [b.max.x-b.min.x,b.max.y-b.min.y]})()"));
   ok('67P iki loblu (uzun eksen kısa eksenden en az %35 uzun)', bb[0] / bb[1] > 1.35, bb);
   ok('kuyruklu yıldız: sayfa hatası yok', t.errs.length === 0, t.errs);
+  ok('kuyruklu yıldız: kare döngüsünde yakalanan hata yok', (await t.E('frameErrN')) === 0);
   await t.page.close();
 
   /* 7) ölçek değişiminde durum koruma */
@@ -129,6 +131,7 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   ok('gerçek ölçek açık', await t.E("REAL") === true);
   ok('taşıma anahtarı tüketildi', await t.page.evaluate(() => sessionStorage.getItem('se_carry')) === null);
   ok('sayfa hatası yok (ölçek)', t.errs.length === 0, t.errs);
+  ok('kare döngüsünde yakalanan hata yok (ölçek)', (await t.E('frameErrN')) === 0);
   await t.page.close();
 
   await b.close();

@@ -1,4 +1,4 @@
-// Kullanım: cd test && npm i && node run.js senaryolar.js
+// Kullanım: cd test && npm i && node run.js senaryolar.js   (çıkış kodu: hepsi geçtiyse 0, değilse 1)
 // Sayfayı başsız Chromium'da açar, three.js ve astronomy-engine'i node_modules'ten verir.
 // E("ifade") sayfanın kapalı kapsamında (closure) değerlendirilir: iç değişkenlere erişilebilir.
 const { chromium } = require('playwright');
@@ -20,6 +20,8 @@ const EXE = process.env.CHROMIUM || undefined;
     if (u.includes('astronomy')) return r.fulfill({ body: fs.readFileSync(NM + '/astronomy-engine/astronomy.browser.min.js'), contentType: 'text/javascript' });
     if (u.startsWith('http://app/')) {
       let p = decodeURIComponent(u.slice('http://app/'.length).split('?')[0]) || 'index.html';
+      /* senaryolar arası temizlik için aynı kökende boş sayfa */
+      if (p === '__bos.html') return r.fulfill({ body: '<!doctype html><title>bos</title>', contentType: 'text/html' });
       const f = path.join(REPO, p);
       if (!fs.existsSync(f)) return r.fulfill({ status: 404, body: '' });
       let body = fs.readFileSync(f);
@@ -36,7 +38,11 @@ const EXE = process.env.CHROMIUM || undefined;
   const E = s => page.evaluate(s => { try { const v = window.__E(s); return typeof v === 'object' ? JSON.stringify(v) : v; } catch (e) { return 'ERR ' + e.message; } }, s);
   let n = 0;
   const shot = async (name) => { const f = path.join(__dirname, 'shots', name + '.png'); fs.mkdirSync(path.dirname(f), { recursive: true }); await page.screenshot({ path: f }); console.log('shot', f); };
-  try { await steps(page, E, shot); } catch (e) { console.log('STEP ERR', e.message); }
+  let fails = 0;
+  try { fails = (await steps(page, E, shot)) || 0; } catch (e) { console.log('STEP ERR', e.message); fails = 1; }
+  /* konsol uyarıları bilgi içindir (yazılımsal WebGL uyarıları, test ortamında bulunmayan dokular); sonucu etkilemez */
   console.log(errs.slice(0, 30).join('\n'));
   await b.close();
+  console.log(fails ? 'BAŞARISIZ' : 'Hepsi geçti');
+  process.exit(fails ? 1 : 0);
 })();

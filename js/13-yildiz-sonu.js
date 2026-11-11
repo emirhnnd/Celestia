@@ -323,11 +323,14 @@ function lensMat(st){
       'if(b>rInt){float al=(1.0/b)*(1.0+sqrt(max(0.0,1.0-b*b/(ro*ro))));if(al<2e-4){gl_FragColor=vec4(base,1.0);return;}V=normalize(d*cos(al)-pn*sin(al));X=pc;}'+
       'else{vec3 x=o;vec3 v=d;'+
         'if(ro>rInt){float th=sqrt(rInt*rInt-b*b);x=o+d*(tca-th);float ai=(1.0/max(b,1e-3))*(sqrt(max(0.0,1.0-b*b/(ro*ro)))-sqrt(max(0.0,1.0-b*b/(rInt*rInt))));v=normalize(d*cos(ai)-pn*sin(ai));}'+
-        'vec3 hv=cross(x,v);float h2=dot(hv,hv);'+
-        'for(int i=0;i<STEPS;i++){float r=length(x);if(r<1.0){cap=true;break;}if(r>rInt&&dot(x,v)>0.0)break;'+
+        'vec3 hv=cross(x,v);float h2=dot(hv,hv);float rmin=1e9;float aPer=0.0;float nc=0.0;vec3 xP=x;vec3 vP=v;'+
+        'for(int i=0;i<STEPS;i++){float r=length(x);if(r<1.0){cap=true;break;}if(r<rmin){rmin=r;aPer=acc;xP=x;vP=v;}if(r>rInt&&dot(x,v)>0.0)break;'+
           'float dt=clamp(.075*r*(r<3.0?.55:1.0),.015,2.5);vec3 a1=-1.5*h2*x/pow(r,5.0);vec3 xm=x+v*dt*.5;vec3 vm=v+a1*dt*.5;float rm=length(xm);vec3 a2=-1.5*h2*xm/pow(rm,5.0);vec3 xn=x+vm*dt;v+=a2*dt;'+
-          'float s0=dot(x,dN),s1=dot(xn,dN);if(s0*s1<0.0){vec3 xp=mix(x,xn,s0/(s0-s1));float rr=length(xp);if(rr>rIn&&rr<rOut){vec4 dc=disk(xp,v,rr);col+=(1.0-acc)*dc.rgb;acc+=(1.0-acc)*dc.a;if(acc>.985)break;}}'+
+          'float s0=dot(x,dN),s1=dot(xn,dN);if(s0*s1<0.0){vec3 xp=mix(x,xn,s0/(s0-s1));float rr=length(xp);if(rr>rIn&&rr<rOut){vec4 dc=disk(xp,v,rr);dc.rgb*=1.0+1.1*min(nc,2.0);nc+=1.0;col+=(1.0-acc)*dc.rgb;acc+=(1.0-acc)*dc.a;if(acc>.985)break;}}'+
           'x=xn;}'+
+        /* foton halkası: r = 1.5 r_s'deki ışık küresini sıyıran ışınlar deliğin çevresinde dolanıp diskten tekrar tekrar ışık toplar;
+           gölgenin kenarında ince parlak bir çember olarak görünür. Öndeki disk (yakın geçişten önce birikmiş opaklık) onu örter. */
+        'if(!cap){float k=max(rmin-1.5,0.0);float ds=dot(normalize(cross(dN,xP)+vec3(1e-6)),-normalize(vP));float pr=(exp(-k*42.0)*.95+exp(-k*6.0)*.16)*mix(.3,1.5,smoothstep(-.9,.9,ds));col+=(1.0-aPer)*clamp(dB,0.0,1.0)*pr*vec3(1.0,.76,.46);}'+
         'X=x;V=normalize(v);float r2=length(x);'+
         'if(!cap&&r2>=rInt*.98){vec3 pv=x-V*dot(x,V);float b2=length(pv);if(b2>1e-3){float ao=(1.0/b2)*(1.0-sqrt(max(0.0,1.0-b2*b2/(r2*r2))));V=normalize(V*cos(ao)-(pv/b2)*sin(ao));}}'+
         'else if(!cap&&acc<.985){cap=true;}}'+

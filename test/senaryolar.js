@@ -145,6 +145,15 @@ module.exports=async(page,E,shot)=>{
     await E("smapOpen()");await page.waitForTimeout(300);const b=await E("[SMAP.stars[SMAP.sel].sys,/buradasın/.test(document.getElementById('smapInfo').textContent)]");
     await page.keyboard.press('Escape');await page.waitForTimeout(200);return [a,ok,b,await E("SMAP.open")];},
     r=>same(P(r[0]),[true,28,28,'Güneş',.21,6])&&r[1]===true&&same(P(r[2]),['trappist',true])&&r[3]===false);
+  /* bulutsular: gezegenimsi bulutsu kabuğu genişler ve beyaz cüce ısındıkça iyonlaşır (ion 0 → 1); süpernova kalıntısı patlamadan sonra
+     büyümeye devam eder. Gölgelendirici derleme hatası sayfa hatası vermediği için programlar ayrıca denetlenir */
+  await T('bulutsu',async()=>{await fresh(page);const bad="renderer.info.programs.filter(function(p){return p.diagnostics&&!p.diagnostics.runnable}).length";
+    const until=async(expr,ms)=>{const t0=Date.now();while(Date.now()-t0<ms){if(await E(expr))return true;await page.waitForTimeout(800);}return false;};
+    await E("planetaryNebula()");await page.waitForTimeout(2500);const a=await E("[PNEB.length,PNEB[0].sp.material.uniforms.ion.value<.2,PNEB[0].sp.scale.x]");
+    const ion=await until("PNEB.length&&PNEB[0].sp.material.uniforms.ion.value>=1",90000);const b=await E("[PNEB[0].sp.scale.x,sunType,"+bad+"]");
+    await fresh(page);await E("supernova()");const neb=await until("!!EXO.neb&&EXO.nebT>1",120000);const s1=await E("EXO.neb.scale.x");await page.waitForTimeout(6000);
+    return [a,ion,b,neb,s1,await E("[EXO.neb.scale.x,sunType,"+bad+"]")];},
+    r=>{const a=P(r[0]),b=P(r[2]),c=P(r[5]);return a[0]===1&&a[1]===true&&r[1]===true&&b[0]>a[2]*1.5&&b[1]===4&&b[2]===0&&r[3]===true&&c[0]>r[4]&&c[1]===5&&c[2]===0;});
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

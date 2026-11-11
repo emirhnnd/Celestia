@@ -35,27 +35,64 @@ function vn3(x,y,z,sd){var ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z),fx
 /* bulutsu: noktalardan değil, yumuşak ve filamentli bir gaz kabuğundan oluşur (sınırda parlayan, gürültüyle yırtılmış ince bir zar).
    kind: 'snr' süpernova kalıntısı, 'pn' gezegenimsi bulutsu, 'lrn' kırmızı nova. Birim yarıçap tür başına eski nokta bulutuyla aynı. */
 var NEB_VS='varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
-/* hacimli bulut: kürenin içinden ışın yürütülür; her adımda gürültüden yoğunluk okunur ve ışıma toplanır. Böylece içi de dolu, kenarı belirsiz, şekli düzensiz */
-var NEB_FS='uniform float op;uniform float sd;uniform float kind;uniform float R;uniform float ns;uniform vec3 ax;uniform vec3 uCam;uniform vec3 cA;uniform vec3 cB;uniform vec3 cC;varying vec3 vP;'
+/* hacimli bulut: kürenin içinden ışın yürütülür; her adımda yoğunluk okunur ve ışıma toplanır. Yoğunluk türe göre değişir:
+   - gezegenimsi bulutsu (kind 1): içi boş, ince ve parlak kabuk. Kenardan bakınca ışın kabuğun içinden uzun yol aldığı için halka gibi
+     parlar (gerçekteki "kenar parlaması"). İçte mavi-yeşil (oksijen), kabuğun dışında kırmızı (hidrojen, azot); kabuktan dışa uzanan iplikler;
+     en dışta yıldızın önceki nabızlarından kalan soluk eşmerkezli halkalar. bip>0 ise bel daralır, iki loblu olur.
+     ion: 0 → gaz yeni atıldı, soğuk ve kızıl; 1 → ortadaki beyaz cücenin morötesi ışığı gazı iyonlaştırdı, renkler açıldı.
+   - süpernova kalıntısı (kind 0): düzensiz, ipliksi kabuk (Yengeç, Peçe bulutsuları gibi) ve içte pulsarın aydınlattığı mavimsi bölge.
+   - kırmızı nova (kind 2): içi dolu, tozlu bulut (eski görünüm).
+   Adım boyu kabuk kalınlığına yakın olduğu için başlangıç noktası piksel başına kaydırılır: bantlaşma yerine ince tanecik olur. */
+/* her tür kendi programını derler (KIND): gölgelendirici yalnızca o türün yoğunluk fonksiyonunu çalıştırır */
+var NEB_FS='uniform float op;uniform float sd;uniform float kind;uniform float R;uniform float ns;uniform float ion;uniform float bip;uniform vec3 ax;uniform vec3 uCam;uniform vec3 cA;uniform vec3 cB;uniform vec3 cC;varying vec3 vP;'
  +'float hs(vec3 p){p=fract(p*.3183099+.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}'
  +'float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(hs(i),hs(i+vec3(1,0,0)),f.x),mix(hs(i+vec3(0,1,0)),hs(i+vec3(1,1,0)),f.x),f.y),mix(mix(hs(i+vec3(0,0,1)),hs(i+vec3(1,0,1)),f.x),mix(hs(i+vec3(0,1,1)),hs(i+vec3(1,1,1)),f.x),f.y),f.z);}'
  +'float fb(vec3 p){float a=.5,s=0.0;for(int i=0;i<3;i++){s+=a*nz(p);p=p*2.1+1.7;a*=.5;}return s;}'
+ +'float fb2(vec3 p){return (.5*nz(p)+.25*nz(p*2.1+1.7))*1.1667;}'
+ +'float g2(float x){return exp(-x*x);}'
+ /* gezegenimsi bulutsu. Pahalı gürültü yalnızca katkı olan bölgede hesaplanır: kabuğun yakınında doku, kabuğun dışında iplikler */
+ +'vec3 pn(vec3 q,float rs){float r=length(q);if(r>1.12)return vec3(0.0);vec3 dq=q/max(r,1e-4);float mu=dq.y;'
+ +'float r0=.5*(1.0-bip*(1.0-mu*mu))*(.93+.14*nz(dq*2.3+sd));float x=(r-r0)/.07;'
+ +'float shell=0.0,fil=0.0,inner=0.0;'
+ +'if(abs(x)<2.6)shell=g2(x)*(.4+1.25*fb(dq*5.0+sd));'
+ +'if(r>r0&&r<r0+.55){float sp=nz(dq*13.0+sd*1.7);fil=exp(-(r-r0)/.13)*sp*sp*sp*sp*1.5;}'
+ +'if(r<r0)inner=(1.0-smoothstep(0.0,r0,r))*(.03+.06*nz(q*4.0+sd));'
+ +'float rings=0.0,halo=0.0;if(r>r0*1.15){rings=g2((r-r0*1.34)/.02)*.3+g2((r-r0*1.6)/.022)*.22+g2((r-r0*1.88)/.024)*.15;halo=g2((r-r0*1.5)/.32)*.03;}'
+ +'vec3 teal=vec3(.18,.82,.72),red=vec3(1.0,.36,.24),blue=vec3(.3,.58,.95),pink=vec3(.95,.38,.45);'
+ +'vec3 c=mix(teal,red,smoothstep(-.9,1.1,x))*shell+red*fil+blue*inner+pink*(rings+halo);'
+ /* iyonlaşmadan önce: sönük, kızıl gaz */
+ +'vec3 cold=vec3(1.0,.42,.2)*(shell*.5+fil*.3+rings*.6+halo);'
+ +'return mix(cold,c,ion)*(1.0-smoothstep(.86,1.0,rs));}'
+ /* süpernova kalıntısı: iplik gürültüsü yalnızca kabuk ve iç ağ bölgesinde hesaplanır */
+ +'vec3 snr(vec3 q,float rs){float r=length(q);if(r>1.05)return vec3(0.0);vec3 dq=q/max(r,1e-4);'
+ +'float r0=.6*(.8+.42*nz(dq*2.4+sd));float x=(r-r0)/.075;'
+ +'float sw=0.0,rg=0.0;'
+ +'if((abs(x)<2.6||abs(r-r0*.62)<.34)){vec3 wq=q*6.2+sd;float n=fb2(wq+1.6*nz(wq+3.1));rg=1.0-abs(2.0*n-1.0);rg=rg*rg;rg=rg*rg*rg;sw=g2(x)*(.025+3.4*rg)+g2((r-r0*.6)/.22)*rg*.8;}'
+ +'float wind=r<r0*.6?(1.0-smoothstep(0.0,r0*.6,r))*(.04+.26*nz(q*5.0+sd+2.0))*.8:0.0;'
+ +'vec3 f=vec3(0.0);if(sw>.002)f=mix(cB,vec3(.32,.8,.78),smoothstep(.5,.8,nz(q*2.3+sd+9.0)))*sw+cC*rg*g2(x)*.35;'
+ +'return (f+vec3(.5,.68,1.0)*wind)*(1.0-smoothstep(.86,1.0,rs));}'
+ /* kırmızı nova: içi dolu tozlu bulut */
+ +'vec3 lrn(vec3 q){float r=length(q);vec3 dq=q/max(r,1e-4);float edge=.55+.6*nz(dq*1.4+sd);float fall=1.0-smoothstep(.15,1.0,r/edge);if(fall<.01)return vec3(0.0);'
+ +'vec3 w=vec3(nz(q*1.6+sd+3.1),nz(q*1.6+sd+7.7),nz(q*1.6+sd+1.3));float n=fb(q*2.6+sd+w*1.8);'
+ +'float rg=pow(1.0-abs(2.0*n-1.0),1.2);float gas=smoothstep(.42,.78,n);float mk=smoothstep(.25,.6,fb(q*.9+sd+11.0));'
+ +'float d=(rg*.9+gas*.9)*mk*fall;float m2=nz(q*1.9+sd+9.0);vec3 col=mix(cA,cB,smoothstep(.3,.7,m2));return mix(col,cC,rg*.4)*d;}'
  +'void main(){vec3 ro=uCam,rd=normalize(vP-ro);float b=dot(ro,rd),c=dot(ro,ro)-R*R,h=b*b-c;if(h<=0.0)discard;h=sqrt(h);float t0=max(-b-h,0.0),t1=-b+h;if(t1<=t0)discard;'
- +'float dt=(t1-t0)/ns;vec3 acc=vec3(0.0);float t=t0+dt*.5;'
- +'for(int i=0;i<28;i++){if(float(i)>=ns)break;vec3 p=ro+rd*t;vec3 q=p/R/ax;float r=length(q);vec3 dq=q/max(r,1e-4);'
- +'float edge=.55+.6*nz(dq*1.4+sd);float fall=1.0-smoothstep(.15,1.0,r/edge);'
- +'if(fall>.01){vec3 w=vec3(nz(q*1.6+sd+3.1),nz(q*1.6+sd+7.7),nz(q*1.6+sd+1.3));float n=fb(q*2.6+sd+w*1.8);'
- +'float rg=pow(1.0-abs(2.0*n-1.0),kind>1.5?1.2:2.0);float gas=smoothstep(.42,.78,n);float mk=smoothstep(.25,.6,fb(q*.9+sd+11.0));'
- +'float d=(rg*.9+gas*.9)*mk*fall;float m2=nz(q*1.9+sd+9.0);vec3 col=mix(cA,cB,smoothstep(.3,.7,m2));col=mix(col,cC,rg*.4);acc+=col*d*dt/R;}'
- +'t+=dt;}'
- +'gl_FragColor=vec4(acc*op*(kind>.5&&kind<1.5?4.2:4.0),1.0);}';
+ +'float dt=(t1-t0)/ns;vec3 acc=vec3(0.0);float t=t0+dt*fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);'
+ +'for(int i=0;i<48;i++){if(float(i)>=ns)break;vec3 p=ro+rd*t;float rs=length(p)/R;vec3 q=p/R/ax;'
+ +'\n#if KIND==0\nvec3 e=snr(q,rs);\n#elif KIND==1\nvec3 e=pn(q,rs);\n#else\nvec3 e=lrn(q);\n#endif\nacc+=e*dt/R;t+=dt;}'
+ /* kazanç: kabuğun ortasından bakınca soluk, kenarından bakınca parlak kalacak biçimde ayarlı (ekran beyaza doymasın) */
+ +'\n#if KIND==0\nfloat gain=1.25;\n#elif KIND==1\nfloat gain=1.2;\n#else\nfloat gain=4.0;\n#endif\ngl_FragColor=vec4(acc*op*gain,1.0);}';
 function nebPoints(kind){
   var Rn=Math.random,rad=kind==='pn'?.34:kind==='lrn'?.24:.43,
       cols=kind==='lrn'?[[1,.34,.1],[1,.62,.28],[1,.85,.55]]:kind==='pn'?[[.3,.72,.78],[.95,.45,.38],[.85,.8,.95]]:[[.45,.62,1],[1,.42,.38],[.9,.92,1]];
-  var m=new THREE.ShaderMaterial({uniforms:{op:{value:0},sd:{value:Rn()*80},R:{value:rad},ns:{value:LOWQ?14:24},kind:{value:kind==='lrn'?2:kind==='pn'?1:0},
-    ax:{value:new THREE.Vector3(.7+Rn()*.6,.55+Rn()*.7,.7+Rn()*.6)},uCam:{value:new THREE.Vector3()},
+  /* kabuklu türlerde (gezegenimsi bulutsu, süpernova kalıntısı) ince kabuğu yakalamak için daha çok adım; biçim küreye yakın, hafif basık.
+     gezegenimsi bulutsuların yarıya yakını iki lobludur (bip) */
+  var shellK=kind!=='lrn',axv=shellK?new THREE.Vector3(.88+Rn()*.2,.82+Rn()*.3,.88+Rn()*.2):new THREE.Vector3(.7+Rn()*.6,.55+Rn()*.7,.7+Rn()*.6);
+  var m=new THREE.ShaderMaterial({uniforms:{op:{value:0},sd:{value:Rn()*80},R:{value:rad},ns:{value:kind==='pn'?(LOWQ?16:26):kind==='snr'?(LOWQ?14:22):(LOWQ?14:24)},kind:{value:kind==='lrn'?2:kind==='pn'?1:0},
+    ion:{value:kind==='pn'?0:1},bip:{value:kind==='pn'&&Rn()<.5?.18+Rn()*.22:0},
+    ax:{value:axv},uCam:{value:new THREE.Vector3()},
     cA:{value:new THREE.Color().setRGB(cols[0][0],cols[0][1],cols[0][2])},cB:{value:new THREE.Color().setRGB(cols[1][0],cols[1][1],cols[1][2])},cC:{value:new THREE.Color().setRGB(cols[2][0],cols[2][1],cols[2][2])}},
-    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.BackSide,vertexShader:NEB_VS,fragmentShader:NEB_FS});
+    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.BackSide,vertexShader:NEB_VS,fragmentShader:'#define KIND '+(kind==='lrn'?2:kind==='pn'?1:0)+'\n'+NEB_FS});
   var pts=new THREE.Mesh(new THREE.SphereGeometry(rad,32,20),m);pts.frustumCulled=false;pts.renderOrder=1;
   pts.rotation.set(Rn()*TAU,Rn()*TAU,Rn()*TAU);
   pts.onBeforeRender=function(r,sc,cam){this.material.uniforms.uCam.value.copy(cam.position);this.worldToLocal(this.material.uniforms.uCam.value);};
@@ -385,7 +422,8 @@ function pulsarStep(o,body,dt){
 function nebStep(o,body,dt){if(o.neb){nebPxUpdate();o.nebT+=dt;
   /* kamera bulutsunun içindeyken tüm ekran pembe sise boğuluyordu: içeriden bakınca bulutsu söner (gerçekte de içinden bakınca seçilmez) */
   var nr=o.neb.scale.x,cdn=camera.position.distanceTo(body.pos),inK=ss(nr*.35,nr*1.1,cdn);
-  o.neb.material.opacity=clamp(o.nebT/8,0,1)*(o.nebK||.5)*inK;o.neb.rotation.y+=dt*.004;o.neb.scale.setScalar(body.def.vr*(36+Math.min(o.nebT,120)*.12));}}
+  o.neb.material.opacity=clamp(o.nebT/8,0,1)*(o.nebK||.5)*inK;o.neb.rotation.y+=dt*.004;/* kalıntı patlama dalgasının ardından genişler: küçük başlar, bir-iki dakikada eski boyutunun yaklaşık iki katına ulaşır (eskiden neredeyse sabitti) */
+  o.neb.scale.setScalar(body.def.vr*(16+68*(1-Math.exp(-o.nebT/38))));}}
 /* gezegenimsi bulutsu */
 var PNEB=[];
 function pnTex(){
@@ -424,6 +462,8 @@ function planetaryNebula(){
    Gezegenimsi bulutsu ise beyaz cücenin morötesi ışığıyla on binlerce yıl parlar. */
 function pnStep(dt){if(PNEB.length)nebPxUpdate();for(var i=PNEB.length-1;i>=0;i--){var P=PNEB[i];P.t+=dt;var lrn=P.k==='lrn';
   P.sp.scale.setScalar(P.R*(lrn?2+30*(1-Math.exp(-P.t/26)):2+58*(1-Math.exp(-P.t/14))));P.sp.rotation.y+=dt*.003;
+  /* oluşum: kabuk önce soğuk ve kızıl görünür; beyaz cüce ortaya çıkıp ısındıkça (3–15. saniye) gaz iyonlaşır, renkler açılır */
+  if(!lrn)P.sp.material.uniforms.ion.value=clamp((P.t-3)/12,0,1);
   P.sp.material.opacity=lrn?clamp(P.t/3,0,1)*.7*Math.exp(-P.t/38):clamp(P.t/4,0,1)*.9*(P.t>180?Math.max(0,1-(P.t-180)/40):1);if(P.t>(lrn?170:220)){P.sp.parent&&P.sp.parent.remove(P.sp);P.sp.geometry.dispose();P.sp.material.dispose();PNEB.splice(i,1);}}}
 function audPulse(vol){
   if(!AUD.on||!AUD.ctx||document.hidden)return;var ctx=AUD.ctx,t=ctx.currentTime+.005;

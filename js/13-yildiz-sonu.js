@@ -130,10 +130,20 @@ function removeExotic(){
    kutuplardaki "sıcak noktalar" en parlak yerlerdir. Çevresinde (gerçekte görünmeyen) dipol manyetik alan çizgileri ve manyetik
    eksen boyunca iki dar hüzme. Manyetik eksen dönme eksenine göre eğik olduğu için hüzmeler deniz feneri gibi döner.
    Hüzmeler gerçekte radyo/X-ışınıdır, burada görselleştirme olarak çizilir ve yakından bakınca ekranı kaplamasın diye söner. */
+/* nötron yıldızı yüzeyi. Eskiden neredeyse düz beyazdı: yakından bakınca ekranda ayrıntı kalmıyordu.
+   Yüzey manyetik eksene göre boyanır (eksen çevresinde simetrik, bu yüzden saniyede birkaç tur dönerken titreşmez):
+   - manyetik kutuplarda küçük, beyaz-sıcak lekeler ve çevrelerinde yumuşak bir hale: hüzmeler buradan çıkar; yıldız döndükçe lekeler de
+     dönme ekseninin çevresinde dolanır, dönüş gözle görülür. Atım anında (f) parlarlar.
+   - kutuplardan ekvatora doğru soğuyan mavi tonlar ve ince manyetik enlem şeritleri,
+   - kenara doğru kararma ve ince, mavi bir kenar ışıması (yıldızın sıkı sarılı sıcak atmosferi). */
 function nsMat(){return new THREE.ShaderMaterial({uniforms:{mAx:{value:new THREE.Vector3(0,1,0)},f:{value:0}},
   vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
-  fragmentShader:'uniform vec3 mAx;uniform float f;varying vec3 vN;varying vec3 vV;void main(){float mu=clamp(dot(vN,vV),0.0,1.0);float hs=pow(abs(dot(normalize(vN),normalize(mAx))),18.0);'+
-    'vec3 c=mix(vec3(.62,.74,1.0),vec3(.97,.98,1.0),pow(mu,.35))+vec3(.5,.6,.7)*hs*(1.0+f);gl_FragColor=vec4(min(c,vec3(1.25)),1.0);}'});}
+  fragmentShader:'uniform vec3 mAx;uniform float f;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);float mu=clamp(dot(n,normalize(vV)),0.0,1.0);float c=abs(dot(n,normalize(mAx)));'+
+    /* çok sıcak bir yüzey: ortası beyaza yakın, kenarı elektrik mavisi (gaz devi gibi koyu mavi şeritli görünmesin diye şeritler çok ince) */
+    'vec3 hot=vec3(.95,.98,1.0);vec3 base=mix(vec3(.3,.5,1.0),vec3(.7,.83,1.0),pow(mu,.85));'+
+    'base*=mix(.8,1.0,smoothstep(0.0,.8,c));base*=1.0+.03*sin(c*46.0)+.018*sin(c*113.0+1.3);'+
+    'float cap=pow(c,26.0),halo=pow(c,5.0);vec3 col=base+hot*(cap*(1.0+1.7*f)+halo*.3);'+
+    'col+=vec3(.3,.5,1.0)*pow(1.0-mu,3.0)*.6;gl_FragColor=vec4(min(col,vec3(1.4)),1.0);}'});}
 function magLines(r0){
   var pos=[],Ls=[2.6,4.2,7],nA=8;
   Ls.forEach(function(L){for(var a=0;a<nA;a++){var ph=a/nA*TAU+L*.4,th0=Math.asin(Math.min(1,Math.sqrt(1/L))),prev=null;

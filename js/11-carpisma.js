@@ -541,13 +541,38 @@ function envFade(dt){for(var i=ENVS.length-1;i>=0;i--){var e=ENVS[i];e.t+=Math.a
 /* Güneş fırlatılınca (ya da ağır bir yıldız onu çekince) gezegenleri, yörünge çizgileri ve asteroit kuşakları onunla birlikte gider:
    hepsi Güneş'e kütleçekimle bağlı. Önceden Güneş yerinden oynayınca gezegenler boş merkezin etrafında dönmeye devam ediyordu. */
 var _so=new THREE.Vector3(),SUNOFF=false;
+/* Ortak kütle merkezi görseli. Ek yıldızın yörünge çizgisi eskiden Güneş'in çevresine çiziliyordu: Güneş'ten 10 kat ağır bir kara delik
+   eklenince bile "kara delik Güneş'in etrafında dönüyor" gibi görünüyordu. Oysa ikisi de ortak kütle merkezinin (sahnenin orijini) çevresinde
+   döner: ağır olan küçük, hafif olan büyük çemberde. Tek bir ek yıldız varken iki çember de çizilir ve merkez işaretlenir:
+   yıldızın çemberi göreli yörüngenin M☉/(M☉+m) katı, Güneş'inki m/(M☉+m) katı. Birden çok ek yıldızda yörüngeler kapalı eğri olmadığı
+   için eski gösterim (Güneş'e göre çember) kalır. */
+var BARY={ln:null,mk:null};
+function baryViz(){
+  if(!sunBody)return;
+  var S=BODIES.filter(function(b){return b!==sunBody&&b.def.star&&!b.parent&&!isGone(b)&&!b.sysHide&&b.line&&b.line.parent===scene;});
+  var one=S.length===1&&!SYS&&!S[0].dart&&!sunBody.dart&&!S[0].exoCol;
+  S.forEach(function(st){if(!one&&st.line.scale.x!==1)st.line.scale.setScalar(1);});
+  var show=one&&showOrbits&&!SURF;
+  if(one){var st=S[0],ms=Math.max(.05,sunMass),m=stMass(st),M=ms+m;
+    st.line.position.set(0,0,0);st.line.scale.setScalar(ms/M);
+    if(show&&!BARY.ln){
+      var pts=[];for(var k=0;k<=256;k++){var a=k/256*TAU;pts.push(new THREE.Vector3(Math.cos(a),0,-Math.sin(a)));}
+      BARY.ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xf2b84b,transparent:true,opacity:.34,depthWrite:false}));BARY.ln.frustumCulled=false;scene.add(BARY.ln);
+      var c=document.createElement('canvas');c.width=256;c.height=128;var g=c.getContext('2d');g.strokeStyle='rgba(236,238,244,.9)';g.lineWidth=3;g.beginPath();g.moveTo(128,22);g.lineTo(128,62);g.moveTo(108,42);g.lineTo(148,42);g.stroke();
+      g.font='600 24px system-ui,sans-serif';g.textAlign='center';g.fillStyle='rgba(196,201,216,.9)';g.fillText('kütle merkezi',128,104);
+      var tx=new THREE.CanvasTexture(c);tx.encoding=THREE.sRGBEncoding;
+      BARY.mk=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthWrite:false,depthTest:false,sizeAttenuation:false}));BARY.mk.scale.set(.17,.085,1);BARY.mk.renderOrder=5;scene.add(BARY.mk);}
+    if(BARY.ln)BARY.ln.scale.setScalar(st.def.r*m/M);}
+  if(BARY.ln){BARY.ln.visible=!!show;BARY.mk.visible=!!show;}
+}
 function carrySun(){
-  if(!sunBody)return;_so.copy(sunBody.pivot.position);var on=_so.lengthSq()>1e-8;if(!on&&!SUNOFF)return;SUNOFF=on;
+  if(!sunBody)return;_so.copy(sunBody.pivot.position);var on=_so.lengthSq()>1e-8;if(!on&&!SUNOFF){baryViz();return;}SUNOFF=on;
   BODIES.forEach(function(b){if(b!==sunBody&&b.def.star&&!b.parent&&b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BODIES.forEach(function(b){if(b===sunBody||b.parent||b.def.star||isGone(b))return;
     if(on&&!b.dart&&!b.homing&&!b.tdeNow){b.pivot.position.add(_so);b.pivot.updateMatrixWorld(true);b.pivot.getWorldPosition(b.pos);}
     if(b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BELTS.forEach(function(o){if(o.pts.parent===scene)o.pts.position.copy(_so);});
+  baryViz();
 }
 /* yörüngeleri kesişen cisimler birbirinin içinden geçmesin: değdiklerinde çarpışır/birleşir.
    (Örn. aynı uzaklıktaki iki ek yıldızın kütleleri farklıysa dönemleri de farklıdır; bir süre sonra biri ötekine yetişir.) */

@@ -421,7 +421,8 @@ function addStar(o,silent){
     stats:[['Tür',T.name],o.type===4?['Çap','~12.000 km (Dünya kadar)']:['Çap',Math.round(1392700*o.size*(REAL&&o.type===3?RG_RSUN:T.sc)).toLocaleString('tr-TR')+' km'+(o.type===3&&!REAL?' (modelde; gerçek kırmızı devler çok daha büyük)':'')]].concat(o.type===4&&!REAL?bigRow(SUNVR*o.size*T.sc,6000):[],[['Güneş\'e uzaklık',fmtAU(invOrbit(o.a*DS))+' AU']])};
   buildBody(def);if(byId[id]&&o.m)byId[id].massAbs=o.m;if(byId[id]&&o.type===5)byId[id].nsOld=true;if(byId[id]&&o.type===6)byId[id].bhOld=true;if(o.type>=5&&byId[id])setTimeout(function(){var sb=byId[id];if(sb&&!sb.exo){setStarOn(sb,o.type);if(o.m)sb.massAbs=o.m;if(focus===sb&&!silent)focusBody(sb.def.id);}},0);
   customs.push({kind:'star',id:id,name:def.name,type:o.type,size:o.size,a:o.a,L0:L0,m:o.m||null});
-  if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi');}
+  /* Güneş'ten ağır bir yıldız eklenince asıl hareket eden Güneş'tir: kısa bir notla söylenir */
+  if(!silent){saveCustom();rebuildLists();focusBody(id);toast(def.name+' eklendi'+(byId[id]&&stMass(byId[id])>sunMass*1.05?'. Güneş\'ten ağır: asıl dönen Güneş olacak':''),4200);}
   return id;
 }
 $('xAdd').addEventListener('click',function(){

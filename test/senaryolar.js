@@ -154,6 +154,13 @@ module.exports=async(page,E,shot)=>{
     await fresh(page);await E("supernova()");const neb=await until("!!EXO.neb&&EXO.nebT>1",120000);const s1=await E("EXO.neb.scale.x");await page.waitForTimeout(6000);
     return [a,ion,b,neb,s1,await E("[EXO.neb.scale.x,sunType,"+bad+"]")];},
     r=>{const a=P(r[0]),b=P(r[2]),c=P(r[5]);return a[0]===1&&a[1]===true&&r[1]===true&&b[0]>a[2]*1.5&&b[1]===4&&b[2]===0&&r[3]===true&&c[0]>r[4]&&c[1]===5&&c[2]===0;});
+  /* ortak kütle merkezi görseli: 10 Güneş kütleli kara delik eklenince Güneş büyük, kara delik küçük çemberde döner. Çizilen çemberlerin
+     yarıçapı cisimlerin merkeze uzaklığına eşit olmalı; ikinci yıldız eklenince bu gösterim kapanır */
+  await T('bari-gorsel',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(1500);
+    const a=await E("(function(){var k=BODIES.filter(function(b){return b.def.name==='K'})[0];return [BARY.ln.visible&&BARY.mk.visible,BARY.ln.scale.x/sunBody.pos.length(),k.def.r*k.line.scale.x/k.pos.length(),sunBody.pos.length()/k.pos.length()]})()");
+    await E("addStar({name:'Y2',type:0,size:1,a:400,m:1},true)");await page.waitForTimeout(800);
+    return [a,await E("[BARY.ln.visible,BODIES.filter(function(b){return b.def.star&&b!==sunBody}).every(function(b){return b.line.scale.x===1})]")];},
+    r=>{const a=P(r[0]),b=P(r[1]);return a[0]===true&&Math.abs(a[1]-1)<.02&&Math.abs(a[2]-1)<.02&&Math.abs(a[3]-10)<.3&&b[0]===false&&b[1]===true;});
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

@@ -237,7 +237,13 @@
   <div id="skyTint"></div>
   <canvas id="cityCv"></canvas>
   <div id="fade"></div>
-  <div id="sysPanel" hidden><div class="card" role="dialog" aria-label="Yıldız sistemleri"><h2>Yıldız sistemleri</h2><p class="note">Gerçek gezegen verileri: NASA Ötegezegen Arşivi. Uzaklıklar ve boyutlar görünürlük için sıkıştırılmıştır.</p><div id="sysList"></div><div class="btnrow"><button class="btn" id="sysClose">Kapat</button></div></div></div>
+  <div id="sysPanel" hidden><div class="card" role="dialog" aria-label="Yıldız sistemleri"><h2>Yıldız sistemleri</h2><p class="note">Gerçek gezegen verileri: NASA Ötegezegen Arşivi. Uzaklıklar ve boyutlar görünürlük için sıkıştırılmıştır.</p><div id="sysList"></div><div class="btnrow"><button class="btn" id="sysMap">Yıldız haritasında gör</button><button class="btn" id="sysClose">Kapat</button></div></div></div>
+  <div id="smap" hidden role="dialog" aria-modal="true" aria-label="Yıldız haritası">
+    <canvas id="smapCv" tabindex="0" aria-label="Yakın yıldızların üç boyutlu haritası. Ok tuşları döndürür, artı ve eksi yakınlaştırır. Yıldızlar aşağıdaki listeden de seçilebilir."></canvas>
+    <div class="smaphead"><h2>Yıldız haritası</h2><p class="note">Sürükle: döndür · kaydır ya da iki parmakla: yakınlaştır. Halkalar Güneş'e uzaklığı gösterir (ışık yılı, logaritmik ölçek); saplar yıldızın gezegenlerin yörünge düzleminden ne kadar yukarıda ya da aşağıda olduğunu gösterir.</p></div>
+    <div class="smaptools"><button type="button" class="btn" id="smapIn" aria-label="Yakınlaştır">+</button><button type="button" class="btn" id="smapOut" aria-label="Uzaklaştır">−</button><button type="button" class="btn" id="smapClose">Kapat</button></div>
+    <div class="panel smapcard"><div id="smapInfo" aria-live="polite"></div><div class="tag">Gidilebilir sistemler</div><div class="grtabs" id="smapList" role="group" aria-label="Gidilebilir sistemler"></div></div>
+  </div>
   <div id="skyLabels" hidden></div>
   <div class="panel" id="surfBar" hidden><span id="surfName"></span><button id="surfMin" aria-expanded="true" aria-label="Çubuğu küçült" title="Küçült / aç"><svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5"/></svg></button><select id="surfCity" aria-label="Şehir" hidden></select><button class="btn" id="surfLP" hidden>Işık kirliliği: açık</button><button class="btn" id="surfExit">Yüzeyden çık</button></div>
   <div id="trip" hidden><canvas id="tripCv"></canvas><div class="panel" id="tripCard"><div class="tag" id="tripN"></div><h3 id="tripT"></h3><p id="tripS"></p><div class="btnrow"><button class="btn" id="tripPrev">Geri</button><button class="btn pri" id="tripNext">İleri</button><button class="btn" id="tripClose">Kapat</button></div></div></div>
@@ -327,5 +333,6 @@ else if(!window.CELESTIA_SKY||!window.CELESTIA_EARTH_MASK)window.__celestiaFail(
 <script src="js/13-yildiz-sonu.js"></script>
 <script src="js/14-sistemler.js"></script>
 <script src="js/15-baslat.js"></script>
+<script src="js/16-yildiz-haritasi.js"></script>
 </body>
 </html>

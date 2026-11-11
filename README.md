@@ -66,6 +66,7 @@
 | 📏 **Ölçek** | Varsayılan görünümde mesafeler ve boyutlar okunabilsin diye sıkıştırılmıştır. Gerçek oranlar için Görünüm menüsünden "Gerçek ölçek"i seç. |
 | ☄️ **Küçük cisimler** | Halley ve 67P/Çuryumov–Gerasimenko kuyruklu yıldızları kendi yörüngelerinde gezer; günberiye yaklaşınca iyon ve toz kuyruğu çıkar, günötede kuyruk kaybolur. Apophis ve Bennu asteroitleri, asteroit kuşakları ve Plüton da var. Apophis'in 13 Nisan 2029'da Dünya'ya yaklaşan geçişi takvimde işaretlidir. Meteor yağmurları (Perseidler gibi) kaynak cisimleriyle bağlantılı gösterilir. |
 | ⭐ **Diğer yıldızlar** | Proxima Centauri, Alfa Centauri, TRAPPIST-1 ve yedi gezegeni, 55 Cancri'nin lav dünyası, iki güneşli Kepler-16. |
+| 🗺️ **Yıldız haritası** | Güneş'in 27 komşusu gerçek yön ve uzaklıklarıyla, döndürülebilen üç boyutlu haritada (Görünüm → Yıldız sistemleri → Yıldız haritasında gör, ya da arama kutusu). Her yıldız için uzaklık, ışığın ve Voyager 1'in yolculuk süresi; gidilebilir beş sisteme haritadan yolculuk. Uzaklık ekseni logaritmiktir. |
 
 ## 🧪 Laboratuvar: "Ya olsaydı?"
 

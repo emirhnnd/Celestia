@@ -136,6 +136,15 @@ module.exports=async(page,E,shot)=>{
   await T('hazir-deney-2',async()=>{await fresh(page);const n=await E("PRESETS.length");await E("PRESETS[5][4]()");await page.waitForTimeout(9000);
     return [n,await E("(function(){var v=(GR.v.dist||[]).filter(function(x){return x!=null});return [focus.def.id,gravityOn,+sunMass.toFixed(2),GR.key,v[v.length-1]-v[0]]})()")];},
     r=>{const a=P(r[1]);return r[0]===7&&a[0]==='earth'&&a[1]===true&&a[2]===.45&&a[3]==='dist'&&a[4]>.03;});
+  /* yıldız haritası: 28 yıldız gerçek yön ve uzaklıkla (Proxima–Alfa Centauri arası 0,21 ışık yılı çıkmalı); haritadan TRAPPIST-1'e
+     yolculuk sistemi yükler ve haritayı kapatır; yeniden açınca "buradasın" orayı gösterir; Esc kapatır */
+  await T('yildiz-haritasi',async()=>{await fresh(page);await E("smapOpen()");await page.waitForTimeout(400);
+    const a=await E("(function(){var v=function(n){var s=SMAP_STARS.filter(function(x){return x[0]===n})[0],a=s[1]*15*Math.PI/180,d=s[2]*Math.PI/180;return [Math.cos(d)*Math.cos(a)*s[3],Math.cos(d)*Math.sin(a)*s[3],Math.sin(d)*s[3]]},p=v('Proxima Centauri'),c=v('Alfa Centauri A ve B');return [SMAP.open,SMAP.stars.length,SMAP.pts.length,SMAP.stars[SMAP.sel].name,+Math.hypot(p[0]-c[0],p[1]-c[1],p[2]-c[2]).toFixed(2),document.getElementById('smapList').children.length]})()");
+    await E("smapSelect(SMAP.stars.filter(function(s){return s.sys==='trappist'})[0].i)");await page.click('#smapGo');
+    const t0=Date.now();let ok=false;while(Date.now()-t0<30000){await page.waitForTimeout(700);if(await E("!!(SYS&&SYS.id==='trappist')&&!SMAP.open&&!document.getElementById('fade').classList.contains('on')")){ok=true;break;}}
+    await E("smapOpen()");await page.waitForTimeout(300);const b=await E("[SMAP.stars[SMAP.sel].sys,/buradasın/.test(document.getElementById('smapInfo').textContent)]");
+    await page.keyboard.press('Escape');await page.waitForTimeout(200);return [a,ok,b,await E("SMAP.open")];},
+    r=>same(P(r[0]),[true,28,28,'Güneş',.21,6])&&r[1]===true&&same(P(r[2]),['trappist',true])&&r[3]===false);
   console.log('SAYFA HATASI',errs.length,'· KALAN SENARYO',fails);
   return fails+(errs.length?1:0);
 };

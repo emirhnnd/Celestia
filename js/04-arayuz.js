@@ -349,6 +349,7 @@ cv.addEventListener('wheel',function(e){e.preventDefault();
   else camera.translateZ(e.deltaY*.0012*nearestSurface()*1.6);
 },{passive:false});
 addEventListener('keydown',function(e){
+  if(typeof SMAP!=='undefined'&&SMAP.open)return; /* yıldız haritası açıkken sahne kısayolları çalışmaz */
   var tag=e.target.tagName;
   if(tag==='INPUT'&&e.target.type!=='range'||tag==='SELECT'||tag==='TEXTAREA')return;
   if(e.code==='Escape'&&document.body.classList.contains('clean')){setClean(false);return;}

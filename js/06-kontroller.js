@@ -192,6 +192,7 @@ $('cmdIn').addEventListener('keydown',function(e){
   e.stopPropagation();
 });
 window.addEventListener('keydown',function(e){var tg=e.target&&e.target.tagName;if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT')return;
+  if(typeof SMAP!=='undefined'&&SMAP.open)return;
   if((e.key==='/'||(e.key==='k'&&(e.ctrlKey||e.metaKey)))&&$('cmdk').hidden){e.preventDefault();e.stopPropagation();openCmd();}
   else if(e.key==='Escape'&&!$('cmdk').hidden)closeCmd();},true);
 /* bilgi panelinde bağlama göre hızlı deneyler */

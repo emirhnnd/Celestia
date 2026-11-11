@@ -191,6 +191,9 @@ const ready = async t => { await t.page.waitForFunction(() => window.__E && docu
   const cyc = "addCustom({name:'Geçici',type:'ocean',color:'#3b82d6',size:1.4,a:2.6,ring:true,moons:0,seed:5,L0:0,tilt:10,rotH:20},false)";
   /* ilk tur önbellekleri doldurur (paylaşılan dokular, gölgelendiriciler): ölçüm ondan sonra başlar */
   for (let i = 0; i < 2; i++) { await t.E(cyc); await wait(500); await t.E("$('labDel').click()"); await wait(500); }
+  /* sayfa açıldıktan sonraki ilk saniyelerde sayılar kendiliğinden artar (geometri ve dokular ilk çizildiklerinde ekran kartına yüklenir);
+     ölçüm, sayı üç saniye boyunca değişmeyene kadar bekleyip ondan sonra başlar. Yoksa bu artış ekle-sil sızıntısı gibi görünür */
+  for (let prev = '', same = 0, n = 0; same < 6 && n < 80; n++) { const cur = await t.E(mem); same = cur === prev ? same + 1 : 0; prev = cur; await wait(500); }
   const m0 = JSON.parse(await t.E(mem));
   for (let i = 0; i < 12; i++) { await t.E(cyc); await wait(350); await t.E("$('labDel').click()"); await wait(350); }
   const m1 = JSON.parse(await t.E(mem));

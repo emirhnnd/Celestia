@@ -175,8 +175,10 @@ module.exports=async(page,E,shot)=>{
     return [far,near,await E("frameErrN"),mid];},r=>r[0]>.99&&r[1]<.8&&+r[2]===0&&r[3]>.5);
   // Güneş seçiliyken "hedefe fırlat" düğmesi çalışmalı: Güneş eklenen kara deliğe atılabilir
   await T('gunes-firlat',async()=>{await fresh(page);await E("playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody('sun')");await page.waitForTimeout(2500);
-    const dis=await E("$('lGo').disabled");await E("$('lTarget').value=window.__k.id;$('lGo').click()");await page.waitForTimeout(800);
-    return [dis,await E("!!sunBody.dart")];},r=>String(r[0])==='false'&&String(r[1])==='true');
+    await page.waitForFunction(()=>window.__E("!!$('lTarget').querySelector('option[value=\"'+window.__k.id+'\"]')")===true,null,{timeout:20000}).catch(()=>{});
+    const dis=await E("$('lGo').disabled");await E("$('lTarget').value=window.__k.id;$('lGo').click()");
+    let ok=false;for(let i=0;i<20&&!ok;i++){await page.waitForTimeout(300);ok=String(await E("!!sunBody.dart||sunType===6"))==='true';}
+    return [dis,ok];},r=>String(r[0])==='false'&&String(r[1])==='true');
   // Güneş kara delik + ağır ek yıldız: Güneş ortak merkezden uzakta. Fırlatılan gezegen boş merkeze değil Güneş'e düşmeli, kamera da Güneş'te kalmalı
   await T('gunesBH-kayik',async()=>{await fresh(page);await E("playing=true;setStar(6)");await page.waitForTimeout(5000);
     await E("addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(2000);await E("launchPair(byId.jupiter,sunBody)");

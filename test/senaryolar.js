@@ -167,12 +167,12 @@ module.exports=async(page,E,shot)=>{
   await T('tutulma-hizli',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false);focusBody('sun')");await page.waitForTimeout(1500);
     await E("speed.value=6;setSpeed();playing=true;window.__n=0;window.__s=0;(function f(){window.__n++;if(!$('eclView').hidden)window.__s++;requestAnimationFrame(f)})()");
     await page.waitForTimeout(12000);return JSON.parse(await E("[window.__n,window.__s]"));},r=>r[0]>10&&r[1]===0);
-  // ağır ve yakın bir yıldız kuşağı dağıtır; hafif ve uzak bir yıldız ana kuşağa dokunmaz; geri sarınca kuşak geri gelir
+  // ağır ve yakın bir yıldız kuşağı dağıtır (bir anda değil, saniyeler içinde); hafif ve uzak bir yıldız ana kuşağa dokunmaz; geri sarınca kuşak geri gelir
   await T('kusak-dagilma',async()=>{await fresh(page);
     const cnt="(function(){var o=BELTS[0],n=0;for(var i=0;i<o.n;i++)if(o.st[i]===0)n++;return n/o.n})()";
     await E("playing=true;addStar({name:'U',type:1,size:1,a:1500,m:.2},false)");await page.waitForTimeout(5000);const far=+(await E(cnt));
-    await fresh(page);await E("LENS.on=false;playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);focusBody('sun')");await page.waitForTimeout(9000);const near=+(await E(cnt));
-    return [far,near,await E("frameErrN")];},r=>r[0]>.99&&r[1]<.5&&+r[2]===0);
+    await fresh(page);await E("LENS.on=false;playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);focusBody('sun');speed.value=6;setSpeed()");await page.waitForTimeout(1200);const mid=+(await E(cnt));await page.waitForTimeout(11000);const near=+(await E(cnt));
+    return [far,near,await E("frameErrN"),mid];},r=>r[0]>.99&&r[1]<.8&&+r[2]===0&&r[3]>.5);
   // Güneş seçiliyken "hedefe fırlat" düğmesi çalışmalı: Güneş eklenen kara deliğe atılabilir
   await T('gunes-firlat',async()=>{await fresh(page);await E("playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody('sun')");await page.waitForTimeout(2500);
     const dis=await E("$('lGo').disabled");await E("$('lTarget').value=window.__k.id;$('lGo').click()");await page.waitForTimeout(800);

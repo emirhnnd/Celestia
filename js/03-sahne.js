@@ -180,7 +180,10 @@ function updateBelts(dDays,dt){
       if(st===3){var r3=Math.sqrt(x*x+z*z);o.R[i]*=Math.exp(-dt*.35);o.ang[i]+=dt*2.5*Math.pow(hz/Math.max(r3,hz),1.5);o.y[i]*=Math.exp(-dt*.8);var hot=clamp(1-(o.R[i]-hz)/(pullR-hz),0,1);C[i*3]=.8+.2*hot;C[i*3+1]=.55+.3*hot*hot;C[i*3+2]=.35*hot;ch=true;
         if(o.R[i]<hz*1.3){o.st[i]=2;P[i*3+1]=1e7;feedBH(sunBody,.0015);}continue;}
       var Rr=o.R[i];
-      if(hs&&Rr>hl&&dt>0&&Math.random()<dt*Math.min(1.5,.4+Rr/hl*.2)){
+      if(hs&&Rr>hl&&dt>0&&Math.random()<clamp(dDays/(2200*Math.pow(o.a[i],1.5)*Math.pow(hl/Rr,3)),dt*.02,dt*.22)){
+        /* dağılma bir anda olmaz: ömür birkaç yörünge dönemi kadardır ve sınırın ne kadar dışında kalındığına göre kısalır (∝ (r_H/r)³).
+           Zaman hızlı akarken de gözle izlenebilsin diye saniyede en çok beşte biri savrulur */
+
         /* yıldıza bakan taraf ona doğru çekilir, öbür taraf dışarı savrulur; hepsi yörünge hızının bir kısmını korur */
         var rr=Math.sqrt(x*x+z*z)||1,tx=x-hx,tz=z-hz2,td=Math.sqrt(tx*tx+tz*tz)||1,sd=(x*hx+z*hz2)>0?-1:1,sp2=Rr*(.12+Math.random()*.2);
         if(!o.dsp){o.dsp=true;if(o.kind==='main')note('Asteroit kuşağı dağılıyor: yeni yıldızın çekimi yörüngeleri bozdu');}

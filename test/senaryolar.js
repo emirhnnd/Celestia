@@ -156,6 +156,16 @@ module.exports=async(page,E,shot)=>{
     r=>{const a=P(r[0]),b=P(r[2]),c=P(r[5]);return a[0]===1&&a[1]===true&&r[1]===true&&b[0]>a[2]*1.5&&b[1]===4&&b[2]===0&&r[3]===true&&c[0]>r[4]&&c[1]===5&&c[2]===0;});
   /* ortak kütle merkezi görseli: 10 Güneş kütleli kara delik eklenince Güneş büyük, kara delik küçük çemberde döner. Çizilen çemberlerin
      yarıçapı cisimlerin merkeze uzaklığına eşit olmalı; ikinci yıldız eklenince bu gösterim kapanır */
+  // gölgenin ortası her kalite düzeyinde siyah kalmalı (az adımlı telefon gölgelendiricisinde foton halkası gölgeyi doldurmuştu)
+  await T('bh-golge',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody(focus.id)");await page.waitForTimeout(6000);
+    await E("window.__k.exo.fuel=3;phi=1.0");await page.waitForTimeout(2500);
+    const px="(function(){renderFrame();var gl=renderer.getContext(),p=new Uint8Array(4),v=new THREE.Vector3();window.__k.pivot.getWorldPosition(v);v.project(camera);gl.readPixels(Math.round((v.x*.5+.5)*gl.drawingBufferWidth),Math.round((v.y*.5+.5)*gl.drawingBufferHeight),1,1,gl.RGBA,gl.UNSIGNED_BYTE,p);return [!!lensPick(),LENS.quad.material.defines.STEPS,p[0]+p[1]+p[2]]})()";
+    const out=[];for(const st of [170,90,50]){await E("LENS.hi=null;LENS.quad.material=lensMat("+st+");LENS.quad.material.uniforms=LENS.lo.uniforms");await page.waitForTimeout(600);out.push(JSON.parse(await E(px)));}
+    return out;},r=>r.every(x=>x[0]&&x[2]<24));
+  // hızlı zaman akışında tutulma penceresi yanıp sönmemeli (ek yıldız varken Güneş orijinden kayınca sahte tutulmalar da çıkıyordu)
+  await T('tutulma-hizli',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false);focusBody('sun')");await page.waitForTimeout(1500);
+    await E("speed.value=6;setSpeed();playing=true;window.__n=0;window.__s=0;(function f(){window.__n++;if(!$('eclView').hidden)window.__s++;requestAnimationFrame(f)})()");
+    await page.waitForTimeout(12000);return JSON.parse(await E("[window.__n,window.__s]"));},r=>r[0]>10&&r[1]===0);
   await T('bari-gorsel',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(1500);
     const a=await E("(function(){var k=BODIES.filter(function(b){return b.def.name==='K'})[0];return [BARY.ln.visible&&BARY.mk.visible,BARY.ln.scale.x/sunBody.pos.length(),k.def.r*k.line.scale.x/k.pos.length(),sunBody.pos.length()/k.pos.length()]})()");
     await E("addStar({name:'Y2',type:0,size:1,a:400,m:1},true)");await page.waitForTimeout(800);

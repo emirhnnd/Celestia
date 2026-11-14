@@ -47,8 +47,12 @@ function updateEclipse(){
   if(mo&&mo.shU)mo.shU.blood.value=1;
   var box=$('eclView');
   if(!e||!mo||isEngulfed(e)||!mo.pivot.visible){box.hidden=true;return;}
-  var m=mo.pos.clone().sub(e.pos),E=e.pos.clone(),s=E.clone().negate().normalize(),sep=eclSep(E,m,false),lsep=eclSep(E,m,true);
+  var m=mo.pos.clone().sub(e.pos),E=e.pos.clone();if(sunBody)E.sub(sunBody.pos);/* Güneş'e göre: ek yıldız varken Güneş orijinde değildir */var s=E.clone().negate().normalize(),sep=eclSep(E,m,false),lsep=eclSep(E,m,true);
   var sol=sep<.53,lun=lsep<.95;
+  /* tutulma birkaç saat sürer: zaman haftalar/yıllar hızında akarken her yeni ayda tek karelik bir pencere ve bildirim yanıp sönüyordu.
+     Hızlı akışta (Dünya ya da Ay seçili değilken 1 gün/sn üstü, seçiliyken 1 hafta/sn üstü) gösterilmez; durdurunca yine görünür */
+  var spD=SPEEDS[speedIdx].d,fast=playing&&(spD>7||(spD>1&&focus!==e&&focus!==mo));
+  if(fast){ECL.sol=sol;ECL.lun=lun;box.hidden=true;return;}
   if(sol&&!ECL.sol)note('Güneş tutulması başladı: Ay\'ın gölgesi Dünya\'ya düşüyor');
   if(lun&&!ECL.lun)note('Ay tutulması başladı: Ay Dünya\'nın gölgesine giriyor ve kızıla dönüyor');
   ECL.sol=sol;ECL.lun=lun;

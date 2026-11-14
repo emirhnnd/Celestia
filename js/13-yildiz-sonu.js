@@ -330,8 +330,8 @@ function lensMat(st){
           'x=xn;}'+
         /* foton halkası: r = 1.5 r_s'deki ışık küresini sıyıran ışınlar deliğin çevresinde dolanıp diskten tekrar tekrar ışık toplar;
            gölgenin kenarında ince parlak bir çember olarak görünür. Öndeki disk (yakın geçişten önce birikmiş opaklık) onu örter. */
-        'if(!cap){float k=max(rmin-1.5,0.0);float ds=dot(normalize(cross(dN,xP)+vec3(1e-6)),-normalize(vP));float pr=(exp(-k*42.0)*.95+exp(-k*6.0)*.16)*mix(.3,1.5,smoothstep(-.9,.9,ds));col+=(1.0-aPer)*clamp(dB,0.0,1.0)*pr*vec3(1.0,.76,.46);}'+
         'X=x;V=normalize(v);float r2=length(x);'+
+        'if(!cap&&(r2>=rInt*.98||(rmin>1.5&&dot(x,v)>0.0))){float k=max(rmin-1.5,0.0);float ds=dot(normalize(cross(dN,xP)+vec3(1e-6)),-normalize(vP));float pr=(exp(-k*42.0)*.95+exp(-k*6.0)*.16)*mix(.3,1.5,smoothstep(-.9,.9,ds));col+=(1.0-aPer)*clamp(dB,0.0,1.0)*pr*vec3(1.0,.76,.46);}'+
         'if(!cap&&r2>=rInt*.98){vec3 pv=x-V*dot(x,V);float b2=length(pv);if(b2>1e-3){float ao=(1.0/b2)*(1.0-sqrt(max(0.0,1.0-b2*b2/(r2*r2))));V=normalize(V*cos(ao)-(pv/b2)*sin(ao));}}'+
         'else if(!cap&&acc<.985){cap=true;}}'+
       'vec3 bc=cap?vec3(0.0):bg(bh+X*rs,V);gl_FragColor=vec4(col+(1.0-acc)*bc,1.0);}'

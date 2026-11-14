@@ -569,7 +569,8 @@ function carrySun(){
   if(!sunBody)return;_so.copy(sunBody.pivot.position);var on=_so.lengthSq()>1e-8;if(!on&&!SUNOFF){baryViz();return;}SUNOFF=on;
   BODIES.forEach(function(b){if(b!==sunBody&&b.def.star&&!b.parent&&b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BODIES.forEach(function(b){if(b===sunBody||b.parent||b.def.star||isGone(b))return;
-    if(on&&!b.dart&&!b.homing&&!b.tdeNow){b.pivot.position.add(_so);b.pivot.updateMatrixWorld(true);b.pivot.getWorldPosition(b.pos);}
+    /* fırlatılıp Güneş'e (ya da bir gezegene) düşen cisimler de Güneş merkezli koordinatta hesaplanır: onlar da taşınmalı, yoksa Güneş ortak kütle merkezinden uzaktayken boş noktaya düşüyorlardı */
+    if(on&&!b.dart){b.pivot.position.add(_so);b.pivot.updateMatrixWorld(true);b.pivot.getWorldPosition(b.pos);}
     if(b.line&&b.line.parent===scene)b.line.position.copy(_so);});
   BELTS.forEach(function(o){if(o.pts.parent===scene)o.pts.position.copy(_so);});
   baryViz();

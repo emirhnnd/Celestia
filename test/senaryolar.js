@@ -176,6 +176,15 @@ module.exports=async(page,E,shot)=>{
   await T('gunes-firlat',async()=>{await fresh(page);await E("playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody('sun')");await page.waitForTimeout(2500);
     const dis=await E("$('lGo').disabled");await E("$('lTarget').value=window.__k.id;$('lGo').click()");await page.waitForTimeout(800);
     return [dis,await E("!!sunBody.dart")];},r=>String(r[0])==='false'&&String(r[1])==='true');
+  // Güneş kara delik + ağır ek yıldız: Güneş ortak merkezden uzakta. Fırlatılan gezegen boş merkeze değil Güneş'e düşmeli, kamera da Güneş'te kalmalı
+  await T('gunesBH-kayik',async()=>{await fresh(page);await E("playing=true;setStar(6)");await page.waitForTimeout(5000);
+    await E("addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(2000);await E("launchPair(byId.jupiter,sunBody)");
+    let last=null,gone=false;for(let i=0;i<40&&!gone;i++){await page.waitForTimeout(700);
+      const r=JSON.parse(await E("(function(){var j=byId.jupiter,w=new THREE.Vector3();j.pivot.getWorldPosition(w);return [isGone(j),w.distanceTo(sunBody.pos),w.length(),sunBody.pos.length(),TDES.length]})()"));
+      if(r[0]){gone=true;last=last||r;last[4]=r[4];}else last=r;}
+    await page.waitForTimeout(2500);
+    return [gone,last&&last[1]<last[2],last&&last[3]>100,last&&last[4],JSON.parse(await E("[focus===sunBody,target.distanceTo(sunBody.pos)<effVr(sunBody)*8]"))];},
+    r=>r[0]&&r[1]&&r[2]&&r[3]===1&&r[4][0]&&r[4][1]);
   await T('bari-gorsel',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(1500);
     const a=await E("(function(){var k=BODIES.filter(function(b){return b.def.name==='K'})[0];return [BARY.ln.visible&&BARY.mk.visible,BARY.ln.scale.x/sunBody.pos.length(),k.def.r*k.line.scale.x/k.pos.length(),sunBody.pos.length()/k.pos.length()]})()");
     await E("addStar({name:'Y2',type:0,size:1,a:400,m:1},true)");await page.waitForTimeout(800);

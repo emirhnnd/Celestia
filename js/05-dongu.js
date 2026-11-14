@@ -31,7 +31,7 @@ function baryStep(){
   _bs.multiplyScalar(-1/M);
   sunBody.pivot.position.copy(_bs);L.forEach(function(b){b.pivot.position.add(_bs);});
 }
-function sysCOM(out){var M=Math.max(.05,sunMass);out.set(0,0,0);BODIES.forEach(function(b){if(!b.def.star||b===sunBody||isGone(b)||b.sysHide||b.dart)return;var m=stMass(b);out.addScaledVector(b.pos,m);M+=m;});return out.multiplyScalar(1/M);}
+function sysCOM(out){var M=Math.max(.05,sunMass);out.set(0,0,0);if(sunBody)out.addScaledVector(sunBody.pos,M);BODIES.forEach(function(b){if(!b.def.star||b===sunBody||isGone(b)||b.sysHide||b.dart)return;var m=stMass(b);out.addScaledVector(b.pos,m);M+=m;});return out.multiplyScalar(1/M);}
 var _com=new THREE.Vector3();
 function updateBodies(dDays){
   BODIES.forEach(function(b){
@@ -106,7 +106,7 @@ function updateCamera(dt){
     /* fırlatma/birleşme sürerken kamera iki cismi birlikte çerçeveler: ortalarına bakar, aradaki mesafeye göre uzaklaşıp yakınlaşır.
        Önceden kamera hedefe sabitlenip diğer cisim çoğu zaman ekran dışında kalıyordu. Sürükleyince/yakınlaştırınca kullanıcıya bırakılır. */
     var DC=dartCam();if(DC){tmpV.copy(DC.c);var dd=Math.max(DC.r*2.4,minDist()*1.2);if(!trans){dist+=(dd-dist)*Math.min(1,dt*2.5);}}
-    else if(focus===sunBody&&!SYS){sysCOM(_com);var cl=_com.length(),kc=cl>1e-3?ss(Math.max(cl*.8,effVr(sunBody)*6),cl*3,dist):0;if(kc>0)tmpV.lerp(_com,kc);}
+    else if(focus===sunBody&&!SYS){sysCOM(_com);/* eşik Güneş'in merkeze uzaklığına göre: yakından bakarken kamera Güneş'te kalır, yalnızca genel görünümde ortak merkeze kayar */var cl=_com.distanceTo(tmpV),kc=cl>1e-3?ss(Math.max(cl*.8,effVr(sunBody)*6),cl*3,dist):0;if(kc>0)tmpV.lerp(_com,kc);}
     if(trans){
       trans.t=Math.min(1,trans.t+dt/1.5);var e=trans.t<.5?4*trans.t*trans.t*trans.t:1-Math.pow(-2*trans.t+2,3)/2;
       target.copy(trans.s).lerp(tmpV,e);dist=trans.d0+(trans.d1-trans.d0)*e;if(trans.t>=1)trans=null;

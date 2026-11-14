@@ -170,7 +170,7 @@ module.exports=async(page,E,shot)=>{
   await T('kusak-dagilma',async()=>{await fresh(page);
     const cnt="(function(){var o=BELTS[0],n=0;for(var i=0;i<o.n;i++)if(o.st[i]===0)n++;return n/o.n})()";
     await E("playing=true;addStar({name:'U',type:1,size:1,a:1500,m:.2},false)");await page.waitForTimeout(5000);const far=+(await E(cnt));
-    await fresh(page);await E("playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false)");await page.waitForTimeout(9000);const near=+(await E(cnt));
+    await fresh(page);await E("LENS.on=false;playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);focusBody('sun')");await page.waitForTimeout(9000);const near=+(await E(cnt));
     return [far,near,await E("frameErrN")];},r=>r[0]>.99&&r[1]<.5&&+r[2]===0);
   // Güneş seçiliyken "hedefe fırlat" düğmesi çalışmalı: Güneş eklenen kara deliğe atılabilir
   await T('gunes-firlat',async()=>{await fresh(page);await E("playing=true;addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody('sun')");await page.waitForTimeout(2500);

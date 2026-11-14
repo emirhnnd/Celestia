@@ -15,7 +15,7 @@ function syncLab(){
   $('sTilt').value=b.mod.tilt;$('oTilt').textContent=Math.round(b.mod.tilt)+'°';
   $('labDel').hidden=!(b.def.custom&&!b.parent);
   $('lockRow').hidden=!(b.hab&&!b.parent);$('sLock').checked=!!b.mod.lock;
-  syncMoonUI();fillTargets();if(typeof bmSync==='function')bmSync();$('lGo').disabled=!((b.grav||b.def.star)&&!b.parent&&!isGone(b));
+  syncMoonUI();fillTargets();if(typeof bmSync==='function')bmSync();$('lGo').disabled=!((b.grav||b.def.star||b===sunBody)&&!b.parent&&!isGone(b));
   var hb=b.hab;$('climSec').hidden=!hb;
   if(hb){$('climName').textContent=b.def.name;$('cAtm').value=hb.atm;$('cWater').value=hb.water;$('oWater').textContent=Math.round(hb.water*100)+'%';$('cMag').value=hb.mag;$('oMag').textContent=Math.round(hb.mag*100)+'%';
     $('cCo2').value=hb.co2||0;$('oCo2').textContent='×'+co2Txt(hb.co2||0);$('cTect').value=hb.tect||0;$('oTect').textContent=Math.round((hb.tect||0)*100)+'%';

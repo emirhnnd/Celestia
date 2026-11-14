@@ -165,6 +165,12 @@ function updateBelts(dDays,dt){
   if(!BELTS.length)return;
   var S=EXO.sn,shR=S?S.t*OVD()*.35:0,bh=sunType===6&&!SYS,hz=bh?effVr(sunBody)*bhMassK():0,pullR=bh?hz*3.5:0,star=effVr(sunBody)*.95;
   var gp=gravityOn?BODIES.filter(function(b){return b.grav&&!b.parent&&!isGone(b);}):[];
+  /* ek yıldız kuşağı dağıtır: Güneş'in çevresindeki yörünge ancak Hill yarıçapının yaklaşık yarısına kadar kararlıdır
+     (r_H = d·(M☉/3(M☉+M))^⅓). Daha dışarıda kalan parçacıklar birkaç saniyede savrulup söner; kuşak tek parça taşınmaz */
+  var hl=Infinity,hs=null;
+  if(sunBody&&!SYS)BODIES.forEach(function(b){if(b===sunBody||!b.def.star||b.parent||isGone(b)||!b.pivot.visible)return;var ms=stMass(b),d=b.pos.distanceTo(sunBody.pos);if(!(d>effVr(sunBody)*2))return;/* yeni eklenen yıldızın konumu ilk karede henüz yazılmamış olabilir */
+    var l=.45*d*Math.pow(sunMass/(3*(sunMass+ms)),1/3);if(l<hl){hl=l;hs=b;}});
+  var hx=0,hz2=0;if(hs){hx=hs.pos.x-sunBody.pos.x;hz2=hs.pos.z-sunBody.pos.z;}
   BELTS.forEach(function(o){
     if(o.kind==='trojan'&&!(byId.jupiter&&!isGone(byId.jupiter))){for(var q=0;q<o.n;q++)if(o.st[q]===0&&o.a[q]>4)o.R[q]=orbitR(o.a[q]);}
     beltPlace(o,dDays);
@@ -174,6 +180,11 @@ function updateBelts(dDays,dt){
       if(st===3){var r3=Math.sqrt(x*x+z*z);o.R[i]*=Math.exp(-dt*.35);o.ang[i]+=dt*2.5*Math.pow(hz/Math.max(r3,hz),1.5);o.y[i]*=Math.exp(-dt*.8);var hot=clamp(1-(o.R[i]-hz)/(pullR-hz),0,1);C[i*3]=.8+.2*hot;C[i*3+1]=.55+.3*hot*hot;C[i*3+2]=.35*hot;ch=true;
         if(o.R[i]<hz*1.3){o.st[i]=2;P[i*3+1]=1e7;feedBH(sunBody,.0015);}continue;}
       var Rr=o.R[i];
+      if(hs&&Rr>hl&&dt>0&&Math.random()<dt*Math.min(1.5,.4+Rr/hl*.2)){
+        /* yıldıza bakan taraf ona doğru çekilir, öbür taraf dışarı savrulur; hepsi yörünge hızının bir kısmını korur */
+        var rr=Math.sqrt(x*x+z*z)||1,tx=x-hx,tz=z-hz2,td=Math.sqrt(tx*tx+tz*tz)||1,sd=(x*hx+z*hz2)>0?-1:1,sp2=Rr*(.12+Math.random()*.2);
+        if(!o.dsp){o.dsp=true;if(o.kind==='main')note('Asteroit kuşağı dağılıyor: yeni yıldızın çekimi yörüngeleri bozdu');}
+        beltKill(o,i,(sd*tx/td*.6-z/rr*.5+(Math.random()-.5)*.3)*sp2,(Math.random()-.5)*.25*sp2,(sd*tz/td*.6+x/rr*.5+(Math.random()-.5)*.3)*sp2,false);ch=true;continue;}
       if(S){BV.set(x,y,z).sub(S.c);var dd=BV.length();if(dd<shR){var near=S.cb!==sunBody||o.a[i]<14,sp=OVD()*(near?.18:.05)*(.6+Math.random()*.8);BV.normalize();
           if(near){beltKill(o,i,BV.x*sp,BV.y*sp,BV.z*sp,true);}else if(!o.v[i*3+1]){o.a[i]*=1+Math.random()*.2;o.R[i]=orbitR(o.a[i]);o.y[i]*=1.6;o.v[i*3+1]=1;}ch=true;continue;}}
       if(bh&&Rr<pullR){o.st[i]=3;ch=true;continue;}

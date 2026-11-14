@@ -158,7 +158,8 @@ module.exports=async(page,E,shot)=>{
      yarıçapı cisimlerin merkeze uzaklığına eşit olmalı; ikinci yıldız eklenince bu gösterim kapanır */
   // gölgenin ortası her kalite düzeyinde siyah kalmalı (az adımlı telefon gölgelendiricisinde foton halkası gölgeyi doldurmuştu)
   await T('bh-golge',async()=>{await fresh(page);await E("addStar({name:'K',type:6,size:1,a:260,m:10},false);window.__k=focus;focusBody(focus.id)");await page.waitForTimeout(6000);
-    await E("window.__k.exo.fuel=3;phi=1.0");await page.waitForTimeout(2500);
+    await E("window.__k.exo.fuel=3;phi=1.0;trans=null;dist=desired=window.__k.exo.sh*10");await page.waitForTimeout(2500);
+    await page.waitForFunction(()=>window.__E&&window.__E("!!(lensPick()&&lensInit()&&LENS.lo)")===true,null,{timeout:20000}).catch(()=>{});
     const px="(function(){renderFrame();var gl=renderer.getContext(),p=new Uint8Array(4),v=new THREE.Vector3();window.__k.pivot.getWorldPosition(v);v.project(camera);gl.readPixels(Math.round((v.x*.5+.5)*gl.drawingBufferWidth),Math.round((v.y*.5+.5)*gl.drawingBufferHeight),1,1,gl.RGBA,gl.UNSIGNED_BYTE,p);return [!!lensPick(),LENS.quad.material.defines.STEPS,p[0]+p[1]+p[2]]})()";
     const out=[];for(const st of [170,90,50]){await E("LENS.hi=null;LENS.quad.material=lensMat("+st+");LENS.quad.material.uniforms=LENS.lo.uniforms");await page.waitForTimeout(600);out.push(JSON.parse(await E(px)));}
     return out;},r=>r.every(x=>x[0]&&x[2]<24));
